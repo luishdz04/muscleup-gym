@@ -24,7 +24,13 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  CircularProgress
+  CircularProgress,
+  Fade,
+  Zoom,
+  Slide,
+  Grow,
+  Tooltip,
+  Badge
 } from '@mui/material';
 import {
   Search as SearchIcon,
@@ -43,10 +49,17 @@ import {
   Star as StarIcon,
   Warning as WarningIcon,
   ArrowBack as ArrowBackIcon,
-  Warehouse as WarehouseIcon
+  Warehouse as WarehouseIcon,
+  TrendingUp as TrendingUpIcon,
+  ShoppingBag as ShoppingBagIcon,
+  AttachMoney as MoneyIcon,
+  AutoAwesome as AutoAwesomeIcon,
+  FilterList as FilterIcon,
+  Inventory as InventoryIcon
 } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
+import confetti from 'canvas-confetti';
 
 // ✅ IMPORTS ENTERPRISE v6.0
 import { colorTokens } from '@/theme';
@@ -88,9 +101,11 @@ const CATEGORIES = [
   'Otros'
 ] as const;
 
-// ✅ PRODUCTCARD MEMOIZADO CON SSR GUARD
+// ✅ PRODUCTCARD MEMOIZADO CON SSR GUARD - REDESIGNED WITH GLASSMORPHISM
 const ProductCard = memo<{ product: Product; onAddToCart: (product: Product) => void; hydrated: boolean }>(
   ({ product, onAddToCart, hydrated }) => {
+    const [isHovered, setIsHovered] = useState(false);
+
     const formatPrice = useCallback((price: number) => {
       return new Intl.NumberFormat('es-MX', {
         style: 'currency',
@@ -105,106 +120,237 @@ const ProductCard = memo<{ product: Product; onAddToCart: (product: Product) => 
     const CardWrapper = hydrated ? motion.div : 'div';
     const cardProps = hydrated ? {
       layout: true,
-      initial: { opacity: 0, scale: 0.9 },
+      initial: { opacity: 0, scale: 0.95 },
       animate: { opacity: 1, scale: 1 },
-      whileHover: { scale: 1.02 },
-      whileTap: { scale: 0.98 }
+      transition: { duration: 0.3 }
     } : {};
 
     return (
       <CardWrapper {...cardProps}>
         <Card
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
           sx={{
             height: '100%',
             cursor: 'pointer',
-            background: `linear-gradient(135deg, ${colorTokens.surfaceLevel2}, ${colorTokens.surfaceLevel3})`,
+            background: `linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%)`,
+            backdropFilter: 'blur(20px)',
             border: `1px solid ${colorTokens.border}`,
-            color: colorTokens.textPrimary,
+            borderRadius: 4,
+            overflow: 'hidden',
+            position: 'relative',
+            transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
             '&:hover': {
-              boxShadow: `0 8px 32px ${colorTokens.glow}`,
-              borderColor: colorTokens.brand,
-              transform: 'translateY(-2px)'
+              transform: 'translateY(-8px) scale(1.02)',
+              boxShadow: `0 16px 48px ${colorTokens.brand}40`,
+              border: `1px solid ${colorTokens.brand}80`,
             },
-            transition: 'all 0.3s ease',
-            borderRadius: 3
+            '&::before': {
+              content: '""',
+              position: 'absolute',
+              top: 0,
+              left: 0,
+              right: 0,
+              height: '4px',
+              background: `linear-gradient(90deg, ${colorTokens.brand}, ${colorTokens.info})`,
+              opacity: 0,
+              transition: 'opacity 0.3s ease'
+            },
+            '&:hover::before': {
+              opacity: 1
+            }
           }}
-          onClick={handleClick}
         >
           <Box
+            onClick={handleClick}
             sx={{
-              height: 120,
+              height: 160,
               background: product.image_url
                 ? `url(${product.image_url}) center/cover`
-                : `linear-gradient(135deg, ${colorTokens.brand}, ${colorTokens.brandHover})`,
+                : `linear-gradient(135deg, ${colorTokens.brand}DD, ${colorTokens.info}CC)`,
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: colorTokens.textOnBrand,
-              position: 'relative'
+              color: colorTokens.neutral0,
+              position: 'relative',
+              overflow: 'hidden',
+              transition: 'transform 0.4s ease',
+              '&:hover': {
+                transform: product.image_url ? 'scale(1.1)' : 'scale(1.05)'
+              }
             }}
           >
             {!product.image_url && (
-              <Typography variant="h4" fontWeight="bold">
-                {product.name.charAt(0)}
+              <Box sx={{
+                width: 80,
+                height: 80,
+                borderRadius: '50%',
+                background: `linear-gradient(135deg, ${colorTokens.neutral0}20, ${colorTokens.neutral0}10)`,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                backdropFilter: 'blur(10px)',
+                border: `2px solid ${colorTokens.neutral0}40`,
+                boxShadow: `0 8px 32px rgba(0, 0, 0, 0.3)`
+              }}>
+                <Typography variant="h3" fontWeight="bold" sx={{ color: colorTokens.neutral0 }}>
+                  {product.name.charAt(0)}
+                </Typography>
+              </Box>
+            )}
+
+            {/* Stock Badge */}
+            <Zoom in={true} timeout={300}>
+              <Chip
+                label={`${product.current_stock} ${product.unit}`}
+                size="small"
+                sx={{
+                  position: 'absolute',
+                  top: 10,
+                  right: 10,
+                  fontWeight: 700,
+                  fontSize: '0.7rem',
+                  background: product.current_stock <= product.min_stock
+                    ? `linear-gradient(135deg, ${colorTokens.warning}, ${colorTokens.warning}CC)`
+                    : `linear-gradient(135deg, ${colorTokens.success}, ${colorTokens.success}CC)`,
+                  color: colorTokens.neutral0,
+                  backdropFilter: 'blur(10px)',
+                  boxShadow: `0 4px 12px rgba(0, 0, 0, 0.3)`,
+                  border: `1px solid ${colorTokens.neutral0}20`
+                }}
+              />
+            </Zoom>
+
+            {/* Floating Add Button on Hover */}
+            <Zoom in={isHovered} timeout={200}>
+              <Box
+                onClick={handleClick}
+                sx={{
+                  position: 'absolute',
+                  bottom: 10,
+                  right: 10,
+                  width: 48,
+                  height: 48,
+                  borderRadius: '50%',
+                  background: `linear-gradient(135deg, ${colorTokens.brand}, ${colorTokens.brandHover})`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  cursor: 'pointer',
+                  boxShadow: `0 8px 24px ${colorTokens.brand}60`,
+                  transition: 'all 0.3s ease',
+                  '&:hover': {
+                    transform: 'scale(1.15) rotate(90deg)',
+                    boxShadow: `0 12px 32px ${colorTokens.brand}80`
+                  }
+                }}
+              >
+                <AddIcon sx={{ color: colorTokens.neutral100, fontSize: 28, fontWeight: 'bold' }} />
+              </Box>
+            </Zoom>
+          </Box>
+
+          <CardContent sx={{ p: 2.5 }}>
+            <Tooltip title={product.name} arrow>
+              <Typography
+                variant="h6"
+                noWrap
+                fontWeight="bold"
+                sx={{
+                  color: colorTokens.textPrimary,
+                  fontSize: '1rem',
+                  mb: 0.5
+                }}
+              >
+                {product.name}
+              </Typography>
+            </Tooltip>
+
+            {product.brand && (
+              <Typography
+                variant="body2"
+                sx={{
+                  color: colorTokens.textSecondary,
+                  fontSize: '0.8rem',
+                  mb: 1.5,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 0.5
+                }}
+              >
+                <AutoAwesomeIcon sx={{ fontSize: 14 }} />
+                {product.brand}
               </Typography>
             )}
 
             <Chip
-              label={`${product.current_stock} ${product.unit}`}
+              label={product.category}
               size="small"
+              icon={<CategoryIcon sx={{ fontSize: 14 }} />}
               sx={{
-                position: 'absolute',
-                top: 8,
-                right: 8,
-                fontWeight: 'bold',
-                backgroundColor: product.current_stock <= product.min_stock 
-                  ? colorTokens.warning 
-                  : colorTokens.success,
-                color: colorTokens.textOnBrand
+                mb: 2,
+                background: `linear-gradient(135deg, ${colorTokens.info}15, ${colorTokens.info}08)`,
+                color: colorTokens.info,
+                border: `1px solid ${colorTokens.info}40`,
+                fontWeight: 600,
+                fontSize: '0.7rem',
+                backdropFilter: 'blur(10px)'
               }}
             />
-          </Box>
 
-          <CardContent sx={{ flexGrow: 1 }}>
-            <Typography 
-              variant="h6" 
-              noWrap 
-              fontWeight="bold" 
-              gutterBottom 
-              sx={{ color: colorTokens.textPrimary }}
+            <Box
+              display="flex"
+              justifyContent="space-between"
+              alignItems="center"
+              sx={{
+                pt: 1.5,
+                borderTop: `1px solid ${colorTokens.border}`
+              }}
             >
-              {product.name}
-            </Typography>
-            {product.brand && (
-              <Typography variant="body2" sx={{ color: colorTokens.textSecondary }} gutterBottom>
-                {product.brand}
-              </Typography>
-            )}
-            <Chip 
-              label={product.category} 
-              size="small" 
-              sx={{ 
-                mb: 1,
-                backgroundColor: `${colorTokens.info}20`,
-                color: colorTokens.info,
-                border: `1px solid ${colorTokens.info}40`
-              }} 
-            />
-            <Box display="flex" justifyContent="space-between" alignItems="center" sx={{ mt: 2 }}>
-              <Typography variant="h6" sx={{ color: colorTokens.brand }} fontWeight="bold">
-                {formatPrice(product.sale_price)}
-              </Typography>
-              {product.current_stock <= product.min_stock && (
-                <Chip 
-                  icon={<WarningIcon />} 
-                  label="Stock Bajo" 
-                  size="small" 
+              <Box sx={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'flex-start'
+              }}>
+                <Typography
+                  variant="caption"
                   sx={{
-                    backgroundColor: `${colorTokens.warning}20`,
-                    color: colorTokens.warning,
-                    border: `1px solid ${colorTokens.warning}40`
+                    color: colorTokens.textMuted,
+                    fontSize: '0.65rem',
+                    mb: 0.5
                   }}
-                />
+                >
+                  Precio
+                </Typography>
+                <Typography
+                  variant="h6"
+                  sx={{
+                    color: colorTokens.brand,
+                    fontWeight: 800,
+                    fontSize: '1.1rem',
+                    textShadow: `0 2px 8px ${colorTokens.brand}40`
+                  }}
+                >
+                  {formatPrice(product.sale_price)}
+                </Typography>
+              </Box>
+
+              {product.current_stock <= product.min_stock && (
+                <Grow in={true} timeout={300}>
+                  <Chip
+                    icon={<WarningIcon sx={{ fontSize: 14 }} />}
+                    label="Bajo"
+                    size="small"
+                    sx={{
+                      background: `linear-gradient(135deg, ${colorTokens.warning}20, ${colorTokens.warning}10)`,
+                      color: colorTokens.warning,
+                      border: `1px solid ${colorTokens.warning}60`,
+                      fontWeight: 700,
+                      fontSize: '0.7rem',
+                      animation: 'pulse 2s infinite'
+                    }}
+                  />
+                </Grow>
               )}
             </Box>
           </CardContent>
@@ -533,13 +679,53 @@ export default function POSPage() {
     toast.success('Cupón removido');
   }, [toast]);
 
+  // ✨ FUNCIÓN DE CONFETTI
+  const triggerConfetti = useCallback(() => {
+    const duration = 3 * 1000;
+    const animationEnd = Date.now() + duration;
+    const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 9999 };
+
+    function randomInRange(min: number, max: number) {
+      return Math.random() * (max - min) + min;
+    }
+
+    const interval: any = setInterval(function() {
+      const timeLeft = animationEnd - Date.now();
+
+      if (timeLeft <= 0) {
+        return clearInterval(interval);
+      }
+
+      const particleCount = 50 * (timeLeft / duration);
+
+      // Confetti desde la izquierda
+      confetti({
+        ...defaults,
+        particleCount,
+        origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 },
+        colors: ['#FFCC00', '#FFD700', '#FFA500', '#22C55E', '#38BDF8']
+      });
+
+      // Confetti desde la derecha
+      confetti({
+        ...defaults,
+        particleCount,
+        origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 },
+        colors: ['#FFCC00', '#FFD700', '#FFA500', '#22C55E', '#38BDF8']
+      });
+    }, 250);
+  }, []);
+
   // MANEJAR ÉXITO DE VENTA
   const handleSaleSuccess = useCallback(() => {
+    // Lanzar confetti
+    triggerConfetti();
+
     clearCart();
     refreshProducts();
     loadSalesStats();
-    toast.success('Venta completada exitosamente');
-  }, [clearCart, refreshProducts, loadSalesStats, toast]);
+    toast.success('¡Venta completada exitosamente! 🎉');
+  }, [clearCart, refreshProducts, loadSalesStats, toast, triggerConfetti]);
 
   // OBJETOS ESTABLES PARA DIALOGS
   const stableCart = useMemo(() => cart, [cart]);
@@ -620,80 +806,133 @@ export default function POSPage() {
         <Grid container spacing={{ xs: 2, sm: 2.5, md: 3 }}>
           {/* PANEL IZQUIERDO - PRODUCTOS */}
           <Grid size={{ xs: 12, lg: 8 }}>
-            {/* Header */}
-            <Paper sx={{
-              p: { xs: 2, sm: 3, md: 4 },
-              mb: { xs: 2, sm: 3, md: 4 },
-              background: `linear-gradient(135deg, ${colorTokens.surfaceLevel2}, ${colorTokens.surfaceLevel3})`,
-              border: `2px solid ${colorTokens.glow}`,
-              borderRadius: 4,
-              boxShadow: `0 8px 32px ${colorTokens.shadow}`
-            }}>
-              <Box display="flex" flexDirection={{ xs: 'column', md: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', md: 'center' }} mb={{ xs: 2, sm: 2.5, md: 3 }} gap={2}>
-                <Box>
-                  <Typography
-                    variant="h3"
-                    component="h1"
-                    sx={{
-                      fontWeight: 800,
-                      color: colorTokens.brand,
+            {/* Header - REDESIGNED WITH GLASSMORPHISM */}
+            <Fade in={true} timeout={600}>
+              <Paper sx={{
+                p: { xs: 2, sm: 3, md: 4 },
+                mb: { xs: 2, sm: 3, md: 4 },
+                background: `linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%)`,
+                backdropFilter: 'blur(20px)',
+                border: `1px solid ${colorTokens.border}`,
+                borderRadius: 4,
+                boxShadow: `0 8px 32px ${colorTokens.shadow}`,
+                position: 'relative',
+                overflow: 'hidden',
+                '&::before': {
+                  content: '""',
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  height: '100%',
+                  background: `linear-gradient(90deg, transparent 0%, ${colorTokens.brand}05 50%, transparent 100%)`,
+                  animation: 'shine 3s infinite',
+                  '@keyframes shine': {
+                    '0%': { transform: 'translateX(-100%)' },
+                    '100%': { transform: 'translateX(100%)' }
+                  }
+                }
+              }}>
+                <Box display="flex" flexDirection={{ xs: 'column', md: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', md: 'center' }} mb={{ xs: 2, sm: 2.5, md: 3 }} gap={2} sx={{ position: 'relative', zIndex: 1 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                    {/* Animated Icon */}
+                    <Box sx={{
+                      width: { xs: 56, sm: 64, md: 72 },
+                      height: { xs: 56, sm: 64, md: 72 },
+                      borderRadius: '20px',
+                      background: `linear-gradient(135deg, ${colorTokens.brand}, ${colorTokens.brandHover})`,
                       display: 'flex',
                       alignItems: 'center',
-                      gap: { xs: 1.5, sm: 2 },
-                      mb: 1,
-                      fontSize: { xs: '1.75rem', sm: '2.25rem', md: '2.5rem' }
-                    }}
-                  >
-                    <CartIcon sx={{ fontSize: { xs: 36, sm: 42, md: 50 } }} />
-                    POS MUP
-                  </Typography>
-                  <Typography variant="h6" sx={{
-                    color: colorTokens.textSecondary,
-                    fontWeight: 300,
-                    fontSize: { xs: '0.875rem', sm: '1rem', md: '1.25rem' },
-                    display: { xs: 'none', sm: 'block' }
-                  }}>
-                    Sistema de ventas MUP | Ventas | Apartados
-                  </Typography>
-                </Box>
+                      justifyContent: 'center',
+                      boxShadow: `0 8px 32px ${colorTokens.brand}40`,
+                      animation: 'float 3s ease-in-out infinite',
+                      '@keyframes float': {
+                        '0%, 100%': { transform: 'translateY(0px)' },
+                        '50%': { transform: 'translateY(-10px)' }
+                      }
+                    }}>
+                      <CartIcon sx={{
+                        fontSize: { xs: 32, sm: 36, md: 42 },
+                        color: colorTokens.neutral100
+                      }} />
+                    </Box>
 
-                <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: { xs: 1.5, sm: 2 }, width: { xs: '100%', md: 'auto' } }}>
-                  <Button
-                    startIcon={<ArrowBackIcon sx={{ fontSize: { xs: 18, sm: 20 } }} />}
-                    onClick={() => router.push('/dashboard/admin')}
-                    sx={{
-                      color: colorTokens.brand,
-                      borderColor: colorTokens.glow,
-                      px: { xs: 2, sm: 2.5, md: 3 },
-                      py: { xs: 1, sm: 1.25, md: 1.5 },
-                      fontSize: { xs: '0.8rem', sm: '0.875rem' },
-                      borderRadius: 3,
-                      fontWeight: 600
-                    }}
-                    variant="outlined"
-                  >
-                    Dashboard
-                  </Button>
+                    <Box>
+                      <Typography
+                        variant="h3"
+                        component="h1"
+                        sx={{
+                          fontWeight: 800,
+                          color: colorTokens.textPrimary,
+                          fontSize: { xs: '1.75rem', sm: '2.25rem', md: '2.5rem' }
+                        }}
+                      >
+                        POS MUP
+                      </Typography>
+                    </Box>
+                  </Box>
 
-                  <Button
-                    variant="outlined"
-                    startIcon={<RefreshIcon sx={{ fontSize: { xs: 18, sm: 20 } }} />}
-                    onClick={refreshProducts}
-                    disabled={productsLoading}
-                    sx={{
-                      color: colorTokens.textSecondary,
-                      borderColor: colorTokens.border,
-                      px: { xs: 2, sm: 2.5, md: 3 },
-                      py: { xs: 1, sm: 1.25, md: 1.5 },
-                      fontSize: { xs: '0.8rem', sm: '0.875rem' },
-                      borderRadius: 3,
-                      fontWeight: 600
-                    }}
-                  >
-                    Actualizar
-                  </Button>
+                  <Box sx={{ display: 'flex', flexDirection: { xs: 'row', sm: 'row' }, gap: { xs: 1.5, sm: 2 }, width: { xs: '100%', md: 'auto' } }}>
+                    <Tooltip title="Volver al dashboard" arrow>
+                      <Button
+                        startIcon={<ArrowBackIcon />}
+                        onClick={() => router.push('/dashboard/admin')}
+                        sx={{
+                          background: `linear-gradient(135deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.04))`,
+                          backdropFilter: 'blur(10px)',
+                          border: `1px solid ${colorTokens.border}`,
+                          color: colorTokens.textPrimary,
+                          px: { xs: 2, sm: 3 },
+                          py: { xs: 1.25, sm: 1.5 },
+                          fontSize: { xs: '0.8rem', sm: '0.875rem' },
+                          borderRadius: 3,
+                          fontWeight: 600,
+                          transition: 'all 0.3s ease',
+                          '&:hover': {
+                            background: `linear-gradient(135deg, ${colorTokens.brand}20, ${colorTokens.brand}10)`,
+                            border: `1px solid ${colorTokens.brand}60`,
+                            transform: 'translateY(-2px)',
+                            boxShadow: `0 8px 24px ${colorTokens.brand}30`
+                          }
+                        }}
+                        variant="outlined"
+                      >
+                        <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>Dashboard</Box>
+                      </Button>
+                    </Tooltip>
+
+                    <Tooltip title="Actualizar productos" arrow>
+                      <Button
+                        variant="outlined"
+                        startIcon={productsLoading ? <CircularProgress size={16} sx={{ color: colorTokens.brand }} /> : <RefreshIcon />}
+                        onClick={refreshProducts}
+                        disabled={productsLoading}
+                        sx={{
+                          background: `linear-gradient(135deg, ${colorTokens.brand}, ${colorTokens.brandHover})`,
+                          border: `1px solid ${colorTokens.brand}`,
+                          color: colorTokens.neutral100,
+                          px: { xs: 2, sm: 3 },
+                          py: { xs: 1.25, sm: 1.5 },
+                          fontSize: { xs: '0.8rem', sm: '0.875rem' },
+                          borderRadius: 3,
+                          fontWeight: 700,
+                          boxShadow: `0 4px 16px ${colorTokens.brand}40`,
+                          transition: 'all 0.3s ease',
+                          '&:hover': {
+                            background: `linear-gradient(135deg, ${colorTokens.brandHover}, ${colorTokens.brand})`,
+                            transform: 'translateY(-2px)',
+                            boxShadow: `0 8px 24px ${colorTokens.brand}60`
+                          },
+                          '&:disabled': {
+                            opacity: 0.6
+                          }
+                        }}
+                      >
+                        Actualizar
+                      </Button>
+                    </Tooltip>
+                  </Box>
                 </Box>
-              </Box>
 
               {/* ✅ ALERTA DE ALMACÉN FIJO */}
               {!FIXED_WAREHOUSE_ID ? (
@@ -733,158 +972,503 @@ export default function POSPage() {
                 </Alert>
               )}
 
-              {/* ESTADÍSTICAS */}
+              {/* ESTADÍSTICAS - REDESIGNED WITH GLASSMORPHISM */}
               <Grid container spacing={3}>
                 <Grid size={{ xs: 12, sm: 4 }}>
-                  <Card sx={{ 
-                    background: `${colorTokens.success}20`, 
-                    border: `1px solid ${colorTokens.success}60`,
-                    borderRadius: 3,
-                    color: colorTokens.textPrimary
-                  }}>
-                    <CardContent>
-                      <Box display="flex" alignItems="center" justifyContent="space-between">
-                        <Box>
-                          <Typography variant="h5" fontWeight="bold" sx={{ color: colorTokens.success }}>
-                            {formatPrice(salesStats.dailySales)}
-                          </Typography>
-                          <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
-                            Ventas del día
-                          </Typography>
-                        </Box>
-                        <ReceiptIcon sx={{ fontSize: 40, color: colorTokens.success, opacity: 0.8 }} />
-                      </Box>
-                    </CardContent>
-                  </Card>
+                  <Zoom in={true} timeout={400} style={{ transitionDelay: '100ms' }}>
+                    <motion.div whileHover={{ scale: 1.05, y: -4 }}>
+                      <Card sx={{
+                        background: `linear-gradient(135deg, rgba(34, 197, 94, 0.08) 0%, rgba(34, 197, 94, 0.02) 100%)`,
+                        backdropFilter: 'blur(20px)',
+                        border: `1px solid ${colorTokens.success}40`,
+                        borderRadius: 4,
+                        position: 'relative',
+                        overflow: 'hidden',
+                        transition: 'all 0.3s ease',
+                        '&:hover': {
+                          border: `1px solid ${colorTokens.success}80`,
+                          boxShadow: `0 12px 40px ${colorTokens.success}30`,
+                        },
+                        '&::before': {
+                          content: '""',
+                          position: 'absolute',
+                          top: 0,
+                          left: 0,
+                          right: 0,
+                          height: '3px',
+                          background: `linear-gradient(90deg, ${colorTokens.success}, ${colorTokens.success}AA)`,
+                          opacity: 0,
+                          transition: 'opacity 0.3s ease'
+                        },
+                        '&:hover::before': { opacity: 1 }
+                      }}>
+                        <CardContent sx={{ p: 3 }}>
+                          {/* Decorative background icon */}
+                          <Box sx={{
+                            position: 'absolute',
+                            top: -15,
+                            right: -15,
+                            opacity: 0.04,
+                            transform: 'rotate(-15deg)'
+                          }}>
+                            <MoneyIcon sx={{ fontSize: 120, color: colorTokens.success }} />
+                          </Box>
+
+                          <Box display="flex" alignItems="flex-start" justifyContent="space-between" sx={{ position: 'relative' }}>
+                            <Box>
+                              <Typography
+                                variant="caption"
+                                sx={{
+                                  color: colorTokens.textMuted,
+                                  fontSize: '0.7rem',
+                                  textTransform: 'uppercase',
+                                  letterSpacing: 1,
+                                  mb: 1,
+                                  display: 'block'
+                                }}
+                              >
+                                Ventas del día
+                              </Typography>
+                              <Typography
+                                variant="h4"
+                                fontWeight="bold"
+                                sx={{
+                                  color: colorTokens.success,
+                                  textShadow: `0 2px 12px ${colorTokens.success}40`,
+                                  fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2rem' }
+                                }}
+                              >
+                                {formatPrice(salesStats.dailySales)}
+                              </Typography>
+                            </Box>
+
+                            {/* Circular Icon Container */}
+                            <Box sx={{
+                              width: 56,
+                              height: 56,
+                              borderRadius: '50%',
+                              background: `linear-gradient(135deg, ${colorTokens.success}, ${colorTokens.success}CC)`,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              boxShadow: `0 8px 24px ${colorTokens.success}40`
+                            }}>
+                              <MoneyIcon sx={{ fontSize: 32, color: colorTokens.neutral0 }} />
+                            </Box>
+                          </Box>
+
+                          <Box sx={{
+                            mt: 2,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 0.5,
+                            color: colorTokens.success
+                          }}>
+                            <TrendingUpIcon sx={{ fontSize: 16 }} />
+                            <Typography variant="caption" fontWeight="600">
+                              Actualizado en tiempo real
+                            </Typography>
+                          </Box>
+                        </CardContent>
+                      </Card>
+                    </motion.div>
+                  </Zoom>
                 </Grid>
+
                 <Grid size={{ xs: 12, sm: 4 }}>
-                  <Card sx={{ 
-                    background: `${colorTokens.info}20`, 
-                    border: `1px solid ${colorTokens.info}60`,
-                    borderRadius: 3,
-                    color: colorTokens.textPrimary
-                  }}>
-                    <CardContent>
-                      <Box display="flex" alignItems="center" justifyContent="space-between">
-                        <Box>
-                          <Typography variant="h5" fontWeight="bold" sx={{ color: colorTokens.info }}>
-                            {salesStats.dailyTransactions}
-                          </Typography>
-                          <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
-                            Transacciones
-                          </Typography>
-                        </Box>
-                        <CartIcon sx={{ fontSize: 40, color: colorTokens.info, opacity: 0.8 }} />
-                      </Box>
-                    </CardContent>
-                  </Card>
+                  <Zoom in={true} timeout={400} style={{ transitionDelay: '200ms' }}>
+                    <motion.div whileHover={{ scale: 1.05, y: -4 }}>
+                      <Card sx={{
+                        background: `linear-gradient(135deg, rgba(56, 189, 248, 0.08) 0%, rgba(56, 189, 248, 0.02) 100%)`,
+                        backdropFilter: 'blur(20px)',
+                        border: `1px solid ${colorTokens.info}40`,
+                        borderRadius: 4,
+                        position: 'relative',
+                        overflow: 'hidden',
+                        transition: 'all 0.3s ease',
+                        '&:hover': {
+                          border: `1px solid ${colorTokens.info}80`,
+                          boxShadow: `0 12px 40px ${colorTokens.info}30`,
+                        },
+                        '&::before': {
+                          content: '""',
+                          position: 'absolute',
+                          top: 0,
+                          left: 0,
+                          right: 0,
+                          height: '3px',
+                          background: `linear-gradient(90deg, ${colorTokens.info}, ${colorTokens.info}AA)`,
+                          opacity: 0,
+                          transition: 'opacity 0.3s ease'
+                        },
+                        '&:hover::before': { opacity: 1 }
+                      }}>
+                        <CardContent sx={{ p: 3 }}>
+                          {/* Decorative background icon */}
+                          <Box sx={{
+                            position: 'absolute',
+                            top: -15,
+                            right: -15,
+                            opacity: 0.04,
+                            transform: 'rotate(-15deg)'
+                          }}>
+                            <ShoppingBagIcon sx={{ fontSize: 120, color: colorTokens.info }} />
+                          </Box>
+
+                          <Box display="flex" alignItems="flex-start" justifyContent="space-between" sx={{ position: 'relative' }}>
+                            <Box>
+                              <Typography
+                                variant="caption"
+                                sx={{
+                                  color: colorTokens.textMuted,
+                                  fontSize: '0.7rem',
+                                  textTransform: 'uppercase',
+                                  letterSpacing: 1,
+                                  mb: 1,
+                                  display: 'block'
+                                }}
+                              >
+                                Transacciones
+                              </Typography>
+                              <Typography
+                                variant="h4"
+                                fontWeight="bold"
+                                sx={{
+                                  color: colorTokens.info,
+                                  textShadow: `0 2px 12px ${colorTokens.info}40`,
+                                  fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2rem' }
+                                }}
+                              >
+                                {salesStats.dailyTransactions}
+                              </Typography>
+                            </Box>
+
+                            {/* Circular Icon Container */}
+                            <Box sx={{
+                              width: 56,
+                              height: 56,
+                              borderRadius: '50%',
+                              background: `linear-gradient(135deg, ${colorTokens.info}, ${colorTokens.info}CC)`,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              boxShadow: `0 8px 24px ${colorTokens.info}40`
+                            }}>
+                              <ShoppingBagIcon sx={{ fontSize: 32, color: colorTokens.neutral0 }} />
+                            </Box>
+                          </Box>
+
+                          <Box sx={{
+                            mt: 2,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 0.5,
+                            color: colorTokens.info
+                          }}>
+                            <ReceiptIcon sx={{ fontSize: 16 }} />
+                            <Typography variant="caption" fontWeight="600">
+                              Ventas completadas
+                            </Typography>
+                          </Box>
+                        </CardContent>
+                      </Card>
+                    </motion.div>
+                  </Zoom>
                 </Grid>
+
                 <Grid size={{ xs: 12, sm: 4 }}>
-                  <Card sx={{ 
-                    background: `${colorTokens.warning}20`, 
-                    border: `1px solid ${colorTokens.warning}60`,
-                    borderRadius: 3,
-                    color: colorTokens.textPrimary
-                  }}>
-                    <CardContent>
-                      <Box display="flex" alignItems="center" justifyContent="space-between">
-                        <Box>
-                          <Typography variant="h5" fontWeight="bold" sx={{ color: colorTokens.warning }}>
-                            {formatPrice(salesStats.avgTicket)}
-                          </Typography>
-                          <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
-                            Ticket promedio
-                          </Typography>
-                        </Box>
-                        <StarIcon sx={{ fontSize: 40, color: colorTokens.warning, opacity: 0.8 }} />
-                      </Box>
-                    </CardContent>
-                  </Card>
+                  <Zoom in={true} timeout={400} style={{ transitionDelay: '300ms' }}>
+                    <motion.div whileHover={{ scale: 1.05, y: -4 }}>
+                      <Card sx={{
+                        background: `linear-gradient(135deg, rgba(255, 204, 0, 0.08) 0%, rgba(255, 204, 0, 0.02) 100%)`,
+                        backdropFilter: 'blur(20px)',
+                        border: `1px solid ${colorTokens.brand}40`,
+                        borderRadius: 4,
+                        position: 'relative',
+                        overflow: 'hidden',
+                        transition: 'all 0.3s ease',
+                        '&:hover': {
+                          border: `1px solid ${colorTokens.brand}80`,
+                          boxShadow: `0 12px 40px ${colorTokens.brand}30`,
+                        },
+                        '&::before': {
+                          content: '""',
+                          position: 'absolute',
+                          top: 0,
+                          left: 0,
+                          right: 0,
+                          height: '3px',
+                          background: `linear-gradient(90deg, ${colorTokens.brand}, ${colorTokens.brand}AA)`,
+                          opacity: 0,
+                          transition: 'opacity 0.3s ease'
+                        },
+                        '&:hover::before': { opacity: 1 }
+                      }}>
+                        <CardContent sx={{ p: 3 }}>
+                          {/* Decorative background icon */}
+                          <Box sx={{
+                            position: 'absolute',
+                            top: -15,
+                            right: -15,
+                            opacity: 0.04,
+                            transform: 'rotate(-15deg)'
+                          }}>
+                            <StarIcon sx={{ fontSize: 120, color: colorTokens.brand }} />
+                          </Box>
+
+                          <Box display="flex" alignItems="flex-start" justifyContent="space-between" sx={{ position: 'relative' }}>
+                            <Box>
+                              <Typography
+                                variant="caption"
+                                sx={{
+                                  color: colorTokens.textMuted,
+                                  fontSize: '0.7rem',
+                                  textTransform: 'uppercase',
+                                  letterSpacing: 1,
+                                  mb: 1,
+                                  display: 'block'
+                                }}
+                              >
+                                Ticket promedio
+                              </Typography>
+                              <Typography
+                                variant="h4"
+                                fontWeight="bold"
+                                sx={{
+                                  color: colorTokens.brand,
+                                  textShadow: `0 2px 12px ${colorTokens.brand}40`,
+                                  fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2rem' }
+                                }}
+                              >
+                                {formatPrice(salesStats.avgTicket)}
+                              </Typography>
+                            </Box>
+
+                            {/* Circular Icon Container */}
+                            <Box sx={{
+                              width: 56,
+                              height: 56,
+                              borderRadius: '50%',
+                              background: `linear-gradient(135deg, ${colorTokens.brand}, ${colorTokens.brandHover})`,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              boxShadow: `0 8px 24px ${colorTokens.brand}40`
+                            }}>
+                              <StarIcon sx={{ fontSize: 32, color: colorTokens.neutral100 }} />
+                            </Box>
+                          </Box>
+
+                          <Box sx={{
+                            mt: 2,
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: 0.5,
+                            color: colorTokens.brand
+                          }}>
+                            <TrendingUpIcon sx={{ fontSize: 16 }} />
+                            <Typography variant="caption" fontWeight="600">
+                              Promedio por venta
+                            </Typography>
+                          </Box>
+                        </CardContent>
+                      </Card>
+                    </motion.div>
+                  </Zoom>
                 </Grid>
               </Grid>
-            </Paper>
+              </Paper>
+            </Fade>
 
-            {/* FILTROS */}
-            <Paper
-              sx={{
-                p: 3,
-                mb: 3,
-                background: `linear-gradient(135deg, ${colorTokens.surfaceLevel2}, ${colorTokens.surfaceLevel3})`,
-                border: `1px solid ${colorTokens.border}`,
-                borderRadius: 3,
-                color: colorTokens.textPrimary
-              }}
-            >
-              <Grid container spacing={2}>
-                <Grid size={{ xs: 12, md: 6 }}>
-                  <TextField
-                    fullWidth
-                    placeholder="Buscar productos..."
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                    disabled={!FIXED_WAREHOUSE_ID}
-                    InputProps={{
-                      startAdornment: (
-                        <InputAdornment position="start">
-                          <SearchIcon sx={{ color: colorTokens.brand }} />
-                        </InputAdornment>
-                      ),
-                      endAdornment: searchTerm && (
-                        <InputAdornment position="end">
-                          <IconButton size="small" onClick={() => setSearchTerm('')}>
-                            <ClearIcon sx={{ color: colorTokens.textSecondary }} />
-                          </IconButton>
-                        </InputAdornment>
-                      ),
-                      sx: {
-                        color: colorTokens.textPrimary,
-                        '& .MuiOutlinedInput-notchedOutline': {
-                          borderColor: colorTokens.border
-                        }
-                      }
-                    }}
-                  />
-                </Grid>
-                <Grid size={{ xs: 12, md: 4 }}>
-                  <FormControl fullWidth>
-                    <InputLabel sx={{ 
-                      color: colorTokens.textSecondary,
-                      '&.Mui-focused': { color: colorTokens.brand }
-                    }}>
-                      Categoría
-                    </InputLabel>
-                    <Select
-                      value={categoryFilter}
-                      label="Categoría"
-                      onChange={(e) => setCategoryFilter(e.target.value)}
+            {/* FILTROS - REDESIGNED WITH GLASSMORPHISM */}
+            <Slide in={true} direction="up" timeout={500}>
+              <Paper
+                sx={{
+                  p: 3,
+                  mb: 3,
+                  background: `linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%)`,
+                  backdropFilter: 'blur(20px)',
+                  border: `1px solid ${colorTokens.border}`,
+                  borderRadius: 4,
+                  boxShadow: `0 4px 24px rgba(0, 0, 0, 0.1)`,
+                  transition: 'all 0.3s ease',
+                  '&:hover': {
+                    boxShadow: `0 8px 32px ${colorTokens.brand}20`
+                  }
+                }}
+              >
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5, mb: 2.5 }}>
+                  <Box sx={{
+                    width: 40,
+                    height: 40,
+                    borderRadius: '12px',
+                    background: `linear-gradient(135deg, ${colorTokens.info}, ${colorTokens.info}CC)`,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: `0 4px 16px ${colorTokens.info}40`
+                  }}>
+                    <FilterIcon sx={{ fontSize: 22, color: colorTokens.neutral0 }} />
+                  </Box>
+                  <Typography variant="h6" fontWeight="bold" sx={{ color: colorTokens.textPrimary }}>
+                    Filtros de búsqueda
+                  </Typography>
+                </Box>
+
+                <Grid container spacing={2}>
+                  <Grid size={{ xs: 12, md: 6 }}>
+                    <TextField
+                      fullWidth
+                      placeholder="Buscar por nombre, SKU, código de barras..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
                       disabled={!FIXED_WAREHOUSE_ID}
-                      sx={{
-                        color: colorTokens.textPrimary,
-                        '& .MuiOutlinedInput-notchedOutline': {
-                          borderColor: colorTokens.border
+                      InputProps={{
+                        startAdornment: (
+                          <InputAdornment position="start">
+                            <SearchIcon sx={{ color: colorTokens.brand, fontSize: 24 }} />
+                          </InputAdornment>
+                        ),
+                        endAdornment: searchTerm && (
+                          <InputAdornment position="end">
+                            <Tooltip title="Limpiar búsqueda" arrow>
+                              <IconButton
+                                size="small"
+                                onClick={() => setSearchTerm('')}
+                                sx={{
+                                  color: colorTokens.textSecondary,
+                                  '&:hover': {
+                                    background: `${colorTokens.danger}20`,
+                                    color: colorTokens.danger
+                                  }
+                                }}
+                              >
+                                <ClearIcon />
+                              </IconButton>
+                            </Tooltip>
+                          </InputAdornment>
+                        ),
+                        sx: {
+                          background: `linear-gradient(135deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.01))`,
+                          backdropFilter: 'blur(10px)',
+                          color: colorTokens.textPrimary,
+                          borderRadius: 3,
+                          '& .MuiOutlinedInput-notchedOutline': {
+                            borderColor: colorTokens.border,
+                            transition: 'all 0.3s ease'
+                          },
+                          '&:hover .MuiOutlinedInput-notchedOutline': {
+                            borderColor: `${colorTokens.brand}60`
+                          },
+                          '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                            borderColor: colorTokens.brand,
+                            borderWidth: '2px'
+                          }
                         }
                       }}
-                    >
-                      <MenuItem value="">Todas las categorías</MenuItem>
-                      {CATEGORIES.map(category => (
-                        <MenuItem key={category} value={category}>
-                          {category}
+                    />
+                  </Grid>
+
+                  <Grid size={{ xs: 12, md: 4 }}>
+                    <FormControl fullWidth>
+                      <InputLabel sx={{
+                        color: colorTokens.textSecondary,
+                        '&.Mui-focused': { color: colorTokens.brand }
+                      }}>
+                        Categoría
+                      </InputLabel>
+                      <Select
+                        value={categoryFilter}
+                        label="Categoría"
+                        onChange={(e) => setCategoryFilter(e.target.value)}
+                        disabled={!FIXED_WAREHOUSE_ID}
+                        startAdornment={
+                          <InputAdornment position="start">
+                            <CategoryIcon sx={{ color: categoryFilter ? colorTokens.brand : colorTokens.textMuted, ml: 1 }} />
+                          </InputAdornment>
+                        }
+                        sx={{
+                          background: `linear-gradient(135deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.01))`,
+                          backdropFilter: 'blur(10px)',
+                          color: colorTokens.textPrimary,
+                          borderRadius: 3,
+                          '& .MuiOutlinedInput-notchedOutline': {
+                            borderColor: colorTokens.border,
+                            transition: 'all 0.3s ease'
+                          },
+                          '&:hover .MuiOutlinedInput-notchedOutline': {
+                            borderColor: `${colorTokens.brand}60`
+                          },
+                          '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                            borderColor: colorTokens.brand,
+                            borderWidth: '2px'
+                          }
+                        }}
+                      >
+                        <MenuItem value="">
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <CategoryIcon sx={{ fontSize: 18, color: colorTokens.textMuted }} />
+                            Todas las categorías
+                          </Box>
                         </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
+                        {CATEGORIES.map(category => (
+                          <MenuItem key={category} value={category}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                              <CategoryIcon sx={{ fontSize: 18, color: colorTokens.brand }} />
+                              {category}
+                            </Box>
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
+                  </Grid>
+
+                  <Grid size={{ xs: 12, md: 2 }}>
+                    <Box sx={{
+                      height: '100%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      background: `linear-gradient(135deg, ${colorTokens.brand}15, ${colorTokens.brand}08)`,
+                      backdropFilter: 'blur(10px)',
+                      border: `1px solid ${colorTokens.brand}40`,
+                      borderRadius: 3,
+                      px: 2,
+                      py: { xs: 2, md: 0 }
+                    }}>
+                      <Box sx={{ textAlign: 'center' }}>
+                        <Badge
+                          badgeContent={filteredProducts.length}
+                          max={999}
+                          sx={{
+                            '& .MuiBadge-badge': {
+                              background: `linear-gradient(135deg, ${colorTokens.brand}, ${colorTokens.brandHover})`,
+                              color: colorTokens.neutral100,
+                              fontWeight: 700,
+                              fontSize: '0.75rem',
+                              boxShadow: `0 2px 8px ${colorTokens.brand}60`
+                            }
+                          }}
+                        >
+                          <InventoryIcon sx={{ fontSize: 28, color: colorTokens.brand }} />
+                        </Badge>
+                        <Typography
+                          variant="caption"
+                          sx={{
+                            color: colorTokens.textSecondary,
+                            display: 'block',
+                            mt: 1,
+                            fontWeight: 600
+                          }}
+                        >
+                          Productos
+                        </Typography>
+                      </Box>
+                    </Box>
+                  </Grid>
                 </Grid>
-                <Grid size={{ xs: 12, md: 2 }}>
-                  <Typography variant="body2" sx={{ 
-                    color: colorTokens.textSecondary, 
-                    pt: 2,
-                    textAlign: 'center'
-                  }}>
-                    {filteredProducts.length} productos
-                  </Typography>
-                </Grid>
-              </Grid>
-            </Paper>
+              </Paper>
+            </Slide>
 
             {/* GRID DE PRODUCTOS */}
             <Paper
@@ -938,75 +1522,175 @@ export default function POSPage() {
             </Paper>
           </Grid>
 
-          {/* PANEL DERECHO - CARRITO */}
+          {/* PANEL DERECHO - CARRITO - REDESIGNED WITH E-COMMERCE PREMIUM STYLE */}
           <Grid size={{ xs: 12, lg: 4 }}>
-            <Paper
-              sx={{
-                p: 3,
-                height: 'fit-content',
-                background: `linear-gradient(135deg, ${colorTokens.surfaceLevel2}, ${colorTokens.surfaceLevel3})`,
-                border: `1px solid ${colorTokens.border}`,
-                borderRadius: 3,
-                color: colorTokens.textPrimary,
-                position: 'sticky',
-                top: 20
-              }}
-            >
-              {/* Header del carrito */}
-              <Box display="flex" justifyContent="space-between" alignItems="center" sx={{ mb: 2 }}>
-                <Typography
-                  variant="h6"
-                  fontWeight="bold"
-                  sx={{ 
-                    display: 'flex', 
-                    alignItems: 'center', 
-                    gap: 1,
-                    color: colorTokens.textPrimary
-                  }}
-                >
-                  <CartIcon sx={{ color: colorTokens.brand }} />
-                  Carrito ({cart.length})
-                </Typography>
-                {cart.length > 0 && (
-                  <IconButton onClick={clearCart} sx={{ color: colorTokens.danger }}>
-                    <DeleteIcon />
-                  </IconButton>
-                )}
-              </Box>
+            <Slide in={true} direction="left" timeout={600}>
+              <Paper
+                sx={{
+                  p: 3,
+                  height: 'fit-content',
+                  background: `linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%)`,
+                  backdropFilter: 'blur(20px)',
+                  border: `1px solid ${colorTokens.border}`,
+                  borderRadius: 4,
+                  boxShadow: `0 8px 32px rgba(0, 0, 0, 0.2)`,
+                  position: 'sticky',
+                  top: 20,
+                  overflow: 'hidden',
+                  '&::before': {
+                    content: '""',
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    height: '4px',
+                    background: `linear-gradient(90deg, ${colorTokens.brand}, ${colorTokens.info}, ${colorTokens.success})`,
+                    animation: 'shimmer 3s infinite linear',
+                    '@keyframes shimmer': {
+                      '0%': { backgroundPosition: '-200% center' },
+                      '100%': { backgroundPosition: '200% center' }
+                    },
+                    backgroundSize: '200% 100%'
+                  }
+                }}
+              >
+                {/* Header del carrito */}
+                <Box display="flex" justifyContent="space-between" alignItems="center" sx={{ mb: 3, position: 'relative' }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                    <Box sx={{
+                      width: 48,
+                      height: 48,
+                      borderRadius: '14px',
+                      background: `linear-gradient(135deg, ${colorTokens.brand}, ${colorTokens.brandHover})`,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      boxShadow: `0 8px 24px ${colorTokens.brand}40`,
+                      position: 'relative'
+                    }}>
+                      <CartIcon sx={{ color: colorTokens.neutral100, fontSize: 26 }} />
+                      {cart.length > 0 && (
+                        <Badge
+                          badgeContent={cart.length}
+                          sx={{
+                            position: 'absolute',
+                            top: -8,
+                            right: -8,
+                            '& .MuiBadge-badge': {
+                              background: `linear-gradient(135deg, ${colorTokens.success}, ${colorTokens.success}CC)`,
+                              color: colorTokens.neutral0,
+                              fontWeight: 700,
+                              fontSize: '0.7rem',
+                              minWidth: 20,
+                              height: 20,
+                              boxShadow: `0 4px 12px ${colorTokens.success}60`
+                            }
+                          }}
+                        />
+                      )}
+                    </Box>
+                    <Box>
+                      <Typography
+                        variant="h6"
+                        fontWeight="bold"
+                        sx={{ color: colorTokens.textPrimary, fontSize: '1.1rem' }}
+                      >
+                        Carrito de Compras
+                      </Typography>
+                      <Typography variant="caption" sx={{ color: colorTokens.textSecondary }}>
+                        {cart.length} {cart.length === 1 ? 'artículo' : 'artículos'}
+                      </Typography>
+                    </Box>
+                  </Box>
 
-              {/* Cliente seleccionado */}
+                  {cart.length > 0 && (
+                    <Tooltip title="Vaciar carrito" arrow>
+                      <IconButton
+                        onClick={clearCart}
+                        sx={{
+                          background: `${colorTokens.danger}15`,
+                          border: `1px solid ${colorTokens.danger}40`,
+                          color: colorTokens.danger,
+                          transition: 'all 0.3s ease',
+                          '&:hover': {
+                            background: `${colorTokens.danger}30`,
+                            transform: 'scale(1.1) rotate(10deg)',
+                            boxShadow: `0 4px 16px ${colorTokens.danger}40`
+                          }
+                        }}
+                      >
+                        <DeleteIcon />
+                      </IconButton>
+                    </Tooltip>
+                  )}
+                </Box>
+
+              {/* Cliente seleccionado - REDESIGNED */}
               <Box sx={{ mb: 3 }}>
                 {selectedCustomer ? (
-                  <Paper
-                    sx={{
-                      p: 2,
-                      background: `${colorTokens.success}20`,
-                      border: `1px solid ${colorTokens.success}60`
-                    }}
-                  >
-                    <Box display="flex" alignItems="center" justifyContent="space-between">
-                      <Box display="flex" alignItems="center" gap={2}>
-                        <Avatar sx={{ bgcolor: colorTokens.success }}>
-                          <PersonIcon />
-                        </Avatar>
-                        <Box>
-                          <Typography variant="subtitle2" fontWeight="bold" sx={{ color: colorTokens.textPrimary }}>
-                            {selectedCustomer.firstName} {selectedCustomer.lastName}
-                          </Typography>
-                          <Typography variant="caption" sx={{ color: colorTokens.textSecondary }}>
-                            {selectedCustomer.email || selectedCustomer.whatsapp}
-                          </Typography>
+                  <Grow in={true} timeout={400}>
+                    <Paper
+                      sx={{
+                        p: 2.5,
+                        background: `linear-gradient(135deg, ${colorTokens.success}15, ${colorTokens.success}08)`,
+                        backdropFilter: 'blur(10px)',
+                        border: `1px solid ${colorTokens.success}60`,
+                        borderRadius: 3,
+                        position: 'relative',
+                        overflow: 'hidden',
+                        '&::before': {
+                          content: '""',
+                          position: 'absolute',
+                          top: 0,
+                          left: 0,
+                          bottom: 0,
+                          width: '4px',
+                          background: `linear-gradient(180deg, ${colorTokens.success}, ${colorTokens.success}CC)`
+                        }
+                      }}
+                    >
+                      <Box display="flex" alignItems="center" justifyContent="space-between">
+                        <Box display="flex" alignItems="center" gap={2}>
+                          <Avatar sx={{
+                            width: 44,
+                            height: 44,
+                            background: `linear-gradient(135deg, ${colorTokens.success}, ${colorTokens.success}CC)`,
+                            boxShadow: `0 4px 16px ${colorTokens.success}40`
+                          }}>
+                            <PersonIcon sx={{ fontSize: 24 }} />
+                          </Avatar>
+                          <Box>
+                            <Typography variant="subtitle2" fontWeight="bold" sx={{ color: colorTokens.textPrimary, mb: 0.5 }}>
+                              {selectedCustomer.firstName} {selectedCustomer.lastName}
+                            </Typography>
+                            <Typography variant="caption" sx={{ color: colorTokens.textSecondary, display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                              <AutoAwesomeIcon sx={{ fontSize: 12 }} />
+                              {selectedCustomer.email || selectedCustomer.whatsapp}
+                            </Typography>
+                          </Box>
                         </Box>
+                        <Tooltip title="Remover cliente" arrow>
+                          <IconButton
+                            size="small"
+                            onClick={() => setSelectedCustomer(null)}
+                            sx={{
+                              background: `${colorTokens.danger}15`,
+                              border: `1px solid ${colorTokens.danger}40`,
+                              color: colorTokens.danger,
+                              transition: 'all 0.3s ease',
+                              '&:hover': {
+                                background: `${colorTokens.danger}30`,
+                                transform: 'scale(1.1) rotate(90deg)',
+                                boxShadow: `0 4px 12px ${colorTokens.danger}40`
+                              }
+                            }}
+                          >
+                            <ClearIcon sx={{ fontSize: 18 }} />
+                          </IconButton>
+                        </Tooltip>
                       </Box>
-                      <IconButton
-                        size="small"
-                        onClick={() => setSelectedCustomer(null)}
-                        sx={{ color: colorTokens.danger }}
-                      >
-                        <ClearIcon />
-                      </IconButton>
-                    </Box>
-                  </Paper>
+                    </Paper>
+                  </Grow>
                 ) : (
                   <Button
                     fullWidth
@@ -1014,8 +1698,20 @@ export default function POSPage() {
                     startIcon={<PersonIcon />}
                     onClick={() => setCustomerSelectorOpen(true)}
                     sx={{
-                      borderColor: colorTokens.brand,
-                      color: colorTokens.brand
+                      background: `linear-gradient(135deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.01))`,
+                      backdropFilter: 'blur(10px)',
+                      border: `1px solid ${colorTokens.border}`,
+                      borderRadius: 3,
+                      color: colorTokens.textPrimary,
+                      py: 1.5,
+                      fontWeight: 600,
+                      transition: 'all 0.3s ease',
+                      '&:hover': {
+                        background: `linear-gradient(135deg, ${colorTokens.brand}20, ${colorTokens.brand}10)`,
+                        border: `1px solid ${colorTokens.brand}60`,
+                        transform: 'translateY(-2px)',
+                        boxShadow: `0 8px 24px ${colorTokens.brand}30`
+                      }
                     }}
                   >
                     Seleccionar Cliente (Opcional)
@@ -1023,70 +1719,132 @@ export default function POSPage() {
                 )}
               </Box>
 
-              {/* Cupón */}
+              {/* Cupón - REDESIGNED */}
               <Box sx={{ mb: 3 }}>
                 {appliedCoupon ? (
-                  <Paper
-                    sx={{
-                      p: 2,
-                      background: `${colorTokens.warning}20`,
-                      border: `1px solid ${colorTokens.warning}60`
-                    }}
-                  >
-                    <Box display="flex" alignItems="center" justifyContent="space-between">
-                      <Box display="flex" alignItems="center" gap={2}>
-                        <Avatar sx={{ bgcolor: colorTokens.warning }}>
-                          <CouponIcon />
-                        </Avatar>
-                        <Box>
-                          <Typography variant="subtitle2" fontWeight="bold" sx={{ color: colorTokens.textPrimary }}>
-                            {appliedCoupon.code}
-                          </Typography>
-                          <Typography variant="caption" sx={{ color: colorTokens.textSecondary }}>
-                            -{formatPrice(totals.couponDiscount)}
-                          </Typography>
+                  <Grow in={true} timeout={400}>
+                    <Paper
+                      sx={{
+                        p: 2.5,
+                        background: `linear-gradient(135deg, ${colorTokens.brand}15, ${colorTokens.brand}08)`,
+                        backdropFilter: 'blur(10px)',
+                        border: `1px solid ${colorTokens.brand}60`,
+                        borderRadius: 3,
+                        position: 'relative',
+                        overflow: 'hidden',
+                        '&::before': {
+                          content: '""',
+                          position: 'absolute',
+                          top: 0,
+                          left: 0,
+                          bottom: 0,
+                          width: '4px',
+                          background: `linear-gradient(180deg, ${colorTokens.brand}, ${colorTokens.brandHover})`
+                        }
+                      }}
+                    >
+                      <Box display="flex" alignItems="center" justifyContent="space-between">
+                        <Box display="flex" alignItems="center" gap={2}>
+                          <Avatar sx={{
+                            width: 44,
+                            height: 44,
+                            background: `linear-gradient(135deg, ${colorTokens.brand}, ${colorTokens.brandHover})`,
+                            boxShadow: `0 4px 16px ${colorTokens.brand}40`
+                          }}>
+                            <CouponIcon sx={{ fontSize: 24 }} />
+                          </Avatar>
+                          <Box>
+                            <Typography variant="subtitle2" fontWeight="bold" sx={{ color: colorTokens.textPrimary, mb: 0.5 }}>
+                              {appliedCoupon.code}
+                            </Typography>
+                            <Typography variant="caption" sx={{ color: colorTokens.success, display: 'flex', alignItems: 'center', gap: 0.5, fontWeight: 700 }}>
+                              <AutoAwesomeIcon sx={{ fontSize: 12 }} />
+                              Ahorras {formatPrice(totals.couponDiscount)}
+                            </Typography>
+                          </Box>
                         </Box>
+                        <Tooltip title="Remover cupón" arrow>
+                          <IconButton
+                            size="small"
+                            onClick={removeCoupon}
+                            sx={{
+                              background: `${colorTokens.danger}15`,
+                              border: `1px solid ${colorTokens.danger}40`,
+                              color: colorTokens.danger,
+                              transition: 'all 0.3s ease',
+                              '&:hover': {
+                                background: `${colorTokens.danger}30`,
+                                transform: 'scale(1.1) rotate(90deg)',
+                                boxShadow: `0 4px 12px ${colorTokens.danger}40`
+                              }
+                            }}
+                          >
+                            <ClearIcon sx={{ fontSize: 18 }} />
+                          </IconButton>
+                        </Tooltip>
                       </Box>
-                      <IconButton size="small" onClick={removeCoupon} sx={{ color: colorTokens.danger }}>
-                        <ClearIcon />
-                      </IconButton>
-                    </Box>
-                  </Paper>
+                    </Paper>
+                  </Grow>
                 ) : (
                   <Box display="flex" gap={1}>
                     <TextField
                       fullWidth
                       size="small"
-                      placeholder="Código de cupón"
+                      placeholder="¿Tienes un cupón?"
                       value={couponCode}
                       onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
                       onKeyPress={(e) => e.key === 'Enter' && applyCoupon()}
                       InputProps={{
                         startAdornment: (
                           <InputAdornment position="start">
-                            <CouponIcon sx={{ color: colorTokens.brand }} />
+                            <CouponIcon sx={{ color: colorTokens.brand, fontSize: 20 }} />
                           </InputAdornment>
                         ),
                         sx: {
+                          background: `linear-gradient(135deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.01))`,
+                          backdropFilter: 'blur(10px)',
                           color: colorTokens.textPrimary,
+                          borderRadius: 2,
                           '& .MuiOutlinedInput-notchedOutline': {
-                            borderColor: colorTokens.border
+                            borderColor: colorTokens.border,
+                            transition: 'all 0.3s ease'
+                          },
+                          '&:hover .MuiOutlinedInput-notchedOutline': {
+                            borderColor: `${colorTokens.brand}60`
+                          },
+                          '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                            borderColor: colorTokens.brand,
+                            borderWidth: '2px'
                           }
                         }
                       }}
                     />
-                    <Button
-                      variant="contained"
-                      onClick={applyCoupon}
-                      disabled={!couponCode.trim()}
-                      sx={{
-                        background: `linear-gradient(135deg, ${colorTokens.brand}, ${colorTokens.brandHover})`,
-                        color: colorTokens.textOnBrand,
-                        fontWeight: 700
-                      }}
-                    >
-                      Aplicar
-                    </Button>
+                    <Tooltip title="Aplicar cupón" arrow>
+                      <Button
+                        variant="contained"
+                        onClick={applyCoupon}
+                        disabled={!couponCode.trim()}
+                        sx={{
+                          background: `linear-gradient(135deg, ${colorTokens.brand}, ${colorTokens.brandHover})`,
+                          color: colorTokens.neutral100,
+                          fontWeight: 700,
+                          minWidth: 80,
+                          borderRadius: 2,
+                          boxShadow: `0 4px 16px ${colorTokens.brand}40`,
+                          transition: 'all 0.3s ease',
+                          '&:hover': {
+                            background: `linear-gradient(135deg, ${colorTokens.brandHover}, ${colorTokens.brand})`,
+                            transform: 'translateY(-2px)',
+                            boxShadow: `0 6px 20px ${colorTokens.brand}60`
+                          },
+                          '&:disabled': {
+                            opacity: 0.5
+                          }
+                        }}
+                      >
+                        Usar
+                      </Button>
+                    </Tooltip>
                   </Box>
                 )}
               </Box>
@@ -1250,37 +2008,86 @@ export default function POSPage() {
                     </Typography>
                   </Box>
 
-                  {/* Botones de acción */}
+                  {/* Botones de acción - REDESIGNED */}
                   <Grid container spacing={2}>
                     <Grid size={{ xs: 6 }}>
-                      <Button
-                        fullWidth
-                        variant="outlined"
-                        startIcon={<BookmarkIcon />}
-                        onClick={() => setLayawayDialogOpen(true)}
-                        disabled={!selectedCustomer}
-                        sx={{
-                          borderColor: colorTokens.warning,
-                          color: colorTokens.warning
-                        }}
-                      >
-                        Apartar
-                      </Button>
+                      <Tooltip title={!selectedCustomer ? "Selecciona un cliente para apartar" : "Crear apartado"} arrow>
+                        <span>
+                          <Button
+                            fullWidth
+                            variant="outlined"
+                            startIcon={<BookmarkIcon />}
+                            onClick={() => setLayawayDialogOpen(true)}
+                            disabled={!selectedCustomer}
+                            sx={{
+                              background: `linear-gradient(135deg, ${colorTokens.warning}15, ${colorTokens.warning}08)`,
+                              backdropFilter: 'blur(10px)',
+                              border: `2px solid ${colorTokens.warning}60`,
+                              color: colorTokens.warning,
+                              py: 1.5,
+                              fontWeight: 700,
+                              fontSize: '0.95rem',
+                              borderRadius: 3,
+                              boxShadow: `0 4px 16px ${colorTokens.warning}20`,
+                              transition: 'all 0.3s ease',
+                              '&:hover': {
+                                background: `linear-gradient(135deg, ${colorTokens.warning}25, ${colorTokens.warning}15)`,
+                                border: `2px solid ${colorTokens.warning}`,
+                                transform: 'translateY(-3px)',
+                                boxShadow: `0 8px 24px ${colorTokens.warning}40`
+                              },
+                              '&:disabled': {
+                                opacity: 0.4,
+                                transform: 'none'
+                              }
+                            }}
+                          >
+                            Apartar
+                          </Button>
+                        </span>
+                      </Tooltip>
                     </Grid>
                     <Grid size={{ xs: 6 }}>
-                      <Button
-                        fullWidth
-                        variant="contained"
-                        startIcon={<PaymentIcon />}
-                        onClick={() => setPaymentDialogOpen(true)}
-                        sx={{
-                          background: `linear-gradient(135deg, ${colorTokens.success}, ${colorTokens.successHover})`,
-                          color: colorTokens.textPrimary,
-                          fontWeight: 'bold'
-                        }}
-                      >
-                        Pagar
-                      </Button>
+                      <Tooltip title="Procesar pago" arrow>
+                        <Button
+                          fullWidth
+                          variant="contained"
+                          startIcon={<PaymentIcon />}
+                          onClick={() => setPaymentDialogOpen(true)}
+                          sx={{
+                            background: `linear-gradient(135deg, ${colorTokens.success}, ${colorTokens.success}CC)`,
+                            color: colorTokens.neutral0,
+                            py: 1.5,
+                            fontWeight: 800,
+                            fontSize: '0.95rem',
+                            borderRadius: 3,
+                            boxShadow: `0 6px 20px ${colorTokens.success}40`,
+                            transition: 'all 0.3s ease',
+                            position: 'relative',
+                            overflow: 'hidden',
+                            '&::before': {
+                              content: '""',
+                              position: 'absolute',
+                              top: 0,
+                              left: '-100%',
+                              width: '100%',
+                              height: '100%',
+                              background: `linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent)`,
+                              transition: 'left 0.5s ease'
+                            },
+                            '&:hover': {
+                              background: `linear-gradient(135deg, ${colorTokens.success}CC, ${colorTokens.success})`,
+                              transform: 'translateY(-3px) scale(1.02)',
+                              boxShadow: `0 10px 32px ${colorTokens.success}60`
+                            },
+                            '&:hover::before': {
+                              left: '100%'
+                            }
+                          }}
+                        >
+                          Pagar Ahora
+                        </Button>
+                      </Tooltip>
                     </Grid>
                   </Grid>
 
@@ -1301,7 +2108,8 @@ export default function POSPage() {
                   )}
                 </Box>
               )}
-            </Paper>
+              </Paper>
+            </Slide>
           </Grid>
         </Grid>
 

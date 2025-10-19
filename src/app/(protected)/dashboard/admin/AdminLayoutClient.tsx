@@ -31,7 +31,11 @@ import {
   Breadcrumbs,
   Link as MuiLink,
   Chip,
-  Button
+  Button,
+  BottomNavigation,
+  BottomNavigationAction,
+  Fab,
+  Zoom
 } from '@mui/material';
 import { styled, alpha } from '@mui/material/styles';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -132,6 +136,9 @@ import DoorFrontIcon from '@mui/icons-material/DoorFront';
 import BuildIcon from '@mui/icons-material/Build';
 import SettingsIcon from '@mui/icons-material/Settings';
 import BackupIcon from '@mui/icons-material/Backup';
+import CampaignIcon from '@mui/icons-material/Campaign';
+import PollIcon from '@mui/icons-material/Poll';
+import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 
 const drawerWidth = 290;
 const mobileDrawerWidth = 280;
@@ -166,6 +173,10 @@ const Main = styled('main', { shouldForwardProp: (prop) => prop !== 'open' })<{
   // ✅ FIX: Prevent horizontal overflow on mobile
   maxWidth: '100vw',
   overflowX: 'hidden',
+  // Mobile - espacio para bottom nav
+  [theme.breakpoints.down('lg')]: {
+    paddingBottom: '80px',
+  },
   ...(open && {
     transition: theme.transitions.create('margin', {
       easing: theme.transitions.easing.easeOut,
@@ -182,6 +193,55 @@ const DrawerHeader = styled('div')(({ theme }) => ({
   ...theme.mixins.toolbar,
   background: `linear-gradient(135deg, ${colorTokens.surfaceLevel2}, ${colorTokens.surfaceLevel3})`,
   borderBottom: `1px solid ${colorTokens.border}`,
+}));
+
+const MobileBottomNav = styled(BottomNavigation)(({ theme }) => ({
+  position: 'fixed',
+  bottom: 0,
+  left: 0,
+  right: 0,
+  zIndex: 1300,
+  backgroundColor: alpha(colorTokens.black, 0.95),
+  backdropFilter: 'blur(20px)',
+  borderTop: `1px solid ${alpha(colorTokens.brand, 0.2)}`,
+  height: '70px',
+  overflowX: 'auto',
+  overflowY: 'hidden',
+  display: 'flex',
+  justifyContent: 'flex-start',
+  '&::-webkit-scrollbar': {
+    height: '4px'
+  },
+  '&::-webkit-scrollbar-track': {
+    background: alpha(colorTokens.black, 0.3)
+  },
+  '&::-webkit-scrollbar-thumb': {
+    background: alpha(colorTokens.brand, 0.5),
+    borderRadius: '2px',
+    '&:hover': {
+      background: alpha(colorTokens.brand, 0.7)
+    }
+  },
+  '& .MuiBottomNavigationAction-root': {
+    color: alpha(colorTokens.textPrimary, 0.6),
+    minHeight: '70px',
+    minWidth: '80px',
+    maxWidth: '100px',
+    padding: '8px 4px',
+    flex: '0 0 auto',
+    '&.Mui-selected': {
+      color: colorTokens.brand,
+      backgroundColor: alpha(colorTokens.brand, 0.1)
+    },
+    '& .MuiBottomNavigationAction-label': {
+      fontSize: '0.65rem',
+      fontWeight: 600,
+      whiteSpace: 'nowrap',
+      overflow: 'hidden',
+      textOverflow: 'ellipsis'
+    }
+  },
+  [theme.breakpoints.up('lg')]: { display: 'none' },
 }));
 
 // 🏗️ ESTRUCTURA DE MENÚ MEJORADA - ✅ MOVIDA FUERA DEL COMPONENTE
@@ -476,6 +536,20 @@ const menuItems: MenuItem[] = [
         section: 'configuracion-sistema'
       },
       {
+        text: 'Avisos para Clientes',
+        path: '/dashboard/admin/herramientas/avisos',
+        icon: <CampaignIcon />,
+        parent: 'herramientas',
+        section: 'avisos-clientes'
+      },
+      {
+        text: 'Encuestas',
+        path: '/dashboard/admin/encuestas',
+        icon: <PollIcon />,
+        parent: 'herramientas',
+        section: 'encuestas'
+      },
+      {
         text: 'Respaldo de Datos',
         path: '/dashboard/admin/herramientas/respaldos',
         icon: <BackupIcon />,
@@ -514,7 +588,11 @@ export default function AdminLayoutClient({ children, user }: AdminLayoutClientP
   const [openSubMenu, setOpenSubMenu] = useState<string | null>(null);
   
   const [loading, setLoading] = useState(false);
-  
+  const [showScrollTop, setShowScrollTop] = useState(false);
+  const [mobileBottomValue, setMobileBottomValue] = useState(0);
+  const [bottomNavMenuAnchor, setBottomNavMenuAnchor] = useState<null | HTMLElement>(null);
+  const [selectedBottomNavItem, setSelectedBottomNavItem] = useState<MenuItem | null>(null);
+
   // ✅ HOOK DE NOTIFICACIONES v7.0 - CON FUNCIONALIDAD REAL
   const { toast, unreadCount } = useNotifications();
   
@@ -613,6 +691,47 @@ export default function AdminLayoutClient({ children, user }: AdminLayoutClientP
   const handleUserMenuClose = () => {
     setUserMenuAnchor(null);
   };
+
+  // Handle scroll top button
+  useEffect(() => {
+    const handleScroll = () => setShowScrollTop(window.scrollY > 300);
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
+
+  const scrollToTop = () => window.scrollTo({ top: 0, behavior: 'smooth' });
+
+  // Define bottom nav items - SOLO items principales del menú
+  const bottomNavItems = menuItems;
+
+  const handleMobileNavChange = (event: React.SyntheticEvent, newValue: number) => {
+    const selectedItem = bottomNavItems[newValue];
+    if (!selectedItem) return;
+
+    // Si tiene submenú, mostrar popup
+    if (selectedItem.submenu && selectedItem.items && selectedItem.items.length > 0) {
+      setSelectedBottomNavItem(selectedItem);
+      setBottomNavMenuAnchor(event.currentTarget as HTMLElement);
+    } else if (selectedItem.path) {
+      // Si no tiene submenú pero tiene path, navegar directamente
+      navigateTo(selectedItem.path);
+    }
+  };
+
+  // Cerrar menu emergente y navegar
+  const handleBottomNavMenuItemClick = (path: string) => {
+    navigateTo(path);
+    setBottomNavMenuAnchor(null);
+    setSelectedBottomNavItem(null);
+  };
+
+  // Update mobile bottom nav value based on active section
+  useEffect(() => {
+    const activeIndex = bottomNavItems.findIndex(item => item.section === activeSection);
+    if (activeIndex !== -1) {
+      setMobileBottomValue(activeIndex);
+    }
+  }, [activeSection, bottomNavItems]);
   
   // ✅ TOGGLE PARA SUBMENÚS SIMPLIFICADO
   const toggleSubMenu = (section: string) => {
@@ -790,6 +909,7 @@ export default function AdminLayoutClient({ children, user }: AdminLayoutClientP
             minHeight: { xs: '64px', sm: '80px', md: '100px' },
             px: { xs: 1.5, sm: 2, md: 3 }
           }}>
+            {/* Botón hamburguesa - Solo visible en desktop */}
             <IconButton
               color="inherit"
               aria-label={drawerOpen ? "cerrar menú" : "abrir menú"}
@@ -798,6 +918,7 @@ export default function AdminLayoutClient({ children, user }: AdminLayoutClientP
               sx={{
                 mr: { xs: 1, sm: 2 },
                 backgroundColor: alpha(colorTokens.brand, 0.1),
+                display: { xs: 'none', lg: 'flex' },
                 '&:hover': {
                   backgroundColor: alpha(colorTokens.brand, 0.2),
                 }
@@ -882,8 +1003,8 @@ export default function AdminLayoutClient({ children, user }: AdminLayoutClientP
 
             <Box sx={{ flexGrow: 1 }} />
 
-            {/* 🚀 ACCESOS DIRECTOS - Solo visible en tablet+ */}
-            <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center', gap: 1.5, mr: 2 }}>
+            {/* 🚀 ACCESOS DIRECTOS - Solo visible en desktop ≥960px */}
+            <Box sx={{ display: { xs: 'none', lg: 'flex' }, alignItems: 'center', gap: 1.5, mr: 2 }}>
               <Tooltip title="Punto de Venta" arrow>
                 <Button
                   component={Link}
@@ -935,47 +1056,6 @@ export default function AdminLayoutClient({ children, user }: AdminLayoutClientP
                 >
                   Membresía
                 </Button>
-              </Tooltip>
-            </Box>
-
-            {/* 🚀 ACCESOS DIRECTOS MÓVIL - Solo íconos */}
-            <Box sx={{ display: { xs: 'flex', md: 'none' }, alignItems: 'center', gap: 0.5, mr: 1 }}>
-              <Tooltip title="Punto de Venta" arrow>
-                <IconButton
-                  component={Link}
-                  href="/dashboard/admin/pos"
-                  sx={{
-                    bgcolor: colorTokens.brand,
-                    color: colorTokens.black,
-                    width: 38,
-                    height: 38,
-                    '&:hover': {
-                      bgcolor: colorTokens.brandHover,
-                      transform: 'scale(1.05)'
-                    }
-                  }}
-                >
-                  <ShoppingCartIcon fontSize="small" />
-                </IconButton>
-              </Tooltip>
-
-              <Tooltip title="Registrar Membresía" arrow>
-                <IconButton
-                  component={Link}
-                  href="/dashboard/admin/membresias/registrar"
-                  sx={{
-                    border: `2px solid ${colorTokens.brand}`,
-                    color: colorTokens.brand,
-                    width: 38,
-                    height: 38,
-                    '&:hover': {
-                      bgcolor: alpha(colorTokens.brand, 0.1),
-                      transform: 'scale(1.05)'
-                    }
-                  }}
-                >
-                  <PersonAddAltIcon fontSize="small" />
-                </IconButton>
               </Tooltip>
             </Box>
 
@@ -1710,6 +1790,95 @@ export default function AdminLayoutClient({ children, user }: AdminLayoutClientP
         open={Boolean(notificationsMenuAnchor)}
         onClose={() => setNotificationsMenuAnchor(null)}
       />
+
+      {/* BOTTOM NAVIGATION MÓVIL */}
+      <MobileBottomNav value={mobileBottomValue} onChange={handleMobileNavChange} showLabels>
+        {bottomNavItems.map((item, index) => (
+          <BottomNavigationAction
+            key={item.section}
+            label={item.text}
+            icon={item.icon}
+          />
+        ))}
+      </MobileBottomNav>
+
+      {/* MENU EMERGENTE PARA ITEMS CON SUBMENU */}
+      <Menu
+        anchorEl={bottomNavMenuAnchor}
+        open={Boolean(bottomNavMenuAnchor)}
+        onClose={() => {
+          setBottomNavMenuAnchor(null);
+          setSelectedBottomNavItem(null);
+        }}
+        anchorOrigin={{
+          vertical: 'top',
+          horizontal: 'center',
+        }}
+        transformOrigin={{
+          vertical: 'bottom',
+          horizontal: 'center',
+        }}
+        sx={{
+          '& .MuiPaper-root': {
+            bgcolor: alpha(colorTokens.black, 0.95),
+            backdropFilter: 'blur(20px)',
+            border: `1px solid ${alpha(colorTokens.brand, 0.2)}`,
+            borderRadius: 2,
+            minWidth: 220,
+            maxWidth: 280,
+            boxShadow: `0 8px 32px ${alpha(colorTokens.black, 0.8)}`
+          }
+        }}
+      >
+        {selectedBottomNavItem?.items?.map((subItem) => (
+          <MenuItem
+            key={subItem.section}
+            onClick={() => subItem.path && handleBottomNavMenuItemClick(subItem.path)}
+            sx={{
+              py: 1.5,
+              px: 2,
+              gap: 1.5,
+              color: colorTokens.textPrimary,
+              '&:hover': {
+                bgcolor: alpha(colorTokens.brand, 0.1),
+                color: colorTokens.brand
+              }
+            }}
+          >
+            <Box sx={{ color: 'inherit', display: 'flex', alignItems: 'center' }}>
+              {subItem.icon}
+            </Box>
+            <Box>
+              <Typography variant="body2" sx={{ fontWeight: 600 }}>
+                {subItem.text}
+              </Typography>
+              {subItem.description && (
+                <Typography variant="caption" sx={{ color: colorTokens.textSecondary, display: 'block' }}>
+                  {subItem.description}
+                </Typography>
+              )}
+            </Box>
+          </MenuItem>
+        ))}
+      </Menu>
+
+      {/* SCROLL TO TOP BUTTON */}
+      <Zoom in={showScrollTop}>
+        <Fab
+          onClick={scrollToTop}
+          color="primary"
+          size="large"
+          sx={{
+            position: 'fixed',
+            bottom: isMobile ? 85 : 20,
+            right: 20,
+            background: `linear-gradient(135deg, ${colorTokens.brand}, ${colorTokens.brandHover})`,
+            '&:hover': { background: colorTokens.brandHover }
+          }}
+        >
+          <KeyboardArrowUpIcon />
+        </Fab>
+      </Zoom>
     </>
   );
 }

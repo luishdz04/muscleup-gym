@@ -1,32 +1,35 @@
 'use client';
 
 import React, { useState, useEffect, ReactNode } from 'react';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
+import { keyframes } from '@mui/system';
 import { usePathname, useRouter } from 'next/navigation';
-import Link from 'next/link';
-import { 
-  Box, 
-  Drawer, 
-  AppBar, 
-  Toolbar, 
-  Typography, 
-  Divider, 
-  IconButton, 
-  List, 
-  ListItem, 
-  ListItemIcon, 
-  ListItemText, 
-  Avatar, 
-  Menu, 
-  MenuItem, 
+import {
+  Box,
+  Drawer,
+  AppBar,
+  Toolbar,
+  Typography,
+  Divider,
+  IconButton,
+  List,
+  ListItem,
+  ListItemIcon,
+  ListItemText,
+  Avatar,
+  Menu,
+  MenuItem,
   Tooltip,
   useMediaQuery,
   useTheme,
+  Badge,
   ListItemButton,
   LinearProgress,
   Container,
+  Breadcrumbs,
+  Link as MuiLink,
   Chip,
-  Badge,
-  SwipeableDrawer,
   BottomNavigation,
   BottomNavigationAction,
   Fab,
@@ -35,68 +38,81 @@ import {
 import { styled, alpha } from '@mui/material/styles';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
+import Link from 'next/link';
 
-// ICONOS
+// ✅ IMPORTS ENTERPRISE v7.0
+import { colorTokens } from '@/theme';
+import { formatMexicoTime } from '@/utils/dateUtils';
+
+// 🎨 ICONOS ORGANIZADOS POR CATEGORÍA
 import MenuIcon from '@mui/icons-material/Menu';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import PersonIcon from '@mui/icons-material/Person';
 import LogoutIcon from '@mui/icons-material/Logout';
 import NotificationsIcon from '@mui/icons-material/Notifications';
-import SearchIcon from '@mui/icons-material/Search';
+import HomeIcon from '@mui/icons-material/Home';
+import NavigateNextIcon from '@mui/icons-material/NavigateNext';
+import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
 import PaymentIcon from '@mui/icons-material/Payment';
 import ShoppingCartIcon from '@mui/icons-material/ShoppingCart';
-import HistoryIcon from '@mui/icons-material/History';
-import AccountCircleIcon from '@mui/icons-material/AccountCircle';
-import CloseIcon from '@mui/icons-material/Close';
-import HomeIcon from '@mui/icons-material/Home';
-import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import LoginIcon from '@mui/icons-material/Login';
-import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
+import AccountCircleIcon from '@mui/icons-material/AccountCircle';
+import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
+import FitnessCenterIcon from '@mui/icons-material/FitnessCenter';
+import PollIcon from '@mui/icons-material/Poll';
 
-// CONSTANTE DE ANCHO DEL DRAWER (como admin)
+// 🎨 Animaciones keyframes
+const pulse = keyframes`
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 0.8;
+  }
+`;
+
 const drawerWidth = 290;
+const mobileDrawerWidth = 280;
 
-// ESTILOS DE COMPONENTES - MAIN CORREGIDO COMO ADMIN
+// 🎨 ESTILOS PERSONALIZADOS CON THEME CENTRALIZADO v7.0
 const Main = styled('main', { shouldForwardProp: (prop) => prop !== 'open' })<{
   open?: boolean;
 }>(({ theme, open }) => ({
   flexGrow: 1,
-  padding: theme.spacing(3),
+  padding: theme.spacing(2),
+  [theme.breakpoints.up('sm')]: {
+    padding: theme.spacing(3),
+  },
   transition: theme.transitions.create('margin', {
     easing: theme.transitions.easing.sharp,
     duration: theme.transitions.duration.leavingScreen,
   }),
-  marginLeft: `-${drawerWidth}px`,
-  backgroundColor: '#0a0a0a',
+  marginLeft: 0,
+  [theme.breakpoints.up('lg')]: {
+    marginLeft: open ? 0 : `-${drawerWidth}px`,
+  },
+  backgroundColor: colorTokens.neutral0,
   backgroundImage: `
-    radial-gradient(circle at 25px 25px, rgba(255,204,0,0.08) 2%, transparent 0%), 
-    radial-gradient(circle at 75px 75px, rgba(255,204,0,0.04) 2%, transparent 0%)
+    radial-gradient(circle at 25px 25px, ${colorTokens.brand}18 2%, transparent 0%),
+    radial-gradient(circle at 75px 75px, ${colorTokens.brand}0D 2%, transparent 0%)
   `,
   backgroundSize: '100px 100px',
   minHeight: '100vh',
-  color: '#fff',
-  
-  // Mobile - con espacio para AppBar simple
+  color: colorTokens.textPrimary,
+  maxWidth: '100vw',
+  overflowX: 'hidden',
+  // Mobile - espacio para bottom nav
   [theme.breakpoints.down('sm')]: {
-    marginLeft: 0,
-    padding: theme.spacing(1),
-    paddingBottom: '80px', // Espacio para bottom nav
-    paddingTop: '70px', // Espacio para AppBar móvil
+    paddingBottom: '80px',
   },
-  
-  // Desktop
-  [theme.breakpoints.up('md')]: {
-    paddingTop: '120px', // Espacio para AppBar de 100px
-  },
-  
-  // Cuando está abierto
   ...(open && {
     transition: theme.transitions.create('margin', {
       easing: theme.transitions.easing.easeOut,
       duration: theme.transitions.duration.enteringScreen,
     }),
-    marginLeft: 0,
   }),
 }));
 
@@ -106,215 +122,157 @@ const DrawerHeader = styled('div')(({ theme }) => ({
   justifyContent: 'space-between',
   padding: theme.spacing(0, 1),
   ...theme.mixins.toolbar,
-  minHeight: '100px !important',
-  [theme.breakpoints.down('sm')]: {
-    minHeight: '80px !important',
-  },
+  background: `linear-gradient(135deg, ${colorTokens.surfaceLevel2}, ${colorTokens.surfaceLevel3})`,
+  borderBottom: `1px solid ${colorTokens.border}`,
 }));
 
 // AppBar móvil simplificado
 const MobileAppBar = styled(AppBar)(({ theme }) => ({
-  background: '#000000',
+  background: colorTokens.black,
   backdropFilter: 'none',
-  boxShadow: '0 4px 20px 0 rgba(0,0,0,0.8)',
-  borderBottom: '1px solid rgba(255, 204, 0, 0.15)',
+  boxShadow: `0 4px 20px 0 ${alpha(colorTokens.black, 0.8)}`,
+  borderBottom: `1px solid ${alpha(colorTokens.brand, 0.15)}`,
   display: 'none',
-  [theme.breakpoints.down('sm')]: {
+  [theme.breakpoints.down('lg')]: {
     display: 'block',
   },
   '& .MuiToolbar-root': {
-    minHeight: '60px !important',
+    minHeight: '64px !important',
     px: 2,
   },
 }));
 
-// AppBar desktop estandarizado
-const DesktopAppBar = styled(AppBar)(({ theme }) => ({
-  zIndex: theme.zIndex.drawer + 1,
-  background: '#000000',
-  backdropFilter: 'none',
-  boxShadow: '0 4px 20px 0 rgba(0,0,0,0.8)',
-  borderBottom: '1px solid rgba(255, 204, 0, 0.15)',
-  display: 'none',
-  [theme.breakpoints.up('md')]: {
-    display: 'block',
-  },
-  '& .MuiToolbar-root': {
-    minHeight: '100px !important',
-    px: { xs: 2, sm: 3 }
-  },
-}));
-
-const Search = styled('div')(({ theme }) => ({
-  position: 'relative',
-  borderRadius: '25px',
-  backgroundColor: alpha(theme.palette.common.white, 0.12),
-  border: '1px solid rgba(255, 204, 0, 0.2)',
-  '&:hover': {
-    backgroundColor: alpha(theme.palette.common.white, 0.18),
-    borderColor: 'rgba(255, 204, 0, 0.4)',
-  },
-  '&:focus-within': {
-    backgroundColor: alpha(theme.palette.common.white, 0.25),
-    borderColor: '#ffcc00',
-    boxShadow: '0 0 0 2px rgba(255, 204, 0, 0.2)',
-  },
-  marginRight: theme.spacing(2),
-  marginLeft: 0,
-  width: '100%',
-  [theme.breakpoints.up('sm')]: {
-    marginLeft: theme.spacing(3),
-    width: 'auto',
-  },
-}));
-
-const SearchIconWrapper = styled('div')(({ theme }) => ({ 
-  padding: theme.spacing(0, 2), 
-  height: '100%', 
-  position: 'absolute', 
-  pointerEvents: 'none', 
-  display: 'flex', 
-  alignItems: 'center', 
-  justifyContent: 'center', 
-  color: 'rgba(255, 204, 0, 0.7)' 
-}));
-
-const StyledInputBase = styled('input')(({ theme }) => ({ 
-  color: 'inherit', 
-  border: 'none', 
-  background: 'transparent', 
-  width: '100%', 
-  fontFamily: 'inherit', 
-  fontSize: '0.875rem', 
-  padding: theme.spacing(1, 1, 1, 0),
-  paddingLeft: `calc(1em + ${theme.spacing(4)})`,
-  paddingRight: theme.spacing(2),
-  transition: theme.transitions.create('width'),
-  [theme.breakpoints.up('md')]: {
-    width: '25ch',
-  },
-  '&:focus': {
-    outline: 'none',
-    width: '35ch',
-  },
-  '&::placeholder': {
-    color: 'rgba(255, 255, 255, 0.5)',
-  }
-}));
-
 const MobileBottomNav = styled(BottomNavigation)(({ theme }) => ({
-  position: 'fixed', 
-  bottom: 0, 
-  left: 0, 
-  right: 0, 
-  zIndex: 1300, 
-  backgroundColor: 'rgba(0, 0, 0, 0.95)',
-  backdropFilter: 'blur(20px)', 
-  borderTop: '1px solid rgba(255, 204, 0, 0.2)', 
+  position: 'fixed',
+  bottom: 0,
+  left: 0,
+  right: 0,
+  zIndex: 1300,
+  backgroundColor: alpha(colorTokens.black, 0.95),
+  backdropFilter: 'blur(20px)',
+  borderTop: `1px solid ${alpha(colorTokens.brand, 0.2)}`,
   height: '70px',
-  '& .MuiBottomNavigationAction-root': { 
-    color: 'rgba(255, 255, 255, 0.6)', 
-    minHeight: '70px', 
+  '& .MuiBottomNavigationAction-root': {
+    color: alpha(colorTokens.textPrimary, 0.6),
+    minHeight: '70px',
     padding: '8px 0',
-    '&.Mui-selected': { color: '#ffcc00' },
-    '& .MuiBottomNavigationAction-label': { 
-      fontSize: '0.7rem', 
-      fontWeight: 600 
+    '&.Mui-selected': { color: colorTokens.brand },
+    '& .MuiBottomNavigationAction-label': {
+      fontSize: '0.7rem',
+      fontWeight: 600
     }
   },
-  [theme.breakpoints.up('sm')]: { display: 'none' },
+  [theme.breakpoints.up('lg')]: { display: 'none' },
 }));
 
 // INTERFACES Y TIPOS
 interface ClienteLayoutProps { children: ReactNode; }
-interface MenuItemDef { 
-  text: string; 
-  path: string; 
-  icon: React.ReactElement; 
-  section: string; 
-  description?: string; 
-  disabled?: boolean; 
-  mobileIcon?: React.ReactElement; 
+interface MenuItemDef {
+  text: string;
+  path: string;
+  icon: React.ReactElement;
+  section: string;
+  description?: string;
+  disabled?: boolean;
+  mobileIcon?: React.ReactElement;
 }
+
+// ✅ DEFINICIÓN COMPLETA DEL MENÚ - FUERA DEL COMPONENTE
+const menuItems: MenuItemDef[] = [
+  {
+    text: 'Mi Información',
+    path: '/dashboard/cliente',
+    icon: <AccountCircleIcon />,
+    mobileIcon: <HomeIcon />,
+    section: 'info',
+    description: 'Gestiona tu perfil personal'
+  },
+  {
+    text: 'Pagos',
+    path: '/dashboard/cliente/pagos',
+    icon: <PaymentIcon />,
+    mobileIcon: <PaymentIcon />,
+    section: 'pagos',
+    description: 'Historial de membresías'
+  },
+  {
+    text: 'Compras',
+    path: '/dashboard/cliente/compras',
+    icon: <ShoppingCartIcon />,
+    mobileIcon: <ShoppingCartIcon />,
+    section: 'compras',
+    description: 'Productos y servicios'
+  },
+  {
+    text: 'Asistencias',
+    path: '/dashboard/cliente/asistencias',
+    icon: <LoginIcon />,
+    mobileIcon: <AccessTimeIcon />,
+    section: 'asistencias',
+    description: 'Historial de entradas al gym'
+  },
+  {
+    text: 'Encuestas',
+    path: '/dashboard/cliente/encuestas',
+    icon: <PollIcon />,
+    mobileIcon: <PollIcon />,
+    section: 'encuestas',
+    description: 'Completa encuestas disponibles'
+  },
+  {
+    text: 'Rutinas',
+    path: '/dashboard/cliente/rutinas',
+    icon: <FitnessCenterIcon />,
+    mobileIcon: <FitnessCenterIcon />,
+    section: 'rutinas',
+    description: 'Próximamente',
+    disabled: true
+  }
+];
 
 export default function ClienteLayout({ children }: ClienteLayoutProps) {
   const pathname = usePathname();
   const router = useRouter();
   const theme = useTheme();
-  
-  const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const isDesktop = useMediaQuery(theme.breakpoints.up('lg'));
-  
-  // CAMBIADO: Estado inicial basado solo en isDesktop, no en !isMobile
-  const [drawerOpen, setDrawerOpen] = useState(false);
+  const isMobile = useMediaQuery(theme.breakpoints.down('lg'));
+
+  // 🔧 ESTADOS MEJORADOS
+  const [drawerOpen, setDrawerOpen] = useState(!isMobile);
   const [userMenuAnchor, setUserMenuAnchor] = useState<null | HTMLElement>(null);
   const [user, setUser] = useState<any>(null);
   const [activeSection, setActiveSection] = useState<string>('');
   const [loading, setLoading] = useState(false);
-  const [searchValue, setSearchValue] = useState('');
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [mobileBottomValue, setMobileBottomValue] = useState(0);
+  const [currentMexicoTime, setCurrentMexicoTime] = useState<string>('');
 
-  const menuItems: MenuItemDef[] = [
-    { 
-      text: 'Mi Información', 
-      path: '/dashboard/cliente', 
-      icon: <AccountCircleIcon />, 
-      mobileIcon: <HomeIcon />, 
-      section: 'info', 
-      description: 'Gestiona tu perfil personal' 
-    },
-    { 
-      text: 'Pagos', 
-      path: '/dashboard/cliente/pagos', 
-      icon: <PaymentIcon />, 
-      mobileIcon: <PaymentIcon />, 
-      section: 'pagos', 
-      description: 'Historial de membresías' 
-    },
-    { 
-      text: 'Compras', 
-      path: '/dashboard/cliente/compras', 
-      icon: <ShoppingCartIcon />, 
-      mobileIcon: <ShoppingCartIcon />, 
-      section: 'compras', 
-      description: 'Productos y servicios' 
-    },
-    { 
-      text: 'Accesos', 
-      path: '/dashboard/cliente/accesos', 
-      icon: <LoginIcon />, 
-      mobileIcon: <AccessTimeIcon />, 
-      section: 'accesos', 
-      description: 'Historial de entradas al gym' 
-    },
-    { 
-      text: 'Historial', 
-      path: '/dashboard/cliente/historial', 
-      icon: <HistoryIcon />, 
-      mobileIcon: <HistoryIcon />, 
-      section: 'historial', 
-      description: 'Próximamente', 
-      disabled: true 
-    }
-  ];
+  const unreadCount = 3; // TODO: Implement real notification count
 
-  // CAMBIADO: Solo abrir drawer automáticamente en desktop
+  // Update current time
   useEffect(() => {
-    if (isDesktop) {
-      setDrawerOpen(true);
-    } else {
-      setDrawerOpen(false);
-    }
-  }, [isDesktop]);
+    const updateTime = () => {
+      const now = new Date();
+      const mexicoTime = formatMexicoTime(now, {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: true
+      });
+      setCurrentMexicoTime(mexicoTime);
+    };
+    updateTime();
+    const interval = setInterval(updateTime, 1000);
+    return () => clearInterval(interval);
+  }, []);
 
+  // Get user data
   useEffect(() => {
     async function getUserData() {
       try {
         setLoading(true);
         const supabase = createBrowserSupabaseClient();
         const { data: { session } } = await supabase.auth.getSession();
-        
+
         if (session) {
           const response = await fetch(`/api/user-profile?userId=${session.user.id}`);
           if (response.ok) {
@@ -328,47 +286,81 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
         setLoading(false);
       }
     }
-    
+
     getUserData();
   }, []);
 
+  // Handle scroll top button
   useEffect(() => {
     const handleScroll = () => setShowScrollTop(window.scrollY > 300);
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
-  
+
+  // ✅ useEffect OPTIMIZADO - SIN menuItems como dependencia
   useEffect(() => {
     if (pathname) {
       const pathParts = pathname.split('/');
       const currentSection = pathParts[pathParts.length - 1] || '';
       const sectionId = currentSection === 'cliente' ? 'info' : currentSection;
       setActiveSection(sectionId);
+
       const activeIndex = menuItems.findIndex(item => item.section === sectionId);
       if (activeIndex !== -1) setMobileBottomValue(activeIndex);
     }
   }, [pathname]);
-  
-  const navigateTo = (path: string) => {
-    router.push(path);
-    if (isMobile) setDrawerOpen(false);
-  };
-  
+
+  // ✅ useEffect para refrescar sesión en navegación
+  useEffect(() => {
+    const supabase = createBrowserSupabaseClient();
+
+    const refreshSession = async () => {
+      await supabase.auth.getSession();
+    };
+
+    refreshSession();
+  }, [pathname]);
+
+  // 🚪 MANEJAR CIERRE DE SESIÓN
   const handleLogout = async () => {
     try {
       setLoading(true);
       const supabase = createBrowserSupabaseClient();
       await supabase.auth.signOut();
-      router.push('/login');
+      router.refresh();
+      router.push('/');
     } catch (error) {
       console.error("Error al cerrar sesión:", error);
     } finally {
       setLoading(false);
     }
   };
-  
-  const handleUserMenuOpen = (event: React.MouseEvent<HTMLElement>) => setUserMenuAnchor(event.currentTarget);
-  const handleUserMenuClose = () => setUserMenuAnchor(null);
+
+  // ✅ FUNCIÓN PARA NAVEGAR OPTIMIZADA
+  const navigateTo = (path: string) => {
+    console.log('🧭 Navegando a:', path);
+
+    setLoading(true);
+    router.push(path);
+    router.refresh();
+
+    if (isMobile) {
+      setDrawerOpen(false);
+    }
+
+    setTimeout(() => {
+      setLoading(false);
+    }, 500);
+  };
+
+  // 👤 HANDLERS PARA MENÚ DE USUARIO
+  const handleUserMenuOpen = (event: React.MouseEvent<HTMLElement>) => {
+    setUserMenuAnchor(event.currentTarget);
+  };
+
+  const handleUserMenuClose = () => {
+    setUserMenuAnchor(null);
+  };
 
   const scrollToTop = () => window.scrollTo({ top: 0, behavior: 'smooth' });
 
@@ -379,605 +371,866 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
     }
   };
 
-  return (
-    <Box sx={{ display: 'flex', minHeight: '100vh' }}>
-      {/* AppBar móvil simplificado */}
-      <MobileAppBar position="fixed">
-        <Toolbar>
-          <Box sx={{ display: 'flex', alignItems: 'center', flexGrow: 1 }}>
-            <Box 
-              component="img"
-              sx={{ 
-                height: 40,
-                width: 'auto',
-                mr: 1.5,
-              }}
-              src="/logo.png"
-              alt="Muscle Up Gym"
-            />
-            <Typography 
-              variant="h6" 
-              sx={{ 
-                fontWeight: 700,
-                fontSize: '0.9rem',
-                color: '#ffcc00'
-              }}
-            >
-              PANEL MUP
-            </Typography>
-          </Box>
-          
-          <Tooltip title="Cerrar sesión">
-            <IconButton 
-              onClick={handleLogout}
-              sx={{ 
-                color: '#ff6b6b',
-                '&:hover': {
-                  backgroundColor: 'rgba(255, 107, 107, 0.1)',
-                }
-              }}
-            >
-              <LogoutIcon />
-            </IconButton>
-          </Tooltip>
-        </Toolbar>
-      </MobileAppBar>
+  // 🍞 GENERAR BREADCRUMBS MEJORADOS
+  const generateBreadcrumbs = () => {
+    if (!pathname) return null;
 
-      {/* AppBar desktop */}
-      <DesktopAppBar position="fixed">
-        {loading && (
-          <LinearProgress 
-            sx={{ 
-              position: 'absolute', 
-              top: 0, 
-              left: 0, 
-              right: 0, 
-              height: '3px',
-              background: 'rgba(255,204,0,0.1)',
-              '& .MuiLinearProgress-bar': {
-                background: 'linear-gradient(90deg, #ffcc00, #ffd700)'
-              }
-            }} 
-          />
-        )}
-        <Toolbar>
-          <IconButton 
-            color="inherit" 
-            onClick={() => setDrawerOpen(!drawerOpen)} 
-            edge="start" 
-            sx={{ 
-              mr: 2,
-              backgroundColor: 'rgba(255, 204, 0, 0.1)',
-              '&:hover': {
-                backgroundColor: 'rgba(255, 204, 0, 0.2)',
-              }
+    const pathParts = pathname.split('/').filter(part => part !== '');
+
+    if (pathParts.length <= 2) return null;
+
+    const breadcrumbs = [];
+    let currentPath = '';
+
+    breadcrumbs.push(
+      <MuiLink
+        key="home"
+        underline="hover"
+        color="inherit"
+        component={Link}
+        href="/dashboard/cliente"
+        sx={{
+          display: 'flex',
+          alignItems: 'center',
+          '&:hover': { color: colorTokens.brand }
+        }}
+      >
+        <HomeIcon sx={{ mr: 0.5, fontSize: 20 }} />
+        Inicio
+      </MuiLink>
+    );
+
+    for (let i = 2; i < pathParts.length; i++) {
+      const part = pathParts[i];
+      currentPath += `/${part}`;
+
+      let sectionName = part.charAt(0).toUpperCase() + part.slice(1);
+      let sectionIcon = null;
+
+      const fullPathToHere = '/dashboard/cliente' + currentPath;
+
+      menuItems.forEach(item => {
+        if (item.path === fullPathToHere) {
+          sectionName = item.text;
+          sectionIcon = item.icon;
+        }
+      });
+
+      const isLast = i === pathParts.length - 1;
+
+      breadcrumbs.push(
+        isLast ? (
+          <Typography
+            key={part}
+            color={colorTokens.brand}
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              fontWeight: 600
             }}
           >
-            <MenuIcon />
-          </IconButton>
-          
-          <Box sx={{ display: 'flex', alignItems: 'center', mr: 3 }}>
-            <Box 
-              component="img"
-              sx={{ 
-                height: 65,
-                width: 'auto',
-                mr: 2,
-                filter: 'drop-shadow(0 2px 4px rgba(255,204,0,0.3))'
-              }}
-              src="/logo.png"
-              alt="Muscle Up Gym"
-            />
-            
-            <Box sx={{ display: { xs: 'none', sm: 'block' } }}>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                <PersonOutlineIcon 
-                  sx={{ 
-                    color: '#ffcc00', 
-                    fontSize: 24,
-                    filter: 'drop-shadow(0 1px 2px rgba(255,204,0,0.3))'
-                  }} 
-                />
-                <Typography 
-                  variant="h5" 
-                  sx={{ 
-                    color: 'rgba(255,255,255,0.95)',
-                    fontWeight: 700,
-                    letterSpacing: 1.5,
-                    fontSize: '1.1rem'
-                  }}
-                >
-                  PANEL DE CLIENTE
-                </Typography>
-                <Chip
-                  size="small"
-                  label="MUP"
-                  sx={{
-                    backgroundColor: '#ffcc00',
-                    color: '#000',
-                    fontWeight: 800,
-                    fontSize: '0.75rem',
-                    height: '24px',
-                    minWidth: '45px',
-                    ml: 1
-                  }}
-                />
-              </Box>
+            {sectionIcon && React.cloneElement(sectionIcon, { sx: { mr: 0.5, fontSize: 20 } })}
+            {sectionName}
+          </Typography>
+        ) : (
+          <MuiLink
+            key={part}
+            underline="hover"
+            color="inherit"
+            component={Link}
+            href={`/dashboard/cliente${currentPath}`}
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              '&:hover': { color: colorTokens.brand }
+            }}
+          >
+            {sectionIcon && React.cloneElement(sectionIcon, { sx: { mr: 0.5, fontSize: 20 } })}
+            {sectionName}
+          </MuiLink>
+        )
+      );
+    }
+
+    return (
+      <Breadcrumbs
+        separator={<NavigateNextIcon fontSize="small" sx={{ color: alpha(colorTokens.brand, 0.6) }} />}
+        aria-label="breadcrumb"
+        sx={{
+          mb: 3,
+          mt: 1,
+          color: colorTokens.textSecondary,
+          '& .MuiBreadcrumbs-ol': {
+            alignItems: 'center'
+          }
+        }}
+      >
+        {breadcrumbs}
+      </Breadcrumbs>
+    );
+  };
+
+  return (
+    <>
+      <Box sx={{ display: 'flex', maxWidth: '100vw', overflowX: 'hidden' }}>
+        {/* 🏢 BARRA SUPERIOR MÓVIL */}
+        <MobileAppBar position="fixed">
+          <Toolbar sx={{
+            minHeight: { xs: '64px', sm: '64px' },
+            px: { xs: 1.5, sm: 2 }
+          }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', flexGrow: 1 }}>
+              <Box
+                component={motion.img}
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.4 }}
+                whileHover={{ scale: 1.02 }}
+                sx={{
+                  height: 40,
+                  width: 'auto',
+                  mr: 1.5,
+                  cursor: 'pointer'
+                }}
+                src="/logo.png"
+                alt="Muscle Up Gym"
+                onClick={() => router.push('/dashboard/cliente')}
+              />
+              <Typography
+                variant="h6"
+                sx={{
+                  fontWeight: 700,
+                  fontSize: '0.9rem',
+                  color: colorTokens.brand
+                }}
+              >
+                PANEL MUP
+              </Typography>
             </Box>
-          </Box>
-          
-          <Search sx={{ display: { xs: 'none', md: 'flex' }, flexGrow: 0.4, maxWidth: '600px' }}>
-            <SearchIconWrapper>
-              <SearchIcon />
-            </SearchIconWrapper>
-            <StyledInputBase
-              placeholder="Buscar en mi cuenta..."
-              value={searchValue}
-              onChange={(e) => setSearchValue(e.target.value)}
-            />
-          </Search>
-          
-          <Box sx={{ flexGrow: 1 }} />
-          
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+
             <Tooltip title="Notificaciones">
-              <IconButton 
-                color="inherit" 
-                sx={{ 
+              <IconButton
+                color="inherit"
+                sx={{
                   mr: 1,
                   position: 'relative',
                   '&:hover': {
-                    backgroundColor: 'rgba(255, 204, 0, 0.1)',
+                    backgroundColor: alpha(colorTokens.brand, 0.1),
                   }
                 }}
               >
-                <Badge 
-                  badgeContent={3} 
-                  color="error"
+                <Badge
+                  badgeContent={unreadCount}
+                  max={99}
                   sx={{
                     '& .MuiBadge-badge': {
-                      background: 'linear-gradient(45deg, #ff4444, #ff6666)',
-                      color: 'white',
-                      fontWeight: 'bold'
+                      background: `linear-gradient(135deg, ${colorTokens.danger}, #ff6666)`,
+                      color: colorTokens.white,
+                      fontWeight: 800,
+                      fontSize: '0.65rem',
+                      minWidth: '18px',
+                      height: '18px',
+                      borderRadius: '10px',
+                      animation: unreadCount > 0 ? `${pulse} 2s ease-in-out infinite` : 'none'
                     }
                   }}
                 >
-                  <NotificationsIcon />
+                  <NotificationsIcon sx={{ fontSize: 22 }} />
                 </Badge>
               </IconButton>
             </Tooltip>
-            
-            <Chip
-              size="small"
-              label={`Bienvenido, ${user?.firstName || 'Cliente'}`}
-              sx={{
-                backgroundColor: 'rgba(255, 204, 0, 0.15)',
-                color: '#ffcc00',
-                border: '1px solid rgba(255, 204, 0, 0.3)',
-                fontWeight: 600,
-                display: { xs: 'none', md: 'flex' }
-              }}
-            />
-            
-            <Tooltip title={`Perfil de ${user?.firstName || 'Usuario'}`}>
-              <IconButton 
-                onClick={handleUserMenuOpen}
-                size="small"
-                edge="end"
-                sx={{ 
-                  bgcolor: 'rgba(255, 204, 0, 0.2)',
-                  ml: 1,
-                  border: '2px solid rgba(255, 204, 0, 0.3)',
+
+            <Tooltip title="Cerrar sesión">
+              <IconButton
+                onClick={handleLogout}
+                sx={{
+                  color: colorTokens.danger,
                   '&:hover': {
-                    bgcolor: 'rgba(255, 204, 0, 0.3)',
+                    backgroundColor: alpha(colorTokens.danger, 0.1),
                   }
                 }}
               >
-                <Avatar 
-                  alt={user?.firstName || "Usuario"} 
-                  src={user?.profilePictureUrl || ""}
-                  sx={{ 
-                    width: 40, 
-                    height: 40
-                  }}
-                >
-                  {user?.firstName?.charAt(0) || "U"}
-                </Avatar>
+                <LogoutIcon />
               </IconButton>
             </Tooltip>
-          </Box>
-          
-          <Menu
-            anchorEl={userMenuAnchor}
-            open={Boolean(userMenuAnchor)}
-            onClose={handleUserMenuClose}
-            onClick={handleUserMenuClose}
-            PaperProps={{
-              elevation: 0,
-              sx: {
-                overflow: 'visible',
-                filter: 'drop-shadow(0px 4px 20px rgba(0,0,0,0.5))',
-                mt: 1.5,
-                minWidth: 280,
-                background: 'linear-gradient(135deg, rgba(18, 18, 18, 0.98) 0%, rgba(25, 25, 25, 0.95) 100%)',
-                backdropFilter: 'blur(20px)',
-                color: 'white',
-                border: '1px solid rgba(255, 204, 0, 0.2)',
-                borderRadius: 2,
-                '& .MuiMenuItem-root': {
-                  px: 3,
-                  py: 1.5,
-                  my: 0.5,
-                  mx: 1,
-                  borderRadius: 1.5,
-                  color: 'white',
-                  '&:hover': {
-                    bgcolor: 'rgba(255, 204, 0, 0.1)',
-                  },
-                },
-                '&:before': {
-                  content: '""',
-                  display: 'block',
-                  position: 'absolute',
-                  top: 0,
-                  right: 20,
-                  width: 12,
-                  height: 12,
-                  bgcolor: 'rgba(18, 18, 18, 0.98)',
-                  transform: 'translateY(-50%) rotate(45deg)',
-                  zIndex: 0,
-                  borderTop: '1px solid rgba(255, 204, 0, 0.2)',
-                  borderLeft: '1px solid rgba(255, 204, 0, 0.2)',
-                },
-              },
-            }}
-            transformOrigin={{ horizontal: 'right', vertical: 'top' }}
-            anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
-          >
-            <Box 
-              sx={{ 
-                px: 3, 
-                py: 2, 
-                display: 'flex', 
-                alignItems: 'center',
-                background: 'rgba(255, 204, 0, 0.05)',
-                mx: 1,
-                borderRadius: 1.5,
-                mb: 1
+          </Toolbar>
+        </MobileAppBar>
+
+        {/* 🏢 BARRA SUPERIOR DESKTOP CON THEME CENTRALIZADO v7.0 */}
+        <AppBar
+          position="fixed"
+          sx={{
+            zIndex: theme.zIndex.drawer + 1,
+            background: colorTokens.black,
+            backdropFilter: 'none',
+            boxShadow: `0 4px 20px 0 ${alpha(colorTokens.black, 0.8)}`,
+            borderBottom: `1px solid ${alpha(colorTokens.brand, 0.15)}`,
+            display: { xs: 'none', lg: 'block' }
+          }}
+        >
+          {loading && (
+            <LinearProgress
+              sx={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                height: '3px',
+                background: alpha(colorTokens.brand, 0.1),
+                '& .MuiLinearProgress-bar': {
+                  background: `linear-gradient(90deg, ${colorTokens.brand}, ${colorTokens.brandHover})`
+                }
+              }}
+            />
+          )}
+
+          <Toolbar sx={{
+            minHeight: { xs: '64px', sm: '80px', md: '100px' },
+            px: { xs: 1.5, sm: 2, md: 3 }
+          }}>
+            <IconButton
+              color="inherit"
+              aria-label={drawerOpen ? "cerrar menú" : "abrir menú"}
+              onClick={() => setDrawerOpen(!drawerOpen)}
+              edge="start"
+              sx={{
+                mr: { xs: 1, sm: 2 },
+                backgroundColor: alpha(colorTokens.brand, 0.1),
+                '&:hover': {
+                  backgroundColor: alpha(colorTokens.brand, 0.2),
+                }
               }}
             >
-              <Avatar 
-                sx={{ 
-                  width: 60, 
-                  height: 60, 
-                  mr: 2, 
-                  border: '3px solid #ffcc00' 
+              <MenuIcon />
+            </IconButton>
+
+            {/* ÁREA DEL LOGO MEJORADA Y RESPONSIVA */}
+            <Box sx={{ display: 'flex', alignItems: 'center', mr: { xs: 1, sm: 2, md: 3 } }}>
+              <Box
+                component={motion.img}
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.4 }}
+                whileHover={{ scale: 1.02 }}
+                sx={{
+                  height: { xs: 40, sm: 50, md: 65 },
+                  width: 'auto',
+                  mr: { xs: 1, sm: 1.5, md: 2 },
+                  cursor: 'pointer'
+                }}
+                src="/logo.png"
+                alt="Muscle Up Gym"
+                onClick={() => router.push('/dashboard/cliente')}
+              />
+
+              <Box sx={{ display: { xs: 'none', md: 'block' } }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <PersonOutlineIcon
+                    sx={{
+                      color: colorTokens.brand,
+                      fontSize: 24
+                    }}
+                  />
+                  <Typography
+                    variant="h5"
+                    sx={{
+                      color: colorTokens.textPrimary,
+                      fontWeight: 700,
+                      letterSpacing: 1.5,
+                      fontSize: '1.1rem'
+                    }}
+                  >
+                    PANEL DE CLIENTE
+                  </Typography>
+                  <Chip
+                    size="small"
+                    label="MUP"
+                    sx={{
+                      backgroundColor: colorTokens.brand,
+                      color: colorTokens.black,
+                      fontWeight: 800,
+                      fontSize: '0.75rem',
+                      height: '24px',
+                      minWidth: '45px',
+                      ml: 1
+                    }}
+                  />
+                </Box>
+              </Box>
+            </Box>
+
+            <Box sx={{ flexGrow: 1 }} />
+
+            {/* 🔔 ÁREA DE NOTIFICACIONES Y USUARIO - RESPONSIVE */}
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.5, sm: 1 } }}>
+              <Tooltip title={unreadCount > 0 ? `${unreadCount} notificaciones sin leer` : 'Sin notificaciones'}>
+                <IconButton
+                  color="inherit"
+                  sx={{
+                    mr: { xs: 0.5, sm: 1 },
+                    position: 'relative',
+                    padding: { xs: '6px', sm: '8px' },
+                    '&:hover': {
+                      backgroundColor: alpha(colorTokens.brand, 0.1),
+                    }
+                  }}
+                  aria-label="mostrar notificaciones"
+                >
+                  <Badge
+                    badgeContent={unreadCount}
+                    max={99}
+                    sx={{
+                      '& .MuiBadge-badge': {
+                        background: `linear-gradient(135deg, ${colorTokens.danger}, #ff6666)`,
+                        color: colorTokens.white,
+                        fontWeight: 800,
+                        fontSize: { xs: '0.65rem', sm: '0.7rem' },
+                        minWidth: { xs: '18px', sm: '20px' },
+                        height: { xs: '18px', sm: '20px' },
+                        borderRadius: '10px',
+                        padding: '0 6px',
+                        top: '3px',
+                        right: '3px',
+                        border: `2px solid ${colorTokens.black}`,
+                        boxShadow: `0 2px 8px ${alpha(colorTokens.danger, 0.5)}`,
+                        animation: unreadCount > 0 ? `${pulse} 2s ease-in-out infinite` : 'none'
+                      }
+                    }}
+                  >
+                    <NotificationsIcon sx={{
+                      color: colorTokens.brand,
+                      fontSize: { xs: 22, sm: 26, md: 28 }
+                    }} />
+                  </Badge>
+                </IconButton>
+              </Tooltip>
+
+              {/* Chip de bienvenida solo en desktop */}
+              <Chip
+                size="small"
+                label={`Bienvenido, ${user?.firstName || 'Cliente'}`}
+                sx={{
+                  backgroundColor: alpha(colorTokens.brand, 0.15),
+                  color: colorTokens.brand,
+                  border: `1px solid ${alpha(colorTokens.brand, 0.3)}`,
+                  fontWeight: 600,
+                  display: { xs: 'none', lg: 'flex' }
+                }}
+              />
+
+              {/* Avatar de usuario */}
+              <Tooltip title={`Perfil de ${user?.firstName || 'Usuario'}`}>
+                <IconButton
+                  component={motion.button}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={handleUserMenuOpen}
+                  size="small"
+                  edge="end"
+                  aria-label="cuenta de usuario"
+                  aria-haspopup="true"
+                  sx={{
+                    bgcolor: alpha(colorTokens.brand, 0.2),
+                    ml: { xs: 0.5, sm: 1 },
+                    border: `2px solid ${alpha(colorTokens.brand, 0.3)}`,
+                    padding: { xs: '4px', sm: '6px' },
+                    '&:hover': {
+                      bgcolor: alpha(colorTokens.brand, 0.3),
+                    }
+                  }}
+                >
+                  <Avatar
+                    alt={user?.firstName || "Usuario"}
+                    src={user?.profilePictureUrl || ""}
+                    sx={{
+                      width: { xs: 32, sm: 36, md: 40 },
+                      height: { xs: 32, sm: 36, md: 40 },
+                      border: `2px solid ${alpha(colorTokens.brand, 0.5)}`
+                    }}
+                  >
+                    {user?.firstName?.charAt(0) || "U"}
+                  </Avatar>
+                </IconButton>
+              </Tooltip>
+            </Box>
+
+            {/* 👤 MENÚ DE USUARIO MEJORADO */}
+            <Menu
+              anchorEl={userMenuAnchor}
+              id="user-menu"
+              open={Boolean(userMenuAnchor)}
+              onClose={handleUserMenuClose}
+              onClick={handleUserMenuClose}
+              PaperProps={{
+                elevation: 0,
+                sx: {
+                  overflow: 'visible',
+                  filter: `drop-shadow(0px 4px 20px ${alpha(colorTokens.black, 0.5)})`,
+                  mt: 1.5,
+                  minWidth: 280,
+                  background: `linear-gradient(135deg, ${colorTokens.neutral100} 0%, ${colorTokens.neutral200} 100%)`,
+                  backdropFilter: 'blur(20px)',
+                  color: colorTokens.textPrimary,
+                  border: `1px solid ${alpha(colorTokens.brand, 0.2)}`,
+                  borderRadius: 2,
+                  '& .MuiMenuItem-root': {
+                    px: 3,
+                    py: 1.5,
+                    my: 0.5,
+                    mx: 1,
+                    borderRadius: 1.5,
+                    color: colorTokens.textPrimary,
+                    transition: 'all 0.2s ease',
+                    '&:hover': {
+                      bgcolor: alpha(colorTokens.brand, 0.1),
+                      transform: 'translateX(4px)'
+                    },
+                  },
+                  '&:before': {
+                    content: '""',
+                    display: 'block',
+                    position: 'absolute',
+                    top: 0,
+                    right: 20,
+                    width: 12,
+                    height: 12,
+                    bgcolor: colorTokens.neutral100,
+                    transform: 'translateY(-50%) rotate(45deg)',
+                    zIndex: 0,
+                    borderTop: `1px solid ${alpha(colorTokens.brand, 0.2)}`,
+                    borderLeft: `1px solid ${alpha(colorTokens.brand, 0.2)}`,
+                  },
+                },
+              }}
+              transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+              anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+            >
+              {/* PERFIL DE USUARIO */}
+              <Box
+                sx={{
+                  px: 3,
+                  py: 2,
+                  display: 'flex',
+                  alignItems: 'center',
+                  background: alpha(colorTokens.brand, 0.05),
+                  mx: 1,
+                  borderRadius: 1.5,
+                  mb: 1
+                }}
+              >
+                <Box sx={{ position: 'relative', mr: 2 }}>
+                  <Avatar
+                    sx={{
+                      width: 60,
+                      height: 60,
+                      border: `3px solid ${colorTokens.brand}`
+                    }}
+                    src={user?.profilePictureUrl || ""}
+                  >
+                    {user?.firstName?.charAt(0) || "U"}
+                  </Avatar>
+                  {/* Badge online */}
+                  <Box sx={{
+                    position: 'absolute',
+                    bottom: 2,
+                    right: 2,
+                    width: 16,
+                    height: 16,
+                    borderRadius: '50%',
+                    bgcolor: colorTokens.success,
+                    border: `3px solid ${colorTokens.neutral100}`,
+                    boxShadow: `0 0 10px ${alpha(colorTokens.success, 0.8)}`
+                  }} />
+                </Box>
+                <Box sx={{ flex: 1 }}>
+                  <Typography variant="body1" sx={{
+                    fontWeight: 700,
+                    mb: 0.3,
+                    color: colorTokens.textPrimary,
+                    lineHeight: 1.2
+                  }}>
+                    {user ? `${user.firstName} ${user.lastName}` : "Usuario"}
+                  </Typography>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8, mb: 0.5 }}>
+                    <Chip
+                      size="small"
+                      label='Cliente'
+                      sx={{
+                        backgroundColor: colorTokens.brand,
+                        color: colorTokens.black,
+                        fontWeight: 700,
+                        fontSize: '0.7rem',
+                        height: '22px'
+                      }}
+                    />
+                  </Box>
+                  <Typography variant="caption" sx={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 0.5,
+                    color: colorTokens.textSecondary,
+                    fontSize: '0.72rem',
+                    fontWeight: 500
+                  }}>
+                    <Box component="span" sx={{
+                      width: 6,
+                      height: 6,
+                      borderRadius: '50%',
+                      bgcolor: colorTokens.success
+                    }} />
+                    {formatMexicoTime(new Date())}
+                  </Typography>
+                </Box>
+              </Box>
+
+              <Divider sx={{ my: 1, borderColor: alpha(colorTokens.white, 0.1) }} />
+
+              <MenuItem onClick={() => router.push('/dashboard/cliente')}>
+                <ListItemIcon>
+                  <PersonIcon fontSize="small" sx={{ color: colorTokens.brand }} />
+                </ListItemIcon>
+                Mi Perfil
+              </MenuItem>
+
+              <Divider sx={{ my: 1, borderColor: alpha(colorTokens.textPrimary, 0.1) }} />
+
+              <MenuItem
+                onClick={handleLogout}
+                sx={{
+                  color: `${colorTokens.danger} !important`,
+                  '&:hover': {
+                    bgcolor: `${alpha(colorTokens.danger, 0.1)} !important`,
+                  }
+                }}
+              >
+                <ListItemIcon>
+                  <LogoutIcon fontSize="small" sx={{ color: colorTokens.danger }} />
+                </ListItemIcon>
+                Cerrar Sesión
+              </MenuItem>
+            </Menu>
+          </Toolbar>
+        </AppBar>
+
+        {/* 📂 MENÚ LATERAL CON THEME CENTRALIZADO v7.0 */}
+        <Drawer
+          sx={{
+            width: isMobile ? mobileDrawerWidth : drawerWidth,
+            flexShrink: 0,
+            '& .MuiDrawer-paper': {
+              width: isMobile ? mobileDrawerWidth : drawerWidth,
+              boxSizing: 'border-box',
+              background: `linear-gradient(180deg, ${colorTokens.neutral50} 0%, ${colorTokens.neutral100} 100%)`,
+              color: colorTokens.textPrimary,
+              borderRight: `1px solid ${alpha(colorTokens.brand, 0.1)}`,
+              backgroundImage: `
+                radial-gradient(circle at 20% 50%, ${alpha(colorTokens.brand, 0.05)} 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, ${alpha(colorTokens.brand, 0.03)} 0%, transparent 50%)
+              `,
+              boxShadow: `inset -1px 0 0 ${alpha(colorTokens.brand, 0.1)}, 4px 0 20px ${alpha(colorTokens.black, 0.3)}`
+            },
+          }}
+          variant={isMobile ? "temporary" : "persistent"}
+          anchor="left"
+          open={drawerOpen}
+          onClose={() => setDrawerOpen(false)}
+        >
+          {/* HEADER DEL DRAWER */}
+          <DrawerHeader sx={{
+            background: `linear-gradient(135deg, ${alpha(colorTokens.neutral100, 0.9)} 0%, ${alpha(colorTokens.neutral200, 0.8)} 100%)`,
+            borderBottom: `1px solid ${alpha(colorTokens.brand, 0.15)}`,
+            minHeight: { xs: '64px', sm: '80px', md: '100px' },
+            px: 2
+          }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', pl: 0 }}>
+              <Box
+                component={motion.img}
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{
+                  duration: 0.5,
+                  ease: [0.4, 0, 0.2, 1]
+                }}
+                whileHover={{
+                  scale: 1.05,
+                  transition: { duration: 0.2 }
+                }}
+                sx={{
+                  height: 50,
+                  mr: 2,
+                  cursor: 'pointer'
+                }}
+                src="/logo.png"
+                alt="Muscle Up Gym"
+                onClick={() => router.push('/dashboard/cliente')}
+              />
+              <Box>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                  <PersonOutlineIcon sx={{ color: colorTokens.brand, fontSize: 18 }} />
+                  <Typography variant="h6" sx={{
+                    fontWeight: 700,
+                    lineHeight: 1.1,
+                    background: `linear-gradient(45deg, ${colorTokens.brand}, ${colorTokens.brandHover})`,
+                    backgroundClip: 'text',
+                    WebkitBackgroundClip: 'text',
+                    WebkitTextFillColor: 'transparent'
+                  }}>
+                    MUP
+                  </Typography>
+                </Box>
+                <Typography variant="caption" sx={{
+                  color: colorTokens.textSecondary,
+                  fontWeight: 600,
+                  letterSpacing: 0.5,
+                  fontSize: '0.7rem'
+                }}>
+                  Cliente Panel
+                </Typography>
+              </Box>
+            </Box>
+            <IconButton
+              onClick={() => setDrawerOpen(false)}
+              sx={{
+                '&:hover': {
+                  backgroundColor: alpha(colorTokens.brand, 0.1),
+                }
+              }}
+            >
+              <ChevronLeftIcon sx={{ color: colorTokens.textPrimary }} />
+            </IconButton>
+          </DrawerHeader>
+
+          <Divider sx={{ borderColor: alpha(colorTokens.brand, 0.1) }} />
+
+          {/* INFORMACIÓN DEL USUARIO EN EL DRAWER */}
+          <Box sx={{
+            p: 2.5,
+            display: 'flex',
+            alignItems: 'center',
+            borderBottom: `1px solid ${alpha(colorTokens.brand, 0.1)}`,
+            background: alpha(colorTokens.brand, 0.03)
+          }}>
+            <Box sx={{ position: 'relative', mr: 2 }}>
+              <Avatar
+                component={motion.div}
+                whileHover={{ scale: 1.05 }}
+                sx={{
+                  width: 50,
+                  height: 50,
+                  border: `3px solid ${colorTokens.brand}`,
+                  cursor: 'pointer'
                 }}
                 src={user?.profilePictureUrl || ""}
+                onClick={() => router.push('/dashboard/cliente')}
               >
                 {user?.firstName?.charAt(0) || "U"}
               </Avatar>
-              <Box>
-                <Typography variant="body1" sx={{ fontWeight: 'bold', mb: 0.5 }}>
-                  {user ? `${user.firstName} ${user.lastName}` : "Usuario"}
-                </Typography>
+              {/* Badge online */}
+              <Box sx={{
+                position: 'absolute',
+                bottom: 0,
+                right: 0,
+                width: 14,
+                height: 14,
+                borderRadius: '50%',
+                bgcolor: colorTokens.success,
+                border: `2.5px solid ${colorTokens.neutral100}`,
+                boxShadow: `0 0 8px ${alpha(colorTokens.success, 0.8)}`
+              }} />
+            </Box>
+            <Box sx={{ flex: 1, minWidth: 0 }}>
+              <Typography variant="body1" sx={{
+                fontWeight: 700,
+                lineHeight: 1.2,
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                color: colorTokens.textPrimary,
+                fontSize: '0.95rem'
+              }}>
+                {user ? `${user.firstName} ${user.lastName}` : "Usuario"}
+              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.8, mt: 0.5 }}>
                 <Chip
                   size="small"
                   label='Cliente'
                   sx={{
-                    backgroundColor: '#ffcc00',
-                    color: '#000',
-                    fontWeight: 600,
-                    fontSize: '0.75rem'
+                    backgroundColor: colorTokens.brand,
+                    color: colorTokens.black,
+                    fontWeight: 700,
+                    fontSize: '0.68rem',
+                    height: '19px'
                   }}
                 />
-                <Typography variant="caption" sx={{ 
-                  display: 'block', 
-                  color: 'rgba(255,255,255,0.6)',
-                  mt: 0.5
-                }}>
-                  {new Date().toLocaleDateString('es-MX', { 
-                    weekday: 'long', 
-                    year: 'numeric', 
-                    month: 'long', 
-                    day: 'numeric' 
-                  })}
-                </Typography>
-              </Box>
-            </Box>
-            
-            <Divider sx={{ my: 1, borderColor: 'rgba(255,255,255,0.1)' }} />
-            
-            <MenuItem onClick={() => { handleUserMenuClose(); navigateTo('/dashboard/cliente'); }}>
-              <ListItemIcon>
-                <PersonIcon fontSize="small" sx={{ color: '#ffcc00' }} />
-              </ListItemIcon>
-              Mi Perfil
-            </MenuItem>
-            
-            <Divider sx={{ my: 1, borderColor: 'rgba(255,255,255,0.1)' }} />
-            
-            <MenuItem 
-              onClick={handleLogout}
-              sx={{
-                color: '#ff6b6b !important',
-                '&:hover': {
-                  bgcolor: 'rgba(255, 107, 107, 0.1) !important',
-                }
-              }}
-            >
-              <ListItemIcon>
-                <LogoutIcon fontSize="small" sx={{ color: '#ff6b6b' }} />
-              </ListItemIcon>
-              Cerrar Sesión
-            </MenuItem>
-          </Menu>
-        </Toolbar>
-      </DesktopAppBar>
-      
-      <Drawer
-        sx={{
-          width: drawerWidth,
-          flexShrink: 0,
-          '& .MuiDrawer-paper': {
-            width: drawerWidth,
-            boxSizing: 'border-box',
-            background: 'linear-gradient(180deg, rgb(12, 12, 12) 0%, rgb(18, 18, 18) 100%)',
-            color: 'white',
-            borderRight: '1px solid rgba(255, 204, 0, 0.1)',
-            backgroundImage: `
-              radial-gradient(circle at 20% 50%, rgba(255,204,0,0.05) 0%, transparent 50%),
-              radial-gradient(circle at 80% 20%, rgba(255,204,0,0.03) 0%, transparent 50%)
-            `,
-            boxShadow: 'inset -1px 0 0 rgba(255,204,0,0.1), 4px 0 20px rgba(0,0,0,0.3)'
-          },
-        }}
-        variant={isMobile ? "temporary" : "persistent"}
-        anchor="left"
-        open={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
-      >
-        <DrawerHeader sx={{ 
-          background: 'linear-gradient(135deg, rgba(18, 18, 18, 0.9) 0%, rgba(25, 25, 25, 0.8) 100%)',
-          borderBottom: '1px solid rgba(255, 204, 0, 0.15)',
-          px: 2
-        }}>
-          <Box sx={{ display: 'flex', alignItems: 'center', pl: 1 }}>
-            <Box 
-              component="img"
-              sx={{ 
-                height: 50, 
-                mr: 2,
-                filter: 'drop-shadow(0 2px 4px rgba(255,204,0,0.3))'
-              }}
-              src="/logo.png"
-              alt="Muscle Up Gym"
-            />
-            <Box>
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                <PersonOutlineIcon sx={{ color: '#ffcc00', fontSize: 18 }} />
-                <Typography variant="h6" sx={{ 
-                  fontWeight: 700,
-                  lineHeight: 1.1,
-                  background: 'linear-gradient(45deg, #ffcc00, #ffd700)',
-                  backgroundClip: 'text',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent'
-                }}>
-                  MUP
-                </Typography>
-              </Box>
-              <Typography variant="caption" sx={{ 
-                color: 'rgba(255,255,255,0.8)',
-                fontWeight: 600,
-                letterSpacing: 0.5,
-                fontSize: '0.7rem'
-              }}>
-                Cliente Panel
-              </Typography>
-            </Box>
-          </Box>
-          <IconButton 
-            onClick={() => setDrawerOpen(false)}
-            sx={{
-              '&:hover': {
-                backgroundColor: 'rgba(255, 204, 0, 0.1)',
-              }
-            }}
-          >
-            <ChevronLeftIcon sx={{ color: 'white' }} />
-          </IconButton>
-        </DrawerHeader>
-        
-        <Divider sx={{ borderColor: 'rgba(255, 204, 0, 0.1)' }} />
-        
-        <Box sx={{ 
-          p: 2.5, 
-          display: 'flex', 
-          alignItems: 'center',
-          borderBottom: '1px solid rgba(255, 204, 0, 0.1)',
-          background: 'rgba(255, 204, 0, 0.03)'
-        }}>
-          <Avatar 
-            sx={{ 
-              width: 50, 
-              height: 50, 
-              mr: 2,
-              border: '3px solid #ffcc00',
-              background: 'linear-gradient(45deg, #ffcc00, #ffd700)'
-            }}
-            src={user?.profilePictureUrl || ""}
-          >
-            {user?.firstName?.charAt(0) || "U"}
-          </Avatar>
-          <Box sx={{ flex: 1, minWidth: 0 }}>
-            <Typography variant="body1" sx={{ 
-              fontWeight: 'bold', 
-              lineHeight: 1.2,
-              whiteSpace: 'nowrap',
-              overflow: 'hidden',
-              textOverflow: 'ellipsis'
-            }}>
-              {user ? `${user.firstName} ${user.lastName}` : "Usuario"}
-            </Typography>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mt: 0.5 }}>
-              <Chip
-                size="small"
-                label='Cliente'
-                sx={{
-                  backgroundColor: '#ffcc00',
-                  color: '#000',
-                  fontWeight: 600,
+                <Typography variant="caption" sx={{
+                  color: colorTokens.textSecondary,
                   fontSize: '0.7rem',
-                  height: '20px'
-                }}
-              />
+                  fontWeight: 500
+                }}>
+                  {currentMexicoTime || '--:-- --'}
+                </Typography>
+              </Box>
             </Box>
           </Box>
-        </Box>
-        
-        <List 
-          component="nav" 
-          sx={{ 
-            px: 1.5, 
-            py: 2,
-            height: 'calc(100% - 340px)',
-            overflowY: 'auto',
-            overflowX: 'hidden',
-            '&::-webkit-scrollbar': {
-              width: '6px',
-              backgroundColor: 'transparent'
-            },
-            '&::-webkit-scrollbar-thumb': {
-              backgroundColor: 'rgba(255, 204, 0, 0.3)',
-              borderRadius: '3px',
-              '&:hover': {
-                backgroundColor: 'rgba(255, 204, 0, 0.5)'
+
+          {/* 📋 LISTA DE MENÚ COMPLETA */}
+          <List
+            component="nav"
+            sx={{
+              px: 1.5,
+              py: 2,
+              flex: 1,
+              overflowY: 'auto',
+              overflowX: 'hidden',
+              '&::-webkit-scrollbar': {
+                width: '6px',
+                backgroundColor: 'transparent'
+              },
+              '&::-webkit-scrollbar-thumb': {
+                backgroundColor: alpha(colorTokens.brand, 0.3),
+                borderRadius: '3px',
+                '&:hover': {
+                  backgroundColor: alpha(colorTokens.brand, 0.5)
+                }
               }
-            }
-          }}
-        >
-          {menuItems.map((item) => (
-            <ListItem key={item.text} disablePadding sx={{ mb: 0.5 }}>
-              <ListItemButton 
-                onClick={() => !item.disabled && navigateTo(item.path)} 
-                disabled={item.disabled} 
-                sx={{ 
-                  minHeight: 52,
-                  borderRadius: '12px',
-                  px: 2.5,
-                  py: 1.5,
-                  background: activeSection === item.section 
-                    ? 'linear-gradient(135deg, rgba(255, 204, 0, 0.2) 0%, rgba(255, 204, 0, 0.1) 100%)'
-                    : 'transparent',
-                  border: activeSection === item.section 
-                    ? '1px solid rgba(255, 204, 0, 0.3)' 
-                    : '1px solid transparent',
-                  '&:hover': {
-                    background: 'linear-gradient(135deg, rgba(255, 204, 0, 0.12) 0%, rgba(255, 204, 0, 0.06) 100%)',
-                    border: '1px solid rgba(255, 204, 0, 0.2)',
-                  }
-                }}
+            }}
+          >
+            {menuItems.map((item) => (
+              <ListItem
+                key={item.text}
+                disablePadding
+                sx={{ mb: 0.5 }}
               >
-                <ListItemIcon
+                <ListItemButton
+                  component={motion.div}
+                  whileHover={{ x: 4 }}
+                  onClick={() => !item.disabled && navigateTo(item.path)}
+                  disabled={item.disabled}
                   sx={{
-                    minWidth: 0,
-                    mr: 2.5,
-                    justifyContent: 'center',
-                    color: activeSection === item.section ? '#ffcc00' : 'rgba(255, 255, 255, 0.7)',
+                    minHeight: 52,
+                    borderRadius: '12px',
+                    px: 2.5,
+                    py: 1.5,
+                    background: activeSection === item.section
+                      ? `linear-gradient(90deg, ${alpha(colorTokens.brand, 0.15)}, ${alpha(colorTokens.brand, 0.05)})`
+                      : 'transparent',
+                    borderLeft: activeSection === item.section
+                      ? `3px solid ${colorTokens.brand}`
+                      : '3px solid transparent',
+                    transition: 'all 0.2s ease',
+                    '&:hover': {
+                      background: `linear-gradient(90deg, ${alpha(colorTokens.brand, 0.1)}, ${alpha(colorTokens.brand, 0.05)})`,
+                      borderLeft: `3px solid ${alpha(colorTokens.brand, 0.5)}`
+                    }
                   }}
                 >
-                  {item.icon}
-                </ListItemIcon>
-                <ListItemText 
-                  primary={item.text}
-                  secondary={!isMobile ? item.description : undefined}
-                  primaryTypographyProps={{ 
-                    fontWeight: activeSection === item.section ? 700 : 500,
-                    color: activeSection === item.section ? '#ffcc00' : 'inherit',
-                    fontSize: '0.95rem'
-                  }}
-                  secondaryTypographyProps={{
-                    fontSize: '0.75rem',
-                    color: 'rgba(255,255,255,0.5)'
-                  }}
-                />
-              </ListItemButton>
-            </ListItem>
+                  <ListItemIcon
+                    sx={{
+                      minWidth: 0,
+                      mr: 2.5,
+                      justifyContent: 'center',
+                      color: activeSection === item.section ? colorTokens.brand : colorTokens.textSecondary,
+                      transition: 'color 0.2s ease'
+                    }}
+                  >
+                    {item.icon}
+                  </ListItemIcon>
+                  <ListItemText
+                    primary={item.text}
+                    secondary={item.description}
+                    primaryTypographyProps={{
+                      fontWeight: activeSection === item.section ? 700 : 500,
+                      color: activeSection === item.section ? colorTokens.brand : colorTokens.textPrimary,
+                      fontSize: '0.95rem'
+                    }}
+                    secondaryTypographyProps={{
+                      fontSize: '0.75rem',
+                      color: colorTokens.textSecondary
+                    }}
+                  />
+                </ListItemButton>
+              </ListItem>
+            ))}
+          </List>
+
+        </Drawer>
+
+        {/* BOTTOM NAVIGATION MÓVIL */}
+        <MobileBottomNav value={mobileBottomValue} onChange={handleMobileNavChange} showLabels>
+          {menuItems.filter(item => !item.disabled).map((item) => (
+            <BottomNavigationAction
+              key={item.section}
+              label={item.text === 'Mi Información' ? 'Inicio' : item.text}
+              icon={item.mobileIcon || item.icon}
+            />
           ))}
-        </List>
-        
-        <Box sx={{ 
-          p: 2.5, 
-          borderTop: '1px solid rgba(255, 204, 0, 0.1)',
-          textAlign: 'center',
-          background: 'linear-gradient(135deg, rgba(0,0,0,0.3) 0%, rgba(18,18,18,0.2) 100%)',
-          mt: 'auto'
-        }}>
-          <Typography variant="caption" sx={{ 
-            color: 'rgba(255,255,255,0.6)',
-            fontWeight: 500
-          }}>
-            © {new Date().getFullYear()} Muscle Up Gym
-          </Typography>
-          <Typography variant="caption" sx={{ 
-            display: 'block', 
-            color: '#ffcc00', 
-            mt: 0.5,
-            fontWeight: 600
-          }}>
-            Sistema de Gestión v2.0.0
-          </Typography>
-        </Box>
-      </Drawer>
-      
-      <MobileBottomNav value={mobileBottomValue} onChange={handleMobileNavChange} showLabels>
-        {menuItems.filter(item => !item.disabled).map((item) => (
-          <BottomNavigationAction 
-            key={item.section} 
-            label={item.text === 'Mi Información' ? 'Inicio' : item.text} 
-            icon={item.mobileIcon || item.icon} 
-          />
-        ))}
-      </MobileBottomNav>
-      
-      <Main open={drawerOpen && !isMobile}>
-        <DrawerHeader />
-        <Container maxWidth="xl" disableGutters>
-          <AnimatePresence mode="wait">
-            <motion.div 
-              key={pathname} 
-              initial={{ opacity: 0, y: 20 }} 
-              animate={{ opacity: 1, y: 0 }} 
-              exit={{ opacity: 0, y: -20 }} 
-              transition={{ 
-                duration: 0.4,
-                ease: [0.4, 0.0, 0.2, 1]
-              }}
-              style={{ height: '100%' }}
-            >
-              {children}
-            </motion.div>
-          </AnimatePresence>
-        </Container>
-      </Main>
-      
+        </MobileBottomNav>
+
+        {/* 📄 CONTENIDO PRINCIPAL */}
+        <Main open={drawerOpen && !isMobile}>
+          <Box sx={{ minHeight: { xs: '64px', sm: '80px', md: '100px' } }} />
+          <Container maxWidth="xl" disableGutters>
+            {/* 🍞 BREADCRUMBS */}
+            {generateBreadcrumbs()}
+
+            {/* 📱 CONTENIDO DE LA PÁGINA CON ANIMACIÓN */}
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={pathname}
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 20 }}
+                transition={{
+                  duration: 0.4,
+                  ease: [0.4, 0.0, 0.2, 1]
+                }}
+                style={{ height: '100%' }}
+              >
+                {children}
+              </motion.div>
+            </AnimatePresence>
+          </Container>
+        </Main>
+      </Box>
+
+      {/* 🚀 TOAST CONTAINER CON TEMA DARK PRO */}
+      <ToastContainer
+        position="top-right"
+        autoClose={4000}
+        hideProgressBar={false}
+        newestOnTop
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="dark"
+        toastStyle={{
+          backgroundColor: colorTokens.neutral100,
+          color: colorTokens.white,
+          border: `1px solid ${colorTokens.neutral200}`,
+          borderRadius: '12px',
+          boxShadow: `0 8px 25px ${alpha(colorTokens.black, 0.3)}`
+        }}
+      />
+
+      {/* SCROLL TO TOP BUTTON */}
       <Zoom in={showScrollTop}>
-        <Fab 
-          onClick={scrollToTop} 
-          color="primary" 
-          size="large" 
-          sx={{ 
-            position: 'fixed', 
-            bottom: isMobile ? 85 : 20, 
-            right: 20, 
-            background: 'linear-gradient(135deg, #ffcc00, #ffd700)', 
-            '&:hover': { background: '#ffdd44' } 
+        <Fab
+          onClick={scrollToTop}
+          color="primary"
+          size="large"
+          sx={{
+            position: 'fixed',
+            bottom: isMobile ? 85 : 20,
+            right: 20,
+            background: `linear-gradient(135deg, ${colorTokens.brand}, ${colorTokens.brandHover})`,
+            '&:hover': { background: colorTokens.brandHover }
           }}
         >
           <KeyboardArrowUpIcon />
         </Fab>
       </Zoom>
-    </Box>
+    </>
   );
 }

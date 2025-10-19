@@ -4,6 +4,7 @@
 import React from 'react';
 import { Box, Card, CardContent, Typography, Skeleton, useMediaQuery, useTheme } from '@mui/material';
 import { LineChart } from '@mui/x-charts/LineChart';
+import { ChartsReferenceLine } from '@mui/x-charts/ChartsReferenceLine';
 import { motion } from 'framer-motion';
 import { colorTokens } from '@/theme';
 
@@ -52,6 +53,9 @@ export const SalesLineChart: React.FC<SalesLineChartProps> = ({
   const xAxisData = data.map(d => d.name);
   const salesData = data.map(d => d.sales);
   const membershipsData = data.map(d => d.memberships);
+
+  // Calcular valor máximo para la línea de referencia
+  const maxValue = Math.max(...salesData, ...membershipsData);
 
   return (
     <motion.div
@@ -259,7 +263,26 @@ export const SalesLineChart: React.FC<SalesLineChartProps> = ({
                   }
                 }
               }}
-            />
+            >
+              {/* Línea de referencia MAX */}
+              {maxValue > 0 && (
+                <ChartsReferenceLine
+                  y={maxValue}
+                  label={`Máx: $${maxValue.toLocaleString('es-MX')}`}
+                  labelAlign="end"
+                  lineStyle={{
+                    stroke: colorTokens.danger,
+                    strokeDasharray: '5 5',
+                    strokeWidth: 2
+                  }}
+                  labelStyle={{
+                    fontSize: isMobile ? 11 : 13,
+                    fontWeight: 700,
+                    fill: colorTokens.danger
+                  }}
+                />
+              )}
+            </LineChart>
           </Box>
 
           {data.length === 0 && (

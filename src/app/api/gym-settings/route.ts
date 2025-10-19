@@ -27,6 +27,7 @@ export async function GET(request: NextRequest) {
         gym_logo_url: null,
         gym_facebook_url: 'https://www.facebook.com/Lindavistagym',
         gym_maps_url: 'https://maps.app.goo.gl/preWqm3w7S2JZLg17',
+        max_capacity: 100, // Capacidad máxima por defecto
         gym_hours: {
           monday: { open: '06:00', close: '23:00', enabled: true },
           tuesday: { open: '06:00', close: '23:00', enabled: true },
@@ -53,6 +54,7 @@ export async function GET(request: NextRequest) {
         gym_logo_url: null,
         gym_facebook_url: 'https://www.facebook.com/Lindavistagym',
         gym_maps_url: 'https://maps.app.goo.gl/preWqm3w7S2JZLg17',
+        max_capacity: 100,
         gym_hours: {
           monday: { open: '06:00', close: '23:00', enabled: true },
           tuesday: { open: '06:00', close: '23:00', enabled: true },
@@ -82,6 +84,7 @@ export async function GET(request: NextRequest) {
       gym_logo_url: null,
       gym_facebook_url: 'https://www.facebook.com/Lindavistagym',
       gym_maps_url: 'https://maps.app.goo.gl/preWqm3w7S2JZLg17',
+      max_capacity: 100,
       gym_hours: {
         monday: { open: '06:00', close: '23:00', enabled: true },
         tuesday: { open: '06:00', close: '23:00', enabled: true },
@@ -90,7 +93,7 @@ export async function GET(request: NextRequest) {
         friday: { open: '06:00', close: '23:00', enabled: true },
         saturday: { open: '06:00', close: '23:00', enabled: true },
         sunday: { open: '06:00', close: '23:00', enabled: false }
-      }
+        }
     };
 
     console.log('⚠️ [GYM-SETTINGS] Returning default settings due to unexpected error');
@@ -136,7 +139,8 @@ export async function PUT(request: NextRequest) {
       gym_logo_url,
       gym_facebook_url,
       gym_maps_url,
-      gym_hours
+      gym_hours,
+      max_capacity
     } = body;
 
     console.log('📝 [GYM-SETTINGS] Updating settings:', {
@@ -171,6 +175,7 @@ export async function PUT(request: NextRequest) {
         gym_facebook_url,
         gym_maps_url,
         gym_hours,
+        max_capacity,
         updated_at: new Date().toISOString()
       })
       .eq('id', currentSettings.id)

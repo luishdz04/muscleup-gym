@@ -4,6 +4,7 @@
 import React from 'react';
 import { Box, Card, CardContent, Typography, Skeleton, useMediaQuery, useTheme } from '@mui/material';
 import { BarChart } from '@mui/x-charts/BarChart';
+import { ChartsReferenceLine } from '@mui/x-charts/ChartsReferenceLine';
 import { motion } from 'framer-motion';
 import { colorTokens } from '@/theme';
 
@@ -55,6 +56,10 @@ export const RevenueBarChart: React.FC<RevenueBarChartProps> = ({
   const salesData = data.map(d => d.sales);
   const membershipsData = data.map(d => d.memberships);
   const layawaysData = data.map(d => d.layaways);
+
+  // Calcular valor máximo total (suma de todas las categorías apiladas)
+  const totalData = data.map(d => d.total);
+  const maxValue = Math.max(...totalData);
 
   return (
     <motion.div
@@ -261,7 +266,26 @@ export const RevenueBarChart: React.FC<RevenueBarChartProps> = ({
                   }
                 }
               }}
-            />
+            >
+              {/* Línea de referencia MAX */}
+              {maxValue > 0 && (
+                <ChartsReferenceLine
+                  y={maxValue}
+                  label={`Máx: $${maxValue.toLocaleString('es-MX')}`}
+                  labelAlign="end"
+                  lineStyle={{
+                    stroke: colorTokens.danger,
+                    strokeDasharray: '5 5',
+                    strokeWidth: 2
+                  }}
+                  labelStyle={{
+                    fontSize: isMobile ? 11 : 13,
+                    fontWeight: 700,
+                    fill: colorTokens.danger
+                  }}
+                />
+              )}
+            </BarChart>
           </Box>
 
           {data.length === 0 && (

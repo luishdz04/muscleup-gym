@@ -9,10 +9,14 @@ import {
   Divider,
   CircularProgress,
   LinearProgress,
-  Container
+  Container,
+  Fade,
+  Zoom,
+  Slide,
+  Grow
 } from '@mui/material';
 import Grid from '@mui/material/Grid';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
 
 // ✅ IMPORTS ENTERPRISE OBLIGATORIOS MUP v4.1
@@ -44,6 +48,9 @@ import RefreshIcon from '@mui/icons-material/Refresh';
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import LocalOfferIcon from '@mui/icons-material/LocalOffer';
 import FitnessCenterIcon from '@mui/icons-material/FitnessCenter';
+import TrendingUpIcon from '@mui/icons-material/TrendingUp';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import NotificationsActiveIcon from '@mui/icons-material/NotificationsActive';
 
 // ✅ COMPONENTE DE LOADING ENTERPRISE SSR-SAFE
 const LoadingView = memo(() => (
@@ -75,45 +82,107 @@ const LoadingView = memo(() => (
 
 LoadingView.displayName = 'LoadingView';
 
-// ✅ COMPONENTE DE ESTADÍSTICA MEMOIZADO
+// ✅ COMPONENTE DE ESTADÍSTICA MEMOIZADO - VERSIÓN MODERNA
 interface StatCardProps {
   title: string;
   value: number | string;
   icon: React.ElementType;
-  gradient: string;
-  textColor: string;
+  iconColor: string;
+  accentColor: string;
 }
 
-const StatCard = memo(({ title, value, icon: Icon, gradient, textColor }: StatCardProps) => (
-  <motion.div
-    whileHover={{ scale: 1.02, y: -5 }}
-    transition={{ duration: 0.3 }}
-  >
-    <Paper sx={{
-      p: { xs: 2, sm: 2.5, md: 3 },
-      background: gradient,
-      color: textColor,
-      borderRadius: 3,
-      border: `1px solid ${colorTokens.border}`,
-      transition: 'all 0.3s ease',
-      '&:hover': {
-        transform: 'translateY(-4px)',
-        boxShadow: `0 8px 32px ${colorTokens.glow}`
-      }
-    }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-        <Box>
-          <Typography variant="h4" sx={{ fontWeight: 700, color: textColor, fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2rem' } }}>
+const StatCard = memo(({ title, value, icon: Icon, iconColor, accentColor }: StatCardProps) => (
+  <Zoom in={true} timeout={400}>
+    <motion.div
+      whileHover={{ scale: 1.03, y: -8 }}
+      transition={{ duration: 0.3, ease: 'easeOut' }}
+    >
+      <Paper sx={{
+        p: { xs: 2.5, sm: 3 },
+        background: `linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%)`,
+        backdropFilter: 'blur(20px)',
+        borderRadius: 4,
+        border: `1px solid ${colorTokens.border}`,
+        position: 'relative',
+        overflow: 'hidden',
+        transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+        boxShadow: `0 4px 20px rgba(0, 0, 0, 0.1)`,
+        '&:hover': {
+          border: `1px solid ${accentColor}60`,
+          boxShadow: `0 12px 40px ${accentColor}30, 0 0 0 1px ${accentColor}20`,
+          background: `linear-gradient(135deg, ${accentColor}08 0%, rgba(255, 255, 255, 0.02) 100%)`
+        },
+        '&::before': {
+          content: '""',
+          position: 'absolute',
+          top: 0,
+          left: 0,
+          right: 0,
+          height: '3px',
+          background: `linear-gradient(90deg, ${accentColor}, ${accentColor}AA)`,
+          opacity: 0,
+          transition: 'opacity 0.3s ease'
+        },
+        '&:hover::before': {
+          opacity: 1
+        }
+      }}>
+        {/* Icono de fondo decorativo */}
+        <Box sx={{
+          position: 'absolute',
+          top: -20,
+          right: -20,
+          opacity: 0.03,
+          transform: 'rotate(-15deg)'
+        }}>
+          <Icon sx={{ fontSize: 140, color: colorTokens.textPrimary }} />
+        </Box>
+
+        <Box sx={{ position: 'relative', zIndex: 1 }}>
+          {/* Icono principal con background */}
+          <Box sx={{
+            width: 56,
+            height: 56,
+            borderRadius: '16px',
+            background: `linear-gradient(135deg, ${iconColor}, ${iconColor}CC)`,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            mb: 2,
+            boxShadow: `0 8px 24px ${iconColor}40`,
+            transition: 'all 0.3s ease',
+            '&:hover': {
+              transform: 'scale(1.1) rotate(5deg)',
+              boxShadow: `0 12px 32px ${iconColor}60`
+            }
+          }}>
+            <Icon sx={{ fontSize: 32, color: colorTokens.neutral0 }} />
+          </Box>
+
+          {/* Valor */}
+          <Typography variant="h3" sx={{
+            fontWeight: 900,
+            color: colorTokens.textPrimary,
+            fontSize: { xs: '1.75rem', sm: '2rem', md: '2.25rem' },
+            mb: 0.5,
+            letterSpacing: '-0.5px'
+          }}>
             {value}
           </Typography>
-          <Typography variant="body2" sx={{ opacity: 0.9, color: `${textColor}CC`, fontSize: { xs: '0.8rem', sm: '0.875rem' } }}>
+
+          {/* Título */}
+          <Typography variant="body2" sx={{
+            color: colorTokens.textSecondary,
+            fontWeight: 600,
+            fontSize: { xs: '0.85rem', sm: '0.9rem' },
+            letterSpacing: '0.3px'
+          }}>
             {title}
           </Typography>
         </Box>
-        <Icon sx={{ fontSize: { xs: 32, sm: 36, md: 40 }, opacity: 0.8, color: textColor }} />
-      </Box>
-    </Paper>
-  </motion.div>
+      </Paper>
+    </motion.div>
+  </Zoom>
 ));
 
 StatCard.displayName = 'StatCard';
@@ -209,41 +278,84 @@ function MembresiasPage() {
       minHeight: '100vh',
       color: colorTokens.textPrimary
     }}>
-      {/* 🎯 HEADER ENTERPRISE OPTIMIZADO */}
-      <Paper sx={{
-        p: { xs: 2, sm: 2.5, md: 3 },
-        mb: { xs: 2, sm: 2.5, md: 3 },
-        background: `linear-gradient(135deg, ${colorTokens.surfaceLevel2}, ${colorTokens.surfaceLevel3})`,
-        border: `1px solid ${colorTokens.border}`,
-        borderRadius: 3,
-        backdropFilter: 'blur(10px)'
-      }}>
-        <Box sx={{
-          display: 'flex',
-          flexDirection: { xs: 'column', md: 'row' },
-          justifyContent: 'space-between',
-          alignItems: { xs: 'flex-start', md: 'center' },
+      {/* 🎯 HEADER MODERNO CON GLASSMORPHISM */}
+      <Fade in={true} timeout={600}>
+        <Paper sx={{
+          p: { xs: 2, sm: 2.5, md: 3 },
           mb: { xs: 2, sm: 2.5, md: 3 },
-          gap: 2
+          background: `linear-gradient(135deg, rgba(255, 204, 0, 0.08) 0%, rgba(0, 0, 0, 0.4) 100%)`,
+          backdropFilter: 'blur(20px)',
+          border: `1px solid ${colorTokens.brand}30`,
+          borderRadius: 4,
+          boxShadow: `0 8px 32px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1)`,
+          position: 'relative',
+          overflow: 'hidden',
+          '&::before': {
+            content: '""',
+            position: 'absolute',
+            top: 0,
+            left: '-100%',
+            width: '100%',
+            height: '100%',
+            background: `linear-gradient(90deg, transparent, ${colorTokens.brand}15, transparent)`,
+            animation: 'shine 3s infinite',
+          },
+          '@keyframes shine': {
+            '0%': { left: '-100%' },
+            '100%': { left: '100%' }
+          }
         }}>
-          <Box>
-            <Typography variant="h4" sx={{
-              color: colorTokens.brand,
-              fontWeight: 700,
-              display: 'flex',
-              alignItems: 'center',
-              gap: { xs: 1, sm: 1.5, md: 2 },
-              textShadow: `0 0 20px ${colorTokens.glow}`,
-              fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2rem' }
-            }}>
-              <FitnessCenterIcon sx={{ fontSize: { xs: 32, sm: 36, md: 40 }, color: colorTokens.brand }} />
-              <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>Dashboard Membresías MUP</Box>
-              <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>Membresías</Box>
-            </Typography>
-            <Typography variant="body1" sx={{ color: colorTokens.textSecondary, mt: 1, fontSize: { xs: '0.875rem', sm: '1rem' } }}>
-              Gestión de membresías activas, pagos y estadísticas del gimnasio
-            </Typography>
-          </Box>
+          <Box sx={{
+            display: 'flex',
+            flexDirection: { xs: 'column', md: 'row' },
+            justifyContent: 'space-between',
+            alignItems: { xs: 'flex-start', md: 'center' },
+            mb: { xs: 2, sm: 2.5, md: 3 },
+            gap: 2,
+            position: 'relative',
+            zIndex: 1
+          }}>
+            <Box>
+              <Typography variant="h4" sx={{
+                color: colorTokens.brand,
+                fontWeight: 800,
+                display: 'flex',
+                alignItems: 'center',
+                gap: { xs: 1.5, sm: 2 },
+                textShadow: `0 0 20px ${colorTokens.brand}60`,
+                fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2.125rem' },
+                letterSpacing: '0.5px'
+              }}>
+                <Box sx={{
+                  width: { xs: 48, sm: 52, md: 56 },
+                  height: { xs: 48, sm: 52, md: 56 },
+                  borderRadius: '14px',
+                  background: `linear-gradient(135deg, ${colorTokens.brand}, ${colorTokens.brand}CC)`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: `0 4px 20px ${colorTokens.brand}60`,
+                  animation: 'float 3s ease-in-out infinite',
+                  '@keyframes float': {
+                    '0%, 100%': { transform: 'translateY(0px)' },
+                    '50%': { transform: 'translateY(-5px)' }
+                  }
+                }}>
+                  <FitnessCenterIcon sx={{ fontSize: { xs: 28, sm: 30, md: 32 }, color: colorTokens.neutral0 }} />
+                </Box>
+                <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>Dashboard Membresías</Box>
+                <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>Membresías</Box>
+              </Typography>
+              <Typography variant="body1" sx={{
+                color: colorTokens.textSecondary,
+                mt: 1,
+                fontSize: { xs: '0.875rem', sm: '1rem' },
+                fontWeight: 500,
+                opacity: 0.9
+              }}>
+                Gestión de membresías activas, pagos y estadísticas del gimnasio
+              </Typography>
+            </Box>
 
           <Box sx={{ display: 'flex', gap: { xs: 1, sm: 1.5, md: 2 }, alignItems: 'center', flexWrap: 'wrap', width: { xs: '100%', md: 'auto' } }}>
             {/* 🔔 BOTÓN DE RECORDATORIOS DE VENCIMIENTO */}
@@ -283,19 +395,19 @@ function MembresiasPage() {
               startIcon={<PersonAddAltIcon sx={{ fontSize: { xs: 18, sm: 20 } }} />}
               onClick={handleNewSale}
               sx={{
-                background: `linear-gradient(135deg, ${colorTokens.success}, ${colorTokens.successHover})`,
-                fontWeight: 600,
+                background: `linear-gradient(135deg, ${colorTokens.success}, ${colorTokens.success}CC)`,
+                fontWeight: 700,
                 px: { xs: 2, sm: 2.5, md: 3 },
                 fontSize: { xs: '0.8rem', sm: '0.875rem' },
                 py: { xs: 0.75, sm: 1 },
                 borderRadius: 2,
                 boxShadow: `0 4px 20px ${colorTokens.success}40`,
+                transition: 'all 0.3s ease',
                 '&:hover': {
-                  background: `linear-gradient(135deg, ${colorTokens.successHover}, ${colorTokens.success})`,
+                  background: `linear-gradient(135deg, ${colorTokens.success}CC, ${colorTokens.success})`,
                   transform: 'translateY(-2px)',
                   boxShadow: `0 6px 25px ${colorTokens.success}50`
-                },
-                transition: 'all 0.3s ease'
+                }
               }}
             >
               Nueva Venta
@@ -303,23 +415,36 @@ function MembresiasPage() {
           </Box>
         </Box>
 
-        {/* 📊 RESUMEN ENTERPRISE OPTIMIZADO */}
+        {/* 📊 RESUMEN MEJORADO */}
         <Box sx={{
           display: 'flex',
           flexDirection: { xs: 'column', md: 'row' },
           justifyContent: 'space-between',
           alignItems: { xs: 'stretch', md: 'center' },
           p: { xs: 2, sm: 2.5, md: 3 },
-          bgcolor: colorTokens.brand + '10',
-          borderRadius: 2,
-          border: `1px solid ${colorTokens.brand}30`,
-          backdropFilter: 'blur(5px)',
-          gap: { xs: 2, md: 0 }
+          background: `linear-gradient(135deg, ${colorTokens.brand}12, ${colorTokens.brand}06)`,
+          borderRadius: 3,
+          border: `1px solid ${colorTokens.brand}40`,
+          backdropFilter: 'blur(10px)',
+          gap: { xs: 2, md: 0 },
+          position: 'relative',
+          zIndex: 1
         }}>
           <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 1.5, sm: 2 } }}>
-            <PaymentIcon sx={{ color: colorTokens.brand, fontSize: { xs: 24, sm: 26, md: 28 } }} />
-            <Typography sx={{ color: colorTokens.textPrimary, fontWeight: 600, fontSize: { xs: '0.875rem', sm: '1rem' } }}>
-              📊 Total: {stats.total} membresías | {stats.new_this_month} nuevas este mes
+            <Box sx={{
+              width: 40,
+              height: 40,
+              borderRadius: '10px',
+              background: `linear-gradient(135deg, ${colorTokens.brand}, ${colorTokens.brand}CC)`,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              boxShadow: `0 4px 12px ${colorTokens.brand}40`
+            }}>
+              <PaymentIcon sx={{ color: colorTokens.neutral0, fontSize: 22 }} />
+            </Box>
+            <Typography sx={{ color: colorTokens.textPrimary, fontWeight: 700, fontSize: { xs: '0.875rem', sm: '1rem' } }}>
+              Total: <Box component="span" sx={{ color: colorTokens.brand }}>{stats.total}</Box> membresías | <Box component="span" sx={{ color: colorTokens.success }}>{stats.new_this_month} nuevas</Box>
             </Typography>
           </Box>
 
@@ -329,19 +454,27 @@ function MembresiasPage() {
                 variant="determinate"
                 value={stats.total > 0 ? (stats.active / stats.total) * 100 : 0}
                 sx={{
-                  height: 8,
-                  borderRadius: 4,
-                  bgcolor: colorTokens.neutral500,
+                  height: 10,
+                  borderRadius: 5,
+                  bgcolor: `${colorTokens.brand}20`,
+                  boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.2)',
                   '& .MuiLinearProgress-bar': {
                     bgcolor: colorTokens.brand,
-                    borderRadius: 4,
-                    boxShadow: `0 0 10px ${colorTokens.glow}`
+                    borderRadius: 5,
+                    boxShadow: `0 0 15px ${colorTokens.brand}80`,
+                    background: `linear-gradient(90deg, ${colorTokens.brand}, #FFD700, ${colorTokens.brand})`,
+                    backgroundSize: '200% 100%',
+                    animation: 'shimmerProgress 2s ease infinite',
+                  },
+                  '@keyframes shimmerProgress': {
+                    '0%': { backgroundPosition: '-200% 0' },
+                    '100%': { backgroundPosition: '200% 0' }
                   }
                 }}
               />
               <Typography variant="caption" sx={{
                 color: colorTokens.brand,
-                fontWeight: 600,
+                fontWeight: 700,
                 display: 'block',
                 textAlign: 'center',
                 mt: 0.5,
@@ -353,25 +486,27 @@ function MembresiasPage() {
 
             <Typography variant="h6" sx={{
               color: colorTokens.brand,
-              fontWeight: 700,
-              fontSize: { xs: '1.1rem', sm: '1.15rem', md: '1.25rem' },
-              textAlign: { xs: 'center', sm: 'left' }
+              fontWeight: 800,
+              fontSize: { xs: '1.2rem', sm: '1.3rem', md: '1.4rem' },
+              textAlign: { xs: 'center', sm: 'left' },
+              textShadow: `0 0 10px ${colorTokens.brand}60`
             }}>
               {formatPrice(stats.revenue_this_month)}
             </Typography>
           </Box>
         </Box>
       </Paper>
+      </Fade>
 
-      {/* 📊 ESTADÍSTICAS ENTERPRISE MEMOIZADAS */}
+      {/* 📊 ESTADÍSTICAS MODERNAS CON GLASSMORPHISM */}
       <Grid container spacing={{ xs: 2, sm: 2.5, md: 3 }} sx={{ mb: { xs: 3, sm: 3.5, md: 4 } }}>
         <Grid size={{ xs: 12, sm: 6, md: 3 }}>
           <StatCard
             title="Membresías Activas"
             value={stats.active}
             icon={CheckCircleIcon}
-            gradient={`linear-gradient(135deg, ${colorTokens.success}, ${colorTokens.successHover})`}
-            textColor={colorTokens.textPrimary}
+            iconColor={colorTokens.success}
+            accentColor={colorTokens.success}
           />
         </Grid>
 
@@ -380,8 +515,8 @@ function MembresiasPage() {
             title="Por Vencer (7 días)"
             value={stats.expiring_soon}
             icon={ScheduleIcon}
-            gradient={`linear-gradient(135deg, ${colorTokens.warning}, ${colorTokens.brandActive})`}
-            textColor={colorTokens.textOnBrand}
+            iconColor={colorTokens.warning}
+            accentColor={colorTokens.warning}
           />
         </Grid>
 
@@ -390,8 +525,8 @@ function MembresiasPage() {
             title="Congeladas"
             value={stats.frozen}
             icon={PauseCircleIcon}
-            gradient={`linear-gradient(135deg, ${colorTokens.info}, ${colorTokens.infoHover})`}
-            textColor={colorTokens.textPrimary}
+            iconColor={colorTokens.info}
+            accentColor={colorTokens.info}
           />
         </Grid>
 
@@ -400,33 +535,50 @@ function MembresiasPage() {
             title="Ingresos del Mes"
             value={formatPrice(stats.revenue_this_month)}
             icon={AttachMoneyIcon}
-            gradient={`linear-gradient(135deg, ${colorTokens.brand}, ${colorTokens.brandHover})`}
-            textColor={colorTokens.textOnBrand}
+            iconColor={colorTokens.brand}
+            accentColor={colorTokens.brand}
           />
         </Grid>
       </Grid>
 
-      {/* 🚀 ACCIONES Y ANALYTICS ENTERPRISE */}
+      {/* 🚀 ACCIONES Y ANALYTICS MODERNOS */}
       <Grid container spacing={{ xs: 2, sm: 2.5, md: 3 }}>
         <Grid size={{ xs: 12, md: 6 }}>
-          <Paper sx={{
-            p: { xs: 2, sm: 2.5, md: 3 },
-            background: `linear-gradient(135deg, ${colorTokens.surfaceLevel2}, ${colorTokens.surfaceLevel3})`,
-            border: `1px solid ${colorTokens.border}`,
-            borderRadius: 3,
-            height: '100%'
-          }}>
-            <Typography variant="h6" sx={{
-              color: colorTokens.brand,
-              mb: { xs: 2, sm: 2.5, md: 3 },
-              fontWeight: 700,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 1,
-              fontSize: { xs: '1.1rem', sm: '1.15rem', md: '1.25rem' }
+          <Slide direction="right" in={true} timeout={500}>
+            <Paper sx={{
+              p: { xs: 2, sm: 2.5, md: 3 },
+              background: `linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%)`,
+              backdropFilter: 'blur(20px)',
+              border: `1px solid ${colorTokens.border}`,
+              borderRadius: 4,
+              height: '100%',
+              boxShadow: `0 4px 20px rgba(0, 0, 0, 0.1)`,
+              transition: 'all 0.3s ease',
+              '&:hover': {
+                boxShadow: `0 8px 32px rgba(0, 0, 0, 0.15)`
+              }
             }}>
-              ⚡ Acciones Rápidas
-            </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: { xs: 2, sm: 2.5, md: 3 } }}>
+                <Box sx={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: '12px',
+                  background: `linear-gradient(135deg, ${colorTokens.brand}, ${colorTokens.brand}CC)`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: `0 4px 16px ${colorTokens.brand}50`
+                }}>
+                  <AutoAwesomeIcon sx={{ color: colorTokens.neutral0, fontSize: 26 }} />
+                </Box>
+                <Typography variant="h6" sx={{
+                  color: colorTokens.brand,
+                  fontWeight: 800,
+                  fontSize: { xs: '1.1rem', sm: '1.15rem', md: '1.25rem' }
+                }}>
+                  Acciones Rápidas
+                </Typography>
+              </Box>
 
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 1.5, sm: 2 } }}>
               <Button
@@ -500,115 +652,203 @@ function MembresiasPage() {
               </Button>
             </Box>
           </Paper>
+          </Slide>
         </Grid>
 
         <Grid size={{ xs: 12, md: 6 }}>
-          <Paper sx={{
-            p: { xs: 2, sm: 2.5, md: 3 },
-            background: `linear-gradient(135deg, ${colorTokens.surfaceLevel2}, ${colorTokens.surfaceLevel3})`,
-            border: `1px solid ${colorTokens.border}`,
-            borderRadius: 3,
-            height: '100%'
-          }}>
-            <Typography variant="h6" sx={{
-              color: colorTokens.brand,
-              mb: { xs: 2, sm: 2.5, md: 3 },
-              fontWeight: 700,
-              display: 'flex',
-              alignItems: 'center',
-              gap: 1,
-              fontSize: { xs: '1.1rem', sm: '1.15rem', md: '1.25rem' }
+          <Slide direction="left" in={true} timeout={500}>
+            <Paper sx={{
+              p: { xs: 2, sm: 2.5, md: 3 },
+              background: `linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%)`,
+              backdropFilter: 'blur(20px)',
+              border: `1px solid ${colorTokens.border}`,
+              borderRadius: 4,
+              height: '100%',
+              boxShadow: `0 4px 20px rgba(0, 0, 0, 0.1)`,
+              transition: 'all 0.3s ease',
+              '&:hover': {
+                boxShadow: `0 8px 32px rgba(0, 0, 0, 0.15)`
+              }
             }}>
-              📈 Analytics del Mes
-            </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: { xs: 2, sm: 2.5, md: 3 } }}>
+                <Box sx={{
+                  width: 48,
+                  height: 48,
+                  borderRadius: '12px',
+                  background: `linear-gradient(135deg, ${colorTokens.info}, ${colorTokens.info}CC)`,
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  boxShadow: `0 4px 16px ${colorTokens.info}50`
+                }}>
+                  <TrendingUpIcon sx={{ color: colorTokens.neutral0, fontSize: 26 }} />
+                </Box>
+                <Typography variant="h6" sx={{
+                  color: colorTokens.info,
+                  fontWeight: 800,
+                  fontSize: { xs: '1.1rem', sm: '1.15rem', md: '1.25rem' }
+                }}>
+                  Analytics del Mes
+                </Typography>
+              </Box>
 
             <Grid container spacing={{ xs: 1.5, sm: 2 }}>
               <Grid size={{ xs: 12, sm: 6 }}>
-                <Box sx={{
-                  textAlign: 'center',
-                  p: { xs: 1.5, sm: 2 },
-                  bgcolor: colorTokens.success + '10',
-                  borderRadius: 2,
-                  border: `1px solid ${colorTokens.success}30`
-                }}>
-                  <Typography variant="h5" sx={{
-                    color: colorTokens.success,
-                    fontWeight: 700,
-                    mb: 0.5,
-                    fontSize: { xs: '1.25rem', sm: '1.5rem' }
+                <Grow in={true} timeout={600}>
+                  <Box sx={{
+                    textAlign: 'center',
+                    p: { xs: 2, sm: 2.5 },
+                    background: `linear-gradient(135deg, ${colorTokens.success}15, ${colorTokens.success}08)`,
+                    backdropFilter: 'blur(10px)',
+                    borderRadius: 3,
+                    border: `1px solid ${colorTokens.success}40`,
+                    position: 'relative',
+                    overflow: 'hidden',
+                    transition: 'all 0.3s ease',
+                    '&:hover': {
+                      transform: 'translateY(-4px)',
+                      boxShadow: `0 8px 24px ${colorTokens.success}30`
+                    },
+                    '&::before': {
+                      content: '""',
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      height: '3px',
+                      background: colorTokens.success
+                    }
                   }}>
-                    {stats.new_this_month}
-                  </Typography>
-                  <Typography variant="body2" sx={{
-                    color: colorTokens.textSecondary,
-                    fontWeight: 500,
-                    fontSize: { xs: '0.8rem', sm: '0.875rem' }
-                  }}>
-                    Nuevas Membresías
-                  </Typography>
-                </Box>
+                    <Typography variant="h4" sx={{
+                      color: colorTokens.success,
+                      fontWeight: 900,
+                      mb: 0.5,
+                      fontSize: { xs: '1.5rem', sm: '1.75rem' }
+                    }}>
+                      {stats.new_this_month}
+                    </Typography>
+                    <Typography variant="body2" sx={{
+                      color: colorTokens.textSecondary,
+                      fontWeight: 600,
+                      fontSize: { xs: '0.8rem', sm: '0.875rem' }
+                    }}>
+                      Nuevas Membresías
+                    </Typography>
+                  </Box>
+                </Grow>
               </Grid>
 
               <Grid size={{ xs: 12, sm: 6 }}>
-                <Box sx={{
-                  textAlign: 'center',
-                  p: { xs: 1.5, sm: 2 },
-                  bgcolor: colorTokens.warning + '10',
-                  borderRadius: 2,
-                  border: `1px solid ${colorTokens.warning}30`
-                }}>
-                  <Typography variant="h5" sx={{
-                    color: colorTokens.warning,
-                    fontWeight: 700,
-                    mb: 0.5,
-                    fontSize: { xs: '1.25rem', sm: '1.5rem' }
+                <Grow in={true} timeout={700}>
+                  <Box sx={{
+                    textAlign: 'center',
+                    p: { xs: 2, sm: 2.5 },
+                    background: `linear-gradient(135deg, ${colorTokens.warning}15, ${colorTokens.warning}08)`,
+                    backdropFilter: 'blur(10px)',
+                    borderRadius: 3,
+                    border: `1px solid ${colorTokens.warning}40`,
+                    position: 'relative',
+                    overflow: 'hidden',
+                    transition: 'all 0.3s ease',
+                    '&:hover': {
+                      transform: 'translateY(-4px)',
+                      boxShadow: `0 8px 24px ${colorTokens.warning}30`
+                    },
+                    '&::before': {
+                      content: '""',
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      height: '3px',
+                      background: colorTokens.warning
+                    }
                   }}>
-                    {stats.expiring_soon}
-                  </Typography>
-                  <Typography variant="body2" sx={{
-                    color: colorTokens.textSecondary,
-                    fontWeight: 500,
-                    fontSize: { xs: '0.8rem', sm: '0.875rem' }
-                  }}>
-                    Por Renovar
-                  </Typography>
-                </Box>
+                    <Typography variant="h4" sx={{
+                      color: colorTokens.warning,
+                      fontWeight: 900,
+                      mb: 0.5,
+                      fontSize: { xs: '1.5rem', sm: '1.75rem' }
+                    }}>
+                      {stats.expiring_soon}
+                    </Typography>
+                    <Typography variant="body2" sx={{
+                      color: colorTokens.textSecondary,
+                      fontWeight: 600,
+                      fontSize: { xs: '0.8rem', sm: '0.875rem' }
+                    }}>
+                      Por Renovar
+                    </Typography>
+                  </Box>
+                </Grow>
               </Grid>
 
               <Grid size={12}>
-                <Divider sx={{ borderColor: colorTokens.divider, my: { xs: 1.5, sm: 2 } }} />
-                <Box sx={{
-                  textAlign: 'center',
-                  p: { xs: 2, sm: 2.5, md: 3 },
-                  bgcolor: colorTokens.brand + '10',
-                  borderRadius: 2,
-                  border: `1px solid ${colorTokens.brand}30`
-                }}>
-                  <Typography variant="h5" sx={{
-                    color: colorTokens.brand,
-                    fontWeight: 700,
-                    mb: 1,
-                    fontSize: { xs: '1.25rem', sm: '1.5rem' }
+                <Divider sx={{ borderColor: colorTokens.border, my: { xs: 1.5, sm: 2 } }} />
+                <Grow in={true} timeout={800}>
+                  <Box sx={{
+                    textAlign: 'center',
+                    p: { xs: 2.5, sm: 3 },
+                    background: `linear-gradient(135deg, ${colorTokens.brand}20, ${colorTokens.brand}10)`,
+                    backdropFilter: 'blur(10px)',
+                    borderRadius: 3,
+                    border: `2px solid ${colorTokens.brand}50`,
+                    position: 'relative',
+                    overflow: 'hidden',
+                    boxShadow: `0 4px 20px ${colorTokens.brand}30`,
+                    transition: 'all 0.3s ease',
+                    '&:hover': {
+                      transform: 'scale(1.02)',
+                      boxShadow: `0 8px 32px ${colorTokens.brand}40`
+                    },
+                    '&::before': {
+                      content: '""',
+                      position: 'absolute',
+                      top: 0,
+                      left: 0,
+                      right: 0,
+                      height: '4px',
+                      background: `linear-gradient(90deg, ${colorTokens.brand}, #FFD700, ${colorTokens.brand})`,
+                      backgroundSize: '200% 100%',
+                      animation: 'shimmer 2s linear infinite',
+                    }
                   }}>
-                    {formatPrice(stats.revenue_this_month)}
-                  </Typography>
-                  <Typography variant="body1" sx={{
-                    color: colorTokens.textPrimary,
-                    fontWeight: 600,
-                    fontSize: { xs: '0.9rem', sm: '1rem' }
-                  }}>
-                    💰 Ingresos Totales
-                  </Typography>
-                  <Typography variant="body2" sx={{
-                    color: colorTokens.textSecondary,
-                    fontSize: { xs: '0.8rem', sm: '0.875rem' }
-                  }}>
-                    Facturación del mes actual
-                  </Typography>
-                </Box>
+                    <AttachMoneyIcon sx={{
+                      fontSize: 40,
+                      color: colorTokens.brand,
+                      mb: 1,
+                      filter: `drop-shadow(0 0 10px ${colorTokens.brand}80)`
+                    }} />
+                    <Typography variant="h4" sx={{
+                      color: colorTokens.brand,
+                      fontWeight: 900,
+                      mb: 1,
+                      fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2rem' },
+                      textShadow: `0 0 15px ${colorTokens.brand}60`
+                    }}>
+                      {formatPrice(stats.revenue_this_month)}
+                    </Typography>
+                    <Typography variant="body1" sx={{
+                      color: colorTokens.textPrimary,
+                      fontWeight: 700,
+                      fontSize: { xs: '0.9rem', sm: '1rem' },
+                      mb: 0.5
+                    }}>
+                      Ingresos Totales
+                    </Typography>
+                    <Typography variant="body2" sx={{
+                      color: colorTokens.textSecondary,
+                      fontSize: { xs: '0.8rem', sm: '0.875rem' },
+                      fontWeight: 500
+                    }}>
+                      Facturación del mes actual
+                    </Typography>
+                  </Box>
+                </Grow>
               </Grid>
             </Grid>
           </Paper>
+          </Slide>
         </Grid>
       </Grid>
 

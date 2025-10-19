@@ -77,6 +77,7 @@ interface GymSettings {
   gym_logo_url: string | null;
   gym_facebook_url: string;
   gym_maps_url: string;
+  max_capacity: number;
   gym_hours: Record<string, { open: string; close: string; enabled: boolean }>;
 }
 
@@ -113,6 +114,7 @@ export default function ConfiguracionGeneralPage() {
     gym_logo_url: string;
     gym_facebook_url: string;
     gym_maps_url: string;
+    max_capacity: number;
     gym_hours: Record<string, { open: string; close: string; enabled: boolean }>;
   }>({
     gym_name: '',
@@ -122,6 +124,7 @@ export default function ConfiguracionGeneralPage() {
     gym_logo_url: '',
     gym_facebook_url: '',
     gym_maps_url: '',
+    max_capacity: 100,
     gym_hours: {}
   });
 
@@ -179,6 +182,7 @@ export default function ConfiguracionGeneralPage() {
           gym_logo_url: data.gym_logo_url || '',
           gym_facebook_url: data.gym_facebook_url || '',
           gym_maps_url: data.gym_maps_url || '',
+          max_capacity: data.max_capacity || 100,
           gym_hours: data.gym_hours || {}
         });
       }
@@ -500,6 +504,19 @@ export default function ConfiguracionGeneralPage() {
                       multiline
                       rows={3}
                       variant="outlined"
+                    />
+                  </Grid>
+
+                  <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+                    <TextField
+                      fullWidth
+                      label="Capacidad Máxima"
+                      type="number"
+                      value={gymForm.max_capacity || 100}
+                      onChange={(e) => setGymForm({ ...gymForm, max_capacity: parseInt(e.target.value) || 100 })}
+                      variant="outlined"
+                      helperText="Número máximo de personas permitidas simultáneamente"
+                      inputProps={{ min: 1, max: 9999 }}
                     />
                   </Grid>
                 </Grid>

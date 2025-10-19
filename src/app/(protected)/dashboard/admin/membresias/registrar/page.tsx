@@ -1,10 +1,10 @@
 'use client';
 
-import React, { 
-  memo, 
-  useCallback, 
-  useEffect, 
-  useMemo, 
+import React, {
+  memo,
+  useCallback,
+  useEffect,
+  useMemo,
   useRef,
   useState,
   ChangeEvent,
@@ -43,25 +43,30 @@ import {
   IconButton,
   LinearProgress,
   Badge,
-  Skeleton
+  Skeleton,
+  Fade,
+  Slide,
+  Zoom,
+  Grow
 } from '@mui/material';
 import Grid from '@mui/material/Grid';
 import { SelectChangeEvent } from '@mui/material/Select';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
+import confetti from 'canvas-confetti';
 
 // ✅ IMPORTACIONES ENTERPRISE v6.0
 import { colorTokens } from '@/theme';
 import { notify } from '@/utils/notifications';
 import { useHydrated } from '@/hooks/useHydrated';
 import { useUserTracking } from '@/hooks/useUserTracking';
-import { 
-  formatTimestampForDisplay, 
+import {
+  formatTimestampForDisplay,
   formatDateForDisplay,
   formatDateLong,
   getTodayInMexico,
   daysBetween,
-  addDaysToDate 
+  addDaysToDate
 } from '@/utils/dateUtils';
 
 // Hook personalizado v6.0
@@ -88,59 +93,98 @@ import FitnessCenterIcon from '@mui/icons-material/FitnessCenter';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 import ErrorOutlineIcon from '@mui/icons-material/ErrorOutline';
 import CloseIcon from '@mui/icons-material/Close';
+import MoneyIcon from '@mui/icons-material/Money';
+import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
+import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import CelebrationIcon from '@mui/icons-material/Celebration';
 
 // Tipos
 interface PaymentMethod {
   value: string;
   label: string;
-  icon: string;
+  icon: React.ReactElement;
   color: string;
   description: string;
   hasCommission: boolean;
 }
 
 const PAYMENT_METHODS: PaymentMethod[] = [
-  { 
-    value: 'efectivo', 
-    label: 'Efectivo', 
-    icon: '💵',
+  {
+    value: 'efectivo',
+    label: 'Efectivo',
+    icon: <MoneyIcon />,
     color: colorTokens.brand,
-    description: '',
+    description: 'Pago en efectivo',
     hasCommission: false
   },
-  { 
-    value: 'debito', 
-    label: 'Tarjeta de Débito', 
-    icon: '💳',
-    color: colorTokens.neutral600,
-    description: '',
+  {
+    value: 'debito',
+    label: 'Tarjeta de Débito',
+    icon: <CreditCardIcon />,
+    color: '#6366f1',
+    description: 'Tarjeta de débito',
     hasCommission: true
   },
-  { 
-    value: 'credito', 
-    label: 'Tarjeta de Crédito', 
-    icon: '💳',
-    color: colorTokens.neutral700,
-    description: '',
+  {
+    value: 'credito',
+    label: 'Tarjeta de Crédito',
+    icon: <AccountBalanceWalletIcon />,
+    color: '#8b5cf6',
+    description: 'Tarjeta de crédito',
     hasCommission: true
   },
-  { 
-    value: 'transferencia', 
-    label: 'Transferencia', 
-    icon: '🏦',
+  {
+    value: 'transferencia',
+    label: 'Transferencia',
+    icon: <AccountBalanceIcon />,
     color: colorTokens.info,
-    description: '',
+    description: 'Transferencia bancaria',
     hasCommission: false
   },
-  { 
-    value: 'mixto', 
-    label: 'Pago Mixto', 
-    icon: '🔄',
+  {
+    value: 'mixto',
+    label: 'Pago Mixto',
+    icon: <SwapHorizIcon />,
     color: colorTokens.warning,
     description: 'Combinar múltiples métodos de pago',
     hasCommission: true
   }
 ];
+
+// ✨ FUNCIÓN DE CONFETTI
+const triggerConfetti = () => {
+  const duration = 3 * 1000;
+  const animationEnd = Date.now() + duration;
+  const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 9999 };
+
+  const randomInRange = (min: number, max: number) => {
+    return Math.random() * (max - min) + min;
+  };
+
+  const interval: NodeJS.Timeout = setInterval(() => {
+    const timeLeft = animationEnd - Date.now();
+
+    if (timeLeft <= 0) {
+      return clearInterval(interval);
+    }
+
+    const particleCount = 50 * (timeLeft / duration);
+
+    confetti({
+      ...defaults,
+      particleCount,
+      origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 },
+      colors: ['#FFCC00', '#FFD700', '#FFA500', '#FF8C00']
+    });
+    confetti({
+      ...defaults,
+      particleCount,
+      origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 },
+      colors: ['#FFCC00', '#FFD700', '#FFA500', '#FF8C00']
+    });
+  }, 250);
+};
 
 // ✅ COMPONENTES MEMOIZADOS
 const SafeDate = memo<{ dateString: string; fallback?: string }>(({ 
@@ -214,14 +258,34 @@ const ProgressIndicator = memo(({ currentStep, totalSteps }: { currentStep: numb
 
   return (
     <Box sx={{ position: 'relative', display: 'inline-flex' }}>
-      <CircularProgress 
-        variant="determinate" 
+      {/* Background circle */}
+      <CircularProgress
+        variant="determinate"
+        value={100}
+        size={70}
+        thickness={3}
+        sx={{
+          color: 'rgba(255, 204, 0, 0.1)',
+          position: 'absolute',
+        }}
+      />
+      {/* Progress circle with gradient */}
+      <CircularProgress
+        variant="determinate"
         value={progress}
-        size={60}
-        thickness={4}
-        sx={{ 
+        size={70}
+        thickness={3}
+        sx={{
           color: colorTokens.brand,
-          '& .MuiCircularProgress-circle': { strokeLinecap: 'round' }
+          '& .MuiCircularProgress-circle': {
+            strokeLinecap: 'round',
+            filter: 'drop-shadow(0 0 8px rgba(255, 204, 0, 0.6))',
+            animation: 'glow 2s ease-in-out infinite'
+          },
+          '@keyframes glow': {
+            '0%, 100%': { filter: 'drop-shadow(0 0 4px rgba(255, 204, 0, 0.4))' },
+            '50%': { filter: 'drop-shadow(0 0 12px rgba(255, 204, 0, 0.8))' }
+          }
         }}
       />
       <Box sx={{
@@ -230,11 +294,17 @@ const ProgressIndicator = memo(({ currentStep, totalSteps }: { currentStep: numb
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
+        flexDirection: 'column'
       }}>
-        <Typography 
-          variant="caption" 
-          component="div" 
-          sx={{ color: colorTokens.brand, fontWeight: 700, fontSize: '0.9rem' }}
+        <Typography
+          variant="h6"
+          component="div"
+          sx={{
+            color: colorTokens.brand,
+            fontWeight: 900,
+            fontSize: '1.1rem',
+            textShadow: `0 0 10px ${colorTokens.brand}80`
+          }}
         >
           {displayPercentage}%
         </Typography>
@@ -305,9 +375,9 @@ const PriceLine = memo(({
 });
 PriceLine.displayName = 'PriceLine';
 
-const PaymentMethodCard = memo(({ 
-  method, 
-  selected, 
+const PaymentMethodCard = memo(({
+  method,
+  selected,
   onSelect,
   disabled = false
 }: {
@@ -322,27 +392,53 @@ const PaymentMethodCard = memo(({
 
   const cardStyles = useMemo(() => ({
     cursor: disabled ? 'not-allowed' : 'pointer',
-    background: selected ? 
-      `linear-gradient(135deg, ${method.color}20, ${method.color}10)` :
-      `${colorTokens.surfaceLevel2}05`,
-    border: selected ? 
-      `3px solid ${method.color}` : 
-      `1px solid ${colorTokens.neutral400}`,
-    borderRadius: 3,
-    transition: 'all 0.3s ease',
-    minHeight: '140px',
+    background: selected
+      ? `linear-gradient(135deg, ${method.color}30, ${method.color}15)`
+      : `rgba(255, 255, 255, 0.03)`,
+    backdropFilter: selected ? 'blur(20px)' : 'blur(10px)',
+    border: selected
+      ? `3px solid ${method.color}`
+      : `1px solid rgba(255, 255, 255, 0.1)`,
+    borderRadius: 4,
+    transition: 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)',
+    minHeight: '160px',
     opacity: disabled ? 0.5 : 1,
+    position: 'relative',
+    overflow: 'hidden',
     '&:hover': !disabled ? {
       borderColor: method.color,
-      transform: 'translateY(-2px)',
-      boxShadow: `0 4px 20px ${method.color}30`
+      transform: 'translateY(-8px) scale(1.02)',
+      boxShadow: `0 12px 40px ${method.color}40, 0 0 0 1px ${method.color}20`,
+      background: `linear-gradient(135deg, ${method.color}20, ${method.color}10)`,
+      backdropFilter: 'blur(25px)',
     } : {},
+    '&::before': selected ? {
+      content: '""',
+      position: 'absolute',
+      top: 0,
+      left: 0,
+      right: 0,
+      height: '4px',
+      background: `linear-gradient(90deg, ${method.color}, ${method.color}AA)`,
+      animation: 'shimmer 2s infinite',
+    } : {},
+    '@keyframes shimmer': {
+      '0%': { opacity: 0.5 },
+      '50%': { opacity: 1 },
+      '100%': { opacity: 0.5 },
+    },
   }), [disabled, selected, method.color]);
 
   return (
-    <motion.div whileHover={!disabled ? { scale: 1.02 } : {}} whileTap={!disabled ? { scale: 0.98 } : {}}>
-      <Card 
-        onClick={handleClick} 
+    <motion.div
+      whileHover={!disabled ? { scale: 1.03 } : {}}
+      whileTap={!disabled ? { scale: 0.97 } : {}}
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+    >
+      <Card
+        onClick={handleClick}
         sx={cardStyles}
         role="button"
         tabIndex={disabled ? -1 : 0}
@@ -353,45 +449,79 @@ const PaymentMethodCard = memo(({
           }
         }}
       >
-        <CardContent sx={{ 
+        <CardContent sx={{
           textAlign: 'center',
           height: '100%',
           display: 'flex',
           flexDirection: 'column',
           justifyContent: 'center',
+          alignItems: 'center',
           position: 'relative',
           p: 3
         }}>
-          <Typography variant="h3" sx={{ mb: 1 }}>
+          <Box sx={{
+            width: 60,
+            height: 60,
+            borderRadius: '50%',
+            background: selected
+              ? `linear-gradient(135deg, ${method.color}, ${method.color}CC)`
+              : `rgba(255, 255, 255, 0.05)`,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            mb: 2,
+            transition: 'all 0.3s ease',
+            boxShadow: selected ? `0 4px 20px ${method.color}50` : 'none',
+            '& svg': {
+              fontSize: 30,
+              color: selected ? colorTokens.neutral0 : method.color,
+              transition: 'all 0.3s ease'
+            }
+          }}>
             {method.icon}
-          </Typography>
-          <Typography variant="h6" sx={{ 
+          </Box>
+
+          <Typography variant="h6" sx={{
             color: disabled ? colorTokens.neutral600 : colorTokens.textPrimary,
-            fontWeight: 600,
-            fontSize: '0.9rem',
-            mb: 1
+            fontWeight: 700,
+            fontSize: '1rem',
+            mb: 0.5
           }}>
             {method.label}
           </Typography>
-          {method.description && (
-            <Typography variant="caption" sx={{ 
-              color: disabled ? colorTokens.neutral600 : colorTokens.textSecondary,
-              fontSize: '0.75rem',
-              lineHeight: 1.3
-            }}>
-              {disabled && method.value === 'mixto' ? 
-                'Use el toggle de arriba para activar' : 
-                method.description
-              }
-            </Typography>
-          )}
+
+          <Typography variant="caption" sx={{
+            color: disabled ? colorTokens.neutral600 : colorTokens.textSecondary,
+            fontSize: '0.75rem',
+            lineHeight: 1.4
+          }}>
+            {disabled && method.value === 'mixto'
+              ? 'Use el toggle de arriba para activar'
+              : method.description
+            }
+          </Typography>
+
           {selected && !disabled && (
-            <CheckCircleIcon sx={{ 
-              color: method.color,
-              position: 'absolute',
-              top: 8,
-              right: 8
-            }} />
+            <Zoom in={selected}>
+              <Box sx={{
+                position: 'absolute',
+                top: 12,
+                right: 12,
+                width: 32,
+                height: 32,
+                borderRadius: '50%',
+                background: `linear-gradient(135deg, ${method.color}, ${method.color}CC)`,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                boxShadow: `0 2px 12px ${method.color}60`
+              }}>
+                <CheckCircleIcon sx={{
+                  color: colorTokens.neutral0,
+                  fontSize: 20
+                }} />
+              </Box>
+            </Zoom>
           )}
         </CardContent>
       </Card>
@@ -653,10 +783,12 @@ function RegistrarMembresiaPage() {
     try {
       const success = await handleSubmit();
       if (success) {
-        notify.success('¡Venta procesada exitosamente!');
+        // 🎉 Trigger confetti celebration
+        triggerConfetti();
+        notify.success('¡Venta procesada exitosamente! 🎉');
         setTimeout(() => {
           router.push('/dashboard/admin/membresias');
-        }, 2000);
+        }, 3000);
       }
     } catch (error) {
       console.error('Error procesando venta:', error);
@@ -769,72 +901,148 @@ function RegistrarMembresiaPage() {
         minHeight: '100vh',
         color: colorTokens.textPrimary
       }}>
-        <Paper sx={{
-          p: { xs: 2, sm: 2.5, md: 3 },
-          mb: { xs: 2, sm: 2.5, md: 3 },
-          background: `linear-gradient(135deg, ${colorTokens.surfaceLevel2}, ${colorTokens.surfaceLevel3})`,
-          border: `1px solid ${colorTokens.neutral400}`,
-          borderRadius: 3
-        }}>
-          <Box sx={{
-            display: 'flex',
-            flexDirection: { xs: 'column', md: 'row' },
-            justifyContent: 'space-between',
-            alignItems: { xs: 'flex-start', md: 'center' },
+        <Fade in={true} timeout={600}>
+          <Paper sx={{
+            p: { xs: 2, sm: 2.5, md: 3 },
             mb: { xs: 2, sm: 2.5, md: 3 },
-            gap: 2
+            background: `linear-gradient(135deg, rgba(255, 204, 0, 0.08) 0%, rgba(0, 0, 0, 0.4) 100%)`,
+            backdropFilter: 'blur(20px)',
+            border: `1px solid rgba(255, 204, 0, 0.2)`,
+            borderRadius: 4,
+            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3), inset 0 1px 0 rgba(255, 255, 255, 0.1)',
+            position: 'relative',
+            overflow: 'hidden',
+            '&::before': {
+              content: '""',
+              position: 'absolute',
+              top: 0,
+              left: '-100%',
+              width: '100%',
+              height: '100%',
+              background: 'linear-gradient(90deg, transparent, rgba(255, 204, 0, 0.1), transparent)',
+              animation: 'shine 3s infinite',
+            },
+            '@keyframes shine': {
+              '0%': { left: '-100%' },
+              '100%': { left: '100%' }
+            }
           }}>
-            <Box>
-              <Typography variant="h4" sx={{
-                color: colorTokens.brand,
-                fontWeight: 700,
-                display: 'flex',
-                alignItems: 'center',
-                gap: { xs: 1.5, sm: 2 },
-                fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2.125rem' }
-              }}>
-                <PersonAddAltIcon sx={{ fontSize: { xs: 28, sm: 34, md: 40 } }} />
-                <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>Nueva Venta de Membresía</Box>
-                <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>Nueva Venta</Box>
-              </Typography>
-              <Typography variant="body1" sx={{ color: colorTokens.textSecondary, mt: 1, fontSize: { xs: '0.875rem', sm: '1rem' }, display: { xs: 'none', sm: 'block' } }}>
-                Sistema de punto de venta para membresías
-              </Typography>
-            </Box>
-
-            <Box sx={{ display: 'flex', gap: { xs: 1.5, sm: 2 }, alignItems: 'center', width: { xs: '100%', md: 'auto' } }}>
-              <Box sx={{ display: { xs: 'none', sm: 'block' } }}>
-                <ProgressIndicator currentStep={activeStep + 1} totalSteps={steps.length} />
-              </Box>
-              <Button
-                startIcon={<ArrowBackIcon sx={{ fontSize: { xs: 18, sm: 20 } }} />}
-                onClick={handleBack}
-                variant="outlined"
-                sx={{
+            <Box sx={{
+              display: 'flex',
+              flexDirection: { xs: 'column', md: 'row' },
+              justifyContent: 'space-between',
+              alignItems: { xs: 'flex-start', md: 'center' },
+              mb: { xs: 2, sm: 2.5, md: 3 },
+              gap: 2,
+              position: 'relative',
+              zIndex: 1
+            }}>
+              <Box>
+                <Typography variant="h4" sx={{
                   color: colorTokens.brand,
-                  borderColor: colorTokens.brand,
-                  borderWidth: '2px',
-                  fontWeight: 600,
-                  fontSize: { xs: '0.8rem', sm: '0.875rem' },
-                  py: { xs: 0.75, sm: 1 }
-                }}
-              >
-                Dashboard
-              </Button>
-            </Box>
-          </Box>
+                  fontWeight: 800,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: { xs: 1.5, sm: 2 },
+                  fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2.125rem' },
+                  textShadow: `0 0 20px ${colorTokens.brand}60`,
+                  letterSpacing: '0.5px'
+                }}>
+                  <Box sx={{
+                    width: { xs: 40, sm: 48, md: 56 },
+                    height: { xs: 40, sm: 48, md: 56 },
+                    borderRadius: '14px',
+                    background: `linear-gradient(135deg, ${colorTokens.brand}, ${colorTokens.brand}CC)`,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: `0 4px 20px ${colorTokens.brand}60`,
+                    animation: 'float 3s ease-in-out infinite',
+                    '@keyframes float': {
+                      '0%, 100%': { transform: 'translateY(0px)' },
+                      '50%': { transform: 'translateY(-5px)' }
+                    }
+                  }}>
+                    <PersonAddAltIcon sx={{ fontSize: { xs: 24, sm: 28, md: 32 }, color: colorTokens.neutral0 }} />
+                  </Box>
+                  <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>Nueva Venta de Membresía</Box>
+                  <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>Nueva Venta</Box>
+                </Typography>
+                <Typography variant="body1" sx={{
+                  color: colorTokens.textSecondary,
+                  mt: 1,
+                  fontSize: { xs: '0.875rem', sm: '1rem' },
+                  display: { xs: 'none', sm: 'block' },
+                  fontWeight: 500,
+                  opacity: 0.9
+                }}>
+                  Sistema de punto de venta para membresías
+                </Typography>
+              </Box>
 
-          <Box>
-            <LinearProgress 
-              variant="determinate" 
+              <Box sx={{ display: 'flex', gap: { xs: 1.5, sm: 2 }, alignItems: 'center', width: { xs: '100%', md: 'auto' } }}>
+                <Box sx={{ display: { xs: 'none', sm: 'block' } }}>
+                  <ProgressIndicator currentStep={activeStep + 1} totalSteps={steps.length} />
+                </Box>
+                <Button
+                  startIcon={<ArrowBackIcon sx={{ fontSize: { xs: 18, sm: 20 } }} />}
+                  onClick={handleBack}
+                  variant="outlined"
+                  sx={{
+                    color: colorTokens.brand,
+                    borderColor: colorTokens.brand,
+                    borderWidth: '2px',
+                    fontWeight: 700,
+                    fontSize: { xs: '0.8rem', sm: '0.875rem' },
+                    py: { xs: 0.75, sm: 1 },
+                    px: { xs: 2, sm: 3 },
+                    backdropFilter: 'blur(10px)',
+                    background: 'rgba(255, 204, 0, 0.05)',
+                    transition: 'all 0.3s ease',
+                    '&:hover': {
+                      borderWidth: '2px',
+                      background: `linear-gradient(135deg, ${colorTokens.brand}, ${colorTokens.brand}CC)`,
+                      color: colorTokens.neutral0,
+                      transform: 'translateY(-2px)',
+                      boxShadow: `0 6px 20px ${colorTokens.brand}50`
+                    }
+                  }}
+                >
+                  Dashboard
+                </Button>
+              </Box>
+            </Box>
+
+          <Box sx={{ position: 'relative', zIndex: 1 }}>
+            <LinearProgress
+              variant="determinate"
               value={(activeStep + 1) / steps.length * 100}
               sx={{
-                height: 8,
-                borderRadius: 4,
-                backgroundColor: `${colorTokens.brand}20`,
+                height: 10,
+                borderRadius: 5,
+                backgroundColor: 'rgba(255, 204, 0, 0.15)',
+                boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.2)',
                 '& .MuiLinearProgress-bar': {
-                  borderRadius: 4,
-                  background: `linear-gradient(90deg, ${colorTokens.brand}, ${colorTokens.brand}DD)`
+                  borderRadius: 5,
+                  background: `linear-gradient(90deg, ${colorTokens.brand} 0%, #FFD700 50%, ${colorTokens.brand} 100%)`,
+                  backgroundSize: '200% 100%',
+                  animation: 'shimmerProgress 2s ease infinite',
+                  boxShadow: `0 0 15px ${colorTokens.brand}80`,
+                  position: 'relative',
+                  '&::after': {
+                    content: '""',
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    height: '50%',
+                    background: 'linear-gradient(180deg, rgba(255, 255, 255, 0.3), transparent)',
+                    borderRadius: '5px 5px 0 0'
+                  }
+                },
+                '@keyframes shimmerProgress': {
+                  '0%': { backgroundPosition: '-200% 0' },
+                  '100%': { backgroundPosition: '200% 0' }
                 }
               }}
             />
@@ -865,13 +1073,20 @@ function RegistrarMembresiaPage() {
                 sx={{
                   backgroundColor: colorTokens.brand,
                   color: colorTokens.textOnBrand,
-                  fontWeight: 700,
-                  fontSize: { xs: '0.8rem', sm: '0.875rem' }
+                  fontWeight: 800,
+                  fontSize: { xs: '0.8rem', sm: '0.875rem' },
+                  boxShadow: `0 4px 12px ${colorTokens.brand}50`,
+                  animation: 'pulse 2s ease-in-out infinite',
+                  '@keyframes pulse': {
+                    '0%, 100%': { transform: 'scale(1)' },
+                    '50%': { transform: 'scale(1.05)' }
+                  }
                 }}
               />
             </Box>
           </Box>
         </Paper>
+        </Fade>
 
         <Grid container spacing={{ xs: 2, sm: 2.5, md: 3 }}>
           <Grid size={{ xs: 12, lg: 8 }}>
@@ -1579,81 +1794,245 @@ function RegistrarMembresiaPage() {
                                 </Grid>
 
                                 {selectedPaymentMethod === 'efectivo' && (
-                                  <Card sx={{
-                                    background: `linear-gradient(135deg, ${colorTokens.brand}15, ${colorTokens.brand}05)`,
-                                    border: `2px solid ${colorTokens.brand}50`,
-                                    borderRadius: 3,
-                                    mt: 3
-                                  }}>
-                                    <CardContent sx={{ p: 4 }}>
-                                      <Typography variant="h6" sx={{ color: colorTokens.brand, mb: 3, fontWeight: 700 }}>
-                                        Calculadora de Efectivo
-                                      </Typography>
+                                  <Fade in={true} timeout={400}>
+                                    <Card sx={{
+                                      background: `rgba(255, 204, 0, 0.05)`,
+                                      backdropFilter: 'blur(10px)',
+                                      border: `1px solid ${colorTokens.brand}40`,
+                                      borderRadius: 3,
+                                      mt: 3,
+                                      boxShadow: `0 4px 16px rgba(0, 0, 0, 0.2)`
+                                    }}>
+                                      <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
+                                        <Typography variant="subtitle1" sx={{
+                                          color: colorTokens.brand,
+                                          fontWeight: 700,
+                                          mb: 2,
+                                          fontSize: '0.95rem',
+                                          display: 'flex',
+                                          alignItems: 'center',
+                                          gap: 1
+                                        }}>
+                                          <MoneyIcon sx={{ fontSize: 20 }} />
+                                          Calculadora de Efectivo
+                                        </Typography>
 
-                                      <Grid container spacing={3}>
-                                        <Grid size={{ xs: 12, md: 6 }}>
-                                          <TextField
-                                            fullWidth
-                                            label="Total a Cobrar"
-                                            value={formatPrice(finalAmount)}
-                                            disabled
-                                            InputProps={{
-                                              sx: {
-                                                color: colorTokens.textPrimary,
-                                                backgroundColor: `${colorTokens.brand}10`,
-                                                fontSize: '1.3rem',
-                                                fontWeight: 700
-                                              }
-                                            }}
-                                          />
-                                        </Grid>
-
-                                        <Grid size={{ xs: 12, md: 6 }}>
-                                          <TextField
-                                            fullWidth
-                                            label="Dinero Recibido"
-                                            type="number"
-                                            value={paymentReceived || ''}
-                                            onChange={handlePaymentReceivedChange}
-                                            placeholder="0.00"
-                                            InputProps={{
-                                              startAdornment: (
-                                                <InputAdornment position="start">
-                                                  <AttachMoneyIcon sx={{ color: colorTokens.brand }} />
-                                                </InputAdornment>
-                                              )
-                                            }}
-                                          />
-                                        </Grid>
-
-                                        <Grid size={12}>
-                                          <Box sx={{
-                                            background: paymentChange > 0 
-                                              ? `linear-gradient(135deg, ${colorTokens.brand}20, ${colorTokens.brand}10)`
-                                              : `${colorTokens.neutral600}05`,
-                                            border: paymentChange > 0 ? `2px solid ${colorTokens.brand}` : `1px solid ${colorTokens.neutral400}`,
-                                            borderRadius: 3,
-                                            p: 3,
-                                            textAlign: 'center'
-                                          }}>
-                                            <Typography variant="h4" sx={{ 
-                                              color: paymentChange > 0 ? colorTokens.brand : colorTokens.textSecondary,
-                                              fontWeight: 800,
-                                              mb: 1
+                                        <Grid container spacing={2}>
+                                          {/* Total en una línea compacta */}
+                                          <Grid size={12}>
+                                            <Box sx={{
+                                              display: 'flex',
+                                              justifyContent: 'space-between',
+                                              alignItems: 'center',
+                                              background: `rgba(255, 204, 0, 0.1)`,
+                                              border: `1px solid ${colorTokens.brand}50`,
+                                              borderRadius: 2,
+                                              px: 2,
+                                              py: 1.5
                                             }}>
-                                              {paymentChange > 0 ? `Cambio: ${formatPrice(paymentChange)}` : 'Cambio: $0.00'}
-                                            </Typography>
-                                            <Typography variant="body1" sx={{ color: colorTokens.textSecondary }}>
-                                              {paymentReceived < finalAmount 
-                                                ? `Faltan: ${formatPrice(finalAmount - paymentReceived)}`
-                                                : paymentChange > 0 ? 'Entregar cambio al cliente' : 'Pago exacto'
-                                              }
-                                            </Typography>
-                                          </Box>
+                                              <Typography variant="body2" sx={{
+                                                color: colorTokens.textSecondary,
+                                                fontWeight: 600,
+                                                fontSize: '0.85rem'
+                                              }}>
+                                                Total a Cobrar:
+                                              </Typography>
+                                              <Typography variant="h6" sx={{
+                                                color: colorTokens.brand,
+                                                fontWeight: 800,
+                                                fontSize: '1.3rem'
+                                              }}>
+                                                {formatPrice(finalAmount)}
+                                              </Typography>
+                                            </Box>
+                                          </Grid>
+
+                                          {/* Denominaciones más compactas */}
+                                          <Grid size={12}>
+                                            <Grid container spacing={1}>
+                                              {[1000, 500, 200, 100, 50, 20].map((amount) => (
+                                                <Grid key={amount} size={{ xs: 4, sm: 2 }}>
+                                                  <Button
+                                                    fullWidth
+                                                    size="small"
+                                                    variant="outlined"
+                                                    onClick={() => {
+                                                      const newAmount = (paymentReceived || 0) + amount;
+                                                      setPaymentReceived(newAmount);
+                                                      setPaymentChange(Math.max(0, newAmount - finalAmount));
+                                                    }}
+                                                    sx={{
+                                                      borderColor: `${colorTokens.brand}60`,
+                                                      color: colorTokens.brand,
+                                                      fontWeight: 600,
+                                                      fontSize: '0.75rem',
+                                                      py: 0.75,
+                                                      minWidth: 'unset',
+                                                      transition: 'all 0.2s ease',
+                                                      '&:hover': {
+                                                        borderColor: colorTokens.brand,
+                                                        background: colorTokens.brand,
+                                                        color: colorTokens.neutral0,
+                                                        transform: 'scale(1.05)'
+                                                      }
+                                                    }}
+                                                  >
+                                                    ${amount}
+                                                  </Button>
+                                                </Grid>
+                                              ))}
+                                            </Grid>
+                                          </Grid>
+
+                                          {/* Input + Botón exacto en dos columnas */}
+                                          <Grid size={{ xs: 12, sm: 8 }}>
+                                            <TextField
+                                              fullWidth
+                                              size="small"
+                                              label="Recibido"
+                                              type="number"
+                                              value={paymentReceived || ''}
+                                              onChange={handlePaymentReceivedChange}
+                                              placeholder="0.00"
+                                              InputProps={{
+                                                startAdornment: (
+                                                  <InputAdornment position="start">
+                                                    <AttachMoneyIcon sx={{ color: colorTokens.brand, fontSize: 20 }} />
+                                                  </InputAdornment>
+                                                ),
+                                                endAdornment: paymentReceived > 0 && (
+                                                  <InputAdornment position="end">
+                                                    <IconButton
+                                                      size="small"
+                                                      onClick={() => {
+                                                        setPaymentReceived(0);
+                                                        setPaymentChange(0);
+                                                      }}
+                                                      sx={{ color: colorTokens.danger, p: 0.5 }}
+                                                    >
+                                                      <CloseIcon sx={{ fontSize: 18 }} />
+                                                    </IconButton>
+                                                  </InputAdornment>
+                                                ),
+                                                sx: {
+                                                  fontSize: '1.1rem',
+                                                  fontWeight: 600,
+                                                  '& input': {
+                                                    textAlign: 'right',
+                                                    fontSize: '1.1rem',
+                                                    py: 1
+                                                  }
+                                                }
+                                              }}
+                                            />
+                                          </Grid>
+
+                                          <Grid size={{ xs: 12, sm: 4 }}>
+                                            <Button
+                                              fullWidth
+                                              size="small"
+                                              variant="outlined"
+                                              onClick={() => {
+                                                setPaymentReceived(finalAmount);
+                                                setPaymentChange(0);
+                                              }}
+                                              sx={{
+                                                borderColor: colorTokens.success,
+                                                color: colorTokens.success,
+                                                fontWeight: 600,
+                                                fontSize: '0.8rem',
+                                                py: 1.2,
+                                                height: '100%',
+                                                '&:hover': {
+                                                  background: colorTokens.success,
+                                                  color: colorTokens.neutral0,
+                                                  borderColor: colorTokens.success
+                                                }
+                                              }}
+                                            >
+                                              Exacto
+                                            </Button>
+                                          </Grid>
+
+                                          {/* Display de cambio compacto */}
+                                          {paymentReceived > 0 && (
+                                            <Grid size={12}>
+                                              <Grow in={true} timeout={300}>
+                                                <Box sx={{
+                                                  background: paymentReceived < finalAmount
+                                                    ? `rgba(239, 68, 68, 0.1)`
+                                                    : paymentChange > 0
+                                                      ? `rgba(255, 204, 0, 0.15)`
+                                                      : `rgba(34, 197, 94, 0.1)`,
+                                                  border: paymentReceived < finalAmount
+                                                    ? `2px solid ${colorTokens.danger}`
+                                                    : paymentChange > 0
+                                                      ? `2px solid ${colorTokens.brand}`
+                                                      : `2px solid ${colorTokens.success}`,
+                                                  borderRadius: 2,
+                                                  p: 2,
+                                                  textAlign: 'center'
+                                                }}>
+                                                  {paymentReceived < finalAmount ? (
+                                                    <>
+                                                      <Typography variant="body2" sx={{
+                                                        color: colorTokens.danger,
+                                                        fontWeight: 700,
+                                                        fontSize: '0.8rem',
+                                                        mb: 0.5
+                                                      }}>
+                                                        FALTA
+                                                      </Typography>
+                                                      <Typography variant="h6" sx={{
+                                                        color: colorTokens.danger,
+                                                        fontWeight: 800,
+                                                        fontSize: '1.3rem'
+                                                      }}>
+                                                        {formatPrice(finalAmount - paymentReceived)}
+                                                      </Typography>
+                                                    </>
+                                                  ) : paymentChange > 0 ? (
+                                                    <>
+                                                      <Typography variant="body2" sx={{
+                                                        color: colorTokens.brand,
+                                                        fontWeight: 700,
+                                                        fontSize: '0.8rem',
+                                                        mb: 0.5
+                                                      }}>
+                                                        CAMBIO
+                                                      </Typography>
+                                                      <Typography variant="h5" sx={{
+                                                        color: colorTokens.brand,
+                                                        fontWeight: 900,
+                                                        fontSize: '1.8rem'
+                                                      }}>
+                                                        {formatPrice(paymentChange)}
+                                                      </Typography>
+                                                    </>
+                                                  ) : (
+                                                    <>
+                                                      <CheckCircleIcon sx={{
+                                                        color: colorTokens.success,
+                                                        fontSize: 32,
+                                                        mb: 0.5
+                                                      }} />
+                                                      <Typography variant="body2" sx={{
+                                                        color: colorTokens.success,
+                                                        fontWeight: 700,
+                                                        fontSize: '0.85rem'
+                                                      }}>
+                                                        Pago Exacto
+                                                      </Typography>
+                                                    </>
+                                                  )}
+                                                </Box>
+                                              </Grow>
+                                            </Grid>
+                                          )}
                                         </Grid>
-                                      </Grid>
-                                    </CardContent>
-                                  </Card>
+                                      </CardContent>
+                                    </Card>
+                                  </Fade>
                                 )}
 
                                 {(selectedPaymentMethod === 'debito' || selectedPaymentMethod === 'credito' || selectedPaymentMethod === 'transferencia') && (
@@ -1872,17 +2251,66 @@ function RegistrarMembresiaPage() {
 
           {/* RESUMEN */}
           <Grid size={{ xs: 12, lg: 4 }}>
-            <Paper sx={{
-              p: 3,
-              background: `linear-gradient(135deg, ${colorTokens.surfaceLevel2}, ${colorTokens.surfaceLevel3})`,
-              border: `2px solid ${colorTokens.brand}30`,
-              borderRadius: 3,
-              position: { lg: 'sticky' },
-              top: { lg: 20 }
-            }}>
-              <Typography variant="h6" sx={{ color: colorTokens.brand, mb: 3, fontWeight: 700 }}>
-                <ReceiptIcon /> Resumen de Venta
-              </Typography>
+            <Slide direction="left" in={true} timeout={800}>
+              <Paper sx={{
+                p: 3,
+                background: `linear-gradient(180deg, rgba(255, 204, 0, 0.05) 0%, rgba(0, 0, 0, 0.3) 100%)`,
+                backdropFilter: 'blur(20px)',
+                border: `2px solid ${colorTokens.brand}40`,
+                borderRadius: 4,
+                position: { lg: 'sticky' },
+                top: { lg: 20 },
+                boxShadow: `0 8px 32px rgba(255, 204, 0, 0.15), inset 0 1px 0 rgba(255, 255, 255, 0.1)`,
+                overflow: 'hidden',
+                '&::before': {
+                  content: '""',
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  height: '6px',
+                  background: `linear-gradient(90deg, ${colorTokens.brand}, ${colorTokens.brand}AA, ${colorTokens.brand})`,
+                  backgroundSize: '200% 100%',
+                  animation: 'shimmerBar 3s linear infinite',
+                },
+                '@keyframes shimmerBar': {
+                  '0%': { backgroundPosition: '-200% 0' },
+                  '100%': { backgroundPosition: '200% 0' }
+                },
+                '&::after': {
+                  content: '""',
+                  position: 'absolute',
+                  top: 0,
+                  right: 0,
+                  width: '100%',
+                  height: '100%',
+                  background: 'repeating-linear-gradient(0deg, transparent, transparent 10px, rgba(255, 204, 0, 0.03) 10px, rgba(255, 204, 0, 0.03) 20px)',
+                  pointerEvents: 'none'
+                }
+              }}>
+                <Box sx={{ position: 'relative', zIndex: 1 }}>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
+                    <Box sx={{
+                      width: 48,
+                      height: 48,
+                      borderRadius: '12px',
+                      background: `linear-gradient(135deg, ${colorTokens.brand}, ${colorTokens.brand}CC)`,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      boxShadow: `0 4px 16px ${colorTokens.brand}50`,
+                      animation: 'pulse 2s ease-in-out infinite',
+                      '@keyframes pulse': {
+                        '0%, 100%': { transform: 'scale(1)' },
+                        '50%': { transform: 'scale(1.05)' }
+                      }
+                    }}>
+                      <ReceiptIcon sx={{ color: colorTokens.neutral0, fontSize: 26 }} />
+                    </Box>
+                    <Typography variant="h5" sx={{ color: colorTokens.brand, fontWeight: 800, letterSpacing: '0.5px' }}>
+                      Resumen de Venta
+                    </Typography>
+                  </Box>
 
               {selectedUser && (
                 <Box sx={{ mb: 3 }}>
@@ -2012,12 +2440,15 @@ function RegistrarMembresiaPage() {
 
               {(!selectedUser || !selectedPlan) && (
                 <Box sx={{ textAlign: 'center', py: 6 }}>
-                  <Typography variant="body1" sx={{ color: colorTokens.textSecondary }}>
+                  <AutoAwesomeIcon sx={{ fontSize: 60, color: colorTokens.brand, opacity: 0.3, mb: 2 }} />
+                  <Typography variant="body1" sx={{ color: colorTokens.textSecondary, fontWeight: 500 }}>
                     Seleccione un cliente y plan para ver el resumen
                   </Typography>
                 </Box>
               )}
-            </Paper>
+                </Box>
+              </Paper>
+            </Slide>
           </Grid>
         </Grid>
 

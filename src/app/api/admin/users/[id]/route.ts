@@ -4,9 +4,10 @@ import { supabaseAdmin } from '@/lib/supabase/admin';
 // GET /api/admin/users/[id] - Obtener un usuario específico y sus datos relacionados
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const params = await context.params;
     const id = params.id;
     
     // Obtener datos del usuario
@@ -78,9 +79,10 @@ export async function GET(
 // PUT /api/admin/users/[id] - Actualizar un usuario existente
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const params = await context.params;
     const id = params.id;
     const userData = await request.json();
     
@@ -413,9 +415,10 @@ const auditDeletion = async (userId: string, deletedBy?: string): Promise<void> 
 // 🚀 FUNCIÓN DELETE COMPLETA Y MEJORADA
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const params = await context.params;
     const userId = params.id;
     
     console.log(`🚀 Iniciando eliminación completa del usuario: ${userId}`);

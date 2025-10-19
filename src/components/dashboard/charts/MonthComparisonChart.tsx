@@ -4,6 +4,7 @@
 import React from 'react';
 import { Box, Card, CardContent, Typography, Skeleton, useMediaQuery, useTheme, Chip } from '@mui/material';
 import { BarChart } from '@mui/x-charts/BarChart';
+import { ChartsReferenceLine } from '@mui/x-charts/ChartsReferenceLine';
 import { motion } from 'framer-motion';
 import { colorTokens } from '@/theme';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
@@ -70,6 +71,9 @@ export const MonthComparisonChart: React.FC<MonthComparisonChartProps> = ({
   const xAxisData = [data.previousMonth.name, data.currentMonth.name];
   const salesData = [data.previousMonth.sales, data.currentMonth.sales];
   const membershipsData = [data.previousMonth.memberships, data.currentMonth.memberships];
+
+  // Calcular valor máximo
+  const maxValue = Math.max(data.previousMonth.total, data.currentMonth.total);
 
   return (
     <motion.div
@@ -256,7 +260,26 @@ export const MonthComparisonChart: React.FC<MonthComparisonChartProps> = ({
                   padding: isMobile ? 5 : 8
                 }
               }}
-            />
+            >
+              {/* Línea de referencia MAX */}
+              {maxValue > 0 && (
+                <ChartsReferenceLine
+                  y={maxValue}
+                  label={`Máx: $${maxValue.toLocaleString('es-MX')}`}
+                  labelAlign="end"
+                  lineStyle={{
+                    stroke: colorTokens.danger,
+                    strokeDasharray: '5 5',
+                    strokeWidth: 2
+                  }}
+                  labelStyle={{
+                    fontSize: isMobile ? 11 : 13,
+                    fontWeight: 700,
+                    fill: colorTokens.danger
+                  }}
+                />
+              )}
+            </BarChart>
           </Box>
 
           {/* Summary Cards */}

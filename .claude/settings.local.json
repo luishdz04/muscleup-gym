@@ -25,7 +25,8 @@
       "Bash(sudo apt-get install -y postgresql-client)",
       "Bash(pg_dump --version)",
       "Bash(cat /workspaces/muscleup-gym/.env.local)",
-      "Bash(python3 -m json.tool)"
+      "Bash(python3 -m json.tool)",
+      "Bash(npm install canvas-confetti @types/canvas-confetti --save)"
     ],
     "deny": [],
     "ask": []

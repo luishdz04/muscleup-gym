@@ -423,7 +423,7 @@ export default function DashboardPage() {
             <Typography
               variant="h4"
               sx={{
-                color: colorTokens.brand,
+                color: colorTokens.textPrimary,
                 fontWeight: 700,
                 display: 'flex',
                 alignItems: 'center',
@@ -433,7 +433,7 @@ export default function DashboardPage() {
               }}
             >
               <AssessmentIcon sx={{ fontSize: { xs: 32, sm: 38, md: 44 }, color: colorTokens.brand }} />
-              Dashboard MuscleUp Gym
+              Dashboard MUP
             </Typography>
             <Typography
               variant="body2"
