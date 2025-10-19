@@ -56,7 +56,9 @@ import {
   LocalOffer as LocalOfferIcon,
   Info as InfoIcon,
   Refresh as RefreshIcon,
-  MoneyOff as MoneyOffIcon
+  MoneyOff as MoneyOffIcon,
+  PictureAsPdf as PictureAsPdfIcon,
+  ArrowBack as ArrowBackIcon
 } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -259,6 +261,7 @@ export default function NuevoCorteePage() {
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [createdCutId, setCreatedCutId] = useState<string | null>(null);
   const [observations, setObservations] = useState('');
   const [cutExists, setCutExists] = useState(false);
   const [isManualMode, setIsManualMode] = useState(false);
@@ -701,9 +704,11 @@ export default function NuevoCorteePage() {
       
       if (result.success) {
         setSuccess(`✅ Corte creado exitosamente: ${result.cut_number}`);
-        setTimeout(() => {
-          router.push(`/dashboard/admin/cortes`);
-        }, 2000);
+        setCreatedCutId(result.cut_id);
+        // No redirigir automáticamente para dar tiempo al usuario de descargar el PDF
+        // setTimeout(() => {
+        //   router.push(`/dashboard/admin/cortes`);
+        // }, 2000);
       } else {
         setError(result.error || 'Error al crear el corte');
       }
@@ -712,6 +717,35 @@ export default function NuevoCorteePage() {
       setError('Error al crear el corte');
     } finally {
       setCreating(false);
+    }
+  };
+
+  const downloadCutPDF = async () => {
+    if (!createdCutId) return;
+
+    try {
+      console.log('📄 [NUEVO-CORTE] Descargando PDF para corte:', createdCutId);
+
+      const response = await fetch(`/api/cuts/${createdCutId}/generate-pdf`);
+
+      if (!response.ok) {
+        throw new Error('Error al generar PDF');
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `corte-${createdCutId.slice(0, 8)}-${new Date().toISOString().split('T')[0]}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      console.log('✅ [NUEVO-CORTE] PDF descargado exitosamente');
+    } catch (error) {
+      console.error('❌ [NUEVO-CORTE] Error descargando PDF:', error);
+      setError('Error al descargar el PDF del corte');
     }
   };
 
@@ -913,8 +947,55 @@ export default function NuevoCorteePage() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
             >
-              <Alert severity="success" sx={{ mb: 3 }}>
-                {success}
+              <Alert
+                severity="success"
+                sx={{
+                  mb: 3,
+                  background: `linear-gradient(135deg, ${colorTokens.success}20, ${colorTokens.success}10)`,
+                  border: `1px solid ${colorTokens.success}`,
+                }}
+                action={
+                  <Box sx={{ display: 'flex', gap: 1 }}>
+                    <Button
+                      size="small"
+                      variant="contained"
+                      startIcon={<PictureAsPdfIcon />}
+                      onClick={downloadCutPDF}
+                      sx={{
+                        bgcolor: colorTokens.danger,
+                        color: colorTokens.white,
+                        '&:hover': {
+                          bgcolor: `${colorTokens.danger}dd`
+                        }
+                      }}
+                    >
+                      Descargar PDF
+                    </Button>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      startIcon={<ArrowBackIcon />}
+                      onClick={() => router.push('/dashboard/admin/cortes')}
+                      sx={{
+                        borderColor: colorTokens.success,
+                        color: colorTokens.success,
+                        '&:hover': {
+                          borderColor: colorTokens.success,
+                          bgcolor: `${colorTokens.success}20`
+                        }
+                      }}
+                    >
+                      Volver
+                    </Button>
+                  </Box>
+                }
+              >
+                <Box>
+                  <Typography variant="body1" fontWeight="bold">{success}</Typography>
+                  <Typography variant="body2" sx={{ mt: 0.5 }}>
+                    Descarga el PDF del corte o vuelve al panel principal
+                  </Typography>
+                </Box>
               </Alert>
             </motion.div>
           )}

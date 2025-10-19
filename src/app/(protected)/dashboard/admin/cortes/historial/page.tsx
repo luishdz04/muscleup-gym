@@ -60,7 +60,8 @@ import {
   Edit as EditIcon,
   Delete as DeleteIcon,
   Refresh as RefreshIcon,
-  Warning as WarningIcon
+  Warning as WarningIcon,
+  PictureAsPdf as PictureAsPdfIcon
 } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -539,7 +540,7 @@ export default function CutsHistoryPage() {
 
       const response = await fetch(`/api/cuts/${cutId}/export`);
       const blob = await response.blob();
-      
+
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
@@ -551,6 +552,33 @@ export default function CutsHistoryPage() {
     } catch (error) {
       console.error('Error exportando corte:', error);
       setError('Error al exportar el corte');
+    }
+  };
+
+  const downloadCutPDF = async (cutId: string) => {
+    try {
+      console.log('📄 [HISTORIAL] Descargando PDF para corte:', cutId);
+
+      const response = await fetch(`/api/cuts/${cutId}/generate-pdf`);
+
+      if (!response.ok) {
+        throw new Error('Error al generar PDF');
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `corte-${cutId.slice(0, 8)}-${new Date().toISOString().split('T')[0]}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      console.log('✅ [HISTORIAL] PDF descargado exitosamente');
+    } catch (error) {
+      console.error('❌ [HISTORIAL] Error descargando PDF:', error);
+      setError('Error al descargar el PDF del corte');
     }
   };
 
@@ -1432,21 +1460,36 @@ export default function CutsHistoryPage() {
                                 </IconButton>
                               </Tooltip>
                               
-                              <Tooltip title="Exportar">
+                              <Tooltip title="Exportar Excel">
                                 <IconButton
                                   size="small"
                                   onClick={() => exportCut(cut.id)}
-                                  sx={{ 
-                                    color: colorTokens.brand,
-                                    '&:hover': { 
-                                      backgroundColor: `${colorTokens.brand}20` 
+                                  sx={{
+                                    color: colorTokens.success,
+                                    '&:hover': {
+                                      backgroundColor: `${colorTokens.success}20`
                                     }
                                   }}
                                 >
                                   <DownloadIcon fontSize="small" />
                                 </IconButton>
                               </Tooltip>
-                              
+
+                              <Tooltip title="Descargar PDF">
+                                <IconButton
+                                  size="small"
+                                  onClick={() => downloadCutPDF(cut.id)}
+                                  sx={{
+                                    color: colorTokens.danger,
+                                    '&:hover': {
+                                      backgroundColor: `${colorTokens.danger}20`
+                                    }
+                                  }}
+                                >
+                                  <PictureAsPdfIcon fontSize="small" />
+                                </IconButton>
+                              </Tooltip>
+
                               <Tooltip title="Editar">
                                 <IconButton
                                   size="small"
