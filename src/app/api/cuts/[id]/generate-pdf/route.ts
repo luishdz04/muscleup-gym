@@ -3,6 +3,7 @@ import { createServerSupabaseClient } from '@/lib/supabase/server';
 import jsPDF from 'jspdf';
 import { getGymSettings, getGymEmail } from '@/lib/gymSettings';
 import { formatCurrency } from '@/utils/formHelpers';
+import { formatDateForDisplay, formatMexicoTime } from '@/utils/dateUtils';
 
 // 🎨 COLORES CORPORATIVOS ENTERPRISE
 const COLORS = {
@@ -37,37 +38,6 @@ function safeValue(value: any, defaultValue: string = 'N/A'): string {
     return defaultValue;
   }
   return String(value).trim();
-}
-
-// 📅 FUNCIÓN PARA FORMATEAR FECHA
-function formatDate(dateString: string): string {
-  try {
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) {
-      return dateString || 'N/A';
-    }
-    const day = date.getDate().toString().padStart(2, '0');
-    const month = (date.getMonth() + 1).toString().padStart(2, '0');
-    const year = date.getFullYear();
-    return `${day}/${month}/${year}`;
-  } catch (error) {
-    return dateString || 'N/A';
-  }
-}
-
-// 🕐 FUNCIÓN PARA FORMATEAR HORA
-function formatTime(dateString: string): string {
-  try {
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) {
-      return 'N/A';
-    }
-    const hours = date.getHours().toString().padStart(2, '0');
-    const minutes = date.getMinutes().toString().padStart(2, '0');
-    return `${hours}:${minutes}`;
-  } catch (error) {
-    return 'N/A';
-  }
 }
 
 interface RouteParams {
@@ -116,6 +86,28 @@ export async function GET(
       .eq('expense_date', cut.cut_date)
       .eq('status', 'active')
       .order('amount', { ascending: false });
+
+    // Obtener ventas POS del día
+    const { data: salesTransactions } = await supabase
+      .from('sales')
+      .select('id, created_at, total_amount, customer_name, sale_items(product:products(name), quantity)')
+      .eq('sale_type', 'sale')
+      .eq('status', 'completed')
+      .gte('created_at', `${cut.cut_date}T00:00:00`)
+      .lt('created_at', `${cut.cut_date}T23:59:59`)
+      .order('created_at', { ascending: false })
+      .limit(20);
+
+    // Obtener pagos de membresías del día
+    const { data: membershipTransactions } = await supabase
+      .from('user_memberships')
+      .select('id, created_at, total_cost, user:Users(firstName, lastName), plan:plans(name)')
+      .gte('created_at', `${cut.cut_date}T00:00:00`)
+      .lt('created_at', `${cut.cut_date}T23:59:59`)
+      .order('created_at', { ascending: false })
+      .limit(20);
+
+    console.log('✅ [CUT-PDF] Transacciones obtenidas - POS:', salesTransactions?.length || 0, 'Membresías:', membershipTransactions?.length || 0);
 
     // 🎨 CREAR PDF
     const doc = new jsPDF({
@@ -260,28 +252,20 @@ export async function GET(
         const logoWidth = 45;
         const logoHeight = 25;
 
-        doc.setDrawColor(...COLORS.GOLD);
-        doc.setLineWidth(1);
-        doc.rect(logoX - 1, logoY - 1, logoWidth + 2, logoHeight + 2);
-
+        // Sin marco dorado
         doc.addImage(`data:image/png;base64,${base64Logo}`, 'PNG', logoX, logoY, logoWidth, logoHeight);
       }
     } catch (logoError) {
       console.error('⚠️ [CUT-PDF] Error al cargar logo:', logoError);
     }
 
-    // 🏢 INFORMACIÓN CORPORATIVA
+    // 🏢 INFORMACIÓN CORPORATIVA (sin repetir nombre)
     const infoX = LAYOUT.MARGIN_LEFT + 55;
-    doc.setTextColor(...COLORS.GOLD);
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(13);
-    doc.text(gymSettings.gym_name.toUpperCase(), infoX, currentY + 8);
-
     doc.setTextColor(...COLORS.LIGHT_GRAY);
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(9);
-    doc.text('Centro de Acondicionamiento Físico Profesional', infoX, currentY + 15);
-    doc.text('Tu salud y bienestar es nuestra misión', infoX, currentY + 20);
+    doc.text('Centro de Acondicionamiento Físico Profesional', infoX, currentY + 12);
+    doc.text('Tu salud y bienestar son nuestra misión', infoX, currentY + 18);
 
     currentY += 35;
 
@@ -320,7 +304,7 @@ export async function GET(
     doc.text('Fecha:', LAYOUT.PAGE_WIDTH / 2 + 10, currentY);
     doc.setTextColor(...COLORS.WHITE);
     doc.setFont('helvetica', 'normal');
-    doc.text(formatDate(cut.cut_date), LAYOUT.PAGE_WIDTH / 2 + 30, currentY);
+    doc.text(formatDateForDisplay(cut.cut_date), LAYOUT.PAGE_WIDTH / 2 + 30, currentY);
 
     currentY += 6;
 
@@ -329,7 +313,7 @@ export async function GET(
     doc.text('Hora de Corte:', LAYOUT.MARGIN_LEFT + 5, currentY);
     doc.setTextColor(...COLORS.WHITE);
     doc.setFont('helvetica', 'normal');
-    doc.text(formatTime(cut.cut_time || cut.created_at), LAYOUT.MARGIN_LEFT + 50, currentY);
+    doc.text(formatMexicoTime(new Date(cut.cut_time || cut.created_at)), LAYOUT.MARGIN_LEFT + 50, currentY);
 
     doc.setTextColor(...COLORS.GOLD);
     doc.setFont('helvetica', 'bold');
@@ -399,9 +383,9 @@ export async function GET(
     // Línea separadora
     doc.setDrawColor(...COLORS.GOLD);
     doc.setLineWidth(0.5);
-    doc.line(LAYOUT.MARGIN_LEFT + 10, currentY - 1, LAYOUT.PAGE_WIDTH - LAYOUT.MARGIN_RIGHT - 10, currentY - 1);
+    doc.line(LAYOUT.MARGIN_LEFT + 10, currentY, LAYOUT.PAGE_WIDTH - LAYOUT.MARGIN_RIGHT - 10, currentY);
 
-    currentY += 1;
+    currentY += 6;
 
     // Balance Final
     doc.setTextColor(...COLORS.GOLD);
@@ -578,6 +562,69 @@ export async function GET(
       doc.text(noteLines, LAYOUT.MARGIN_LEFT + 5, currentY);
 
       currentY += noteLines.length * 5 + LAYOUT.SECTION_SPACING;
+    }
+
+    // --- DETALLE DE TRANSACCIONES ---
+    if ((salesTransactions && salesTransactions.length > 0) || (membershipTransactions && membershipTransactions.length > 0)) {
+      currentY = checkPageSpace(currentY, 60);
+      currentY = createSectionHeader('DETALLE DE TRANSACCIONES', currentY);
+
+      // Ventas POS
+      if (salesTransactions && salesTransactions.length > 0) {
+        doc.setTextColor(...COLORS.GOLD);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(10);
+        doc.text('Ventas POS', LAYOUT.MARGIN_LEFT + 5, currentY);
+        currentY += 7;
+
+        const salesHeaders = ['Hora', 'Cliente', 'Productos', 'Monto'];
+        const salesWidths = [25, 50, 80, 32];
+
+        const salesRows = salesTransactions.slice(0, 10).map((sale: any) => {
+          const products = (sale.sale_items || [])
+            .map((item: any) => `${item.quantity}x ${item.product?.name || 'Producto'}`)
+            .join(', ');
+
+          return [
+            formatMexicoTime(new Date(sale.created_at)),
+            (sale.customer_name || 'Cliente').substring(0, 25),
+            products.substring(0, 40) || 'Sin detalle',
+            formatCurrency(sale.total_amount || 0)
+          ];
+        });
+
+        currentY = createTable(salesHeaders, salesRows, currentY, salesWidths);
+        currentY += 10;
+      }
+
+      // Membresías
+      if (membershipTransactions && membershipTransactions.length > 0) {
+        currentY = checkPageSpace(currentY, 40);
+
+        doc.setTextColor(...COLORS.GOLD);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(10);
+        doc.text('Pagos de Membresías', LAYOUT.MARGIN_LEFT + 5, currentY);
+        currentY += 7;
+
+        const membHeaders = ['Hora', 'Cliente', 'Plan', 'Monto'];
+        const membWidths = [25, 60, 70, 32];
+
+        const membRows = membershipTransactions.slice(0, 10).map((memb: any) => {
+          const userName = memb.user ? `${memb.user.firstName} ${memb.user.lastName}` : 'Cliente';
+          const planName = memb.plan?.name || 'Plan';
+
+          return [
+            formatMexicoTime(new Date(memb.created_at)),
+            userName.substring(0, 30),
+            planName.substring(0, 35),
+            formatCurrency(memb.total_cost || 0)
+          ];
+        });
+
+        currentY = createTable(membHeaders, membRows, currentY, membWidths);
+        currentY += LAYOUT.SECTION_SPACING;
+      }
     }
 
     // --- FIRMAS ---
