@@ -3,7 +3,7 @@ import { createServerSupabaseClient } from '@/lib/supabase/server';
 import jsPDF from 'jspdf';
 import { getGymSettings, getGymEmail } from '@/lib/gymSettings';
 import { formatCurrency } from '@/utils/formHelpers';
-import { formatDateForDisplay, formatMexicoTime } from '@/utils/dateUtils';
+import { formatDateForDisplay, formatMexicoTime, getMexicoDateRange } from '@/utils/dateUtils';
 
 // 🎨 COLORES CORPORATIVOS ENTERPRISE
 const COLORS = {
@@ -79,6 +79,14 @@ export async function GET(
 
     console.log('✅ [CUT-PDF] Datos del corte obtenidos');
 
+    // Obtener rango de fechas en timezone México (UTC timestamps)
+    const dateRange = getMexicoDateRange(cut.cut_date);
+    console.log('📅 [CUT-PDF] Rango de fechas México:', {
+      date: cut.cut_date,
+      startISO: dateRange.startISO,
+      endISO: dateRange.endISO
+    });
+
     // Obtener gastos del día
     const { data: expenses } = await supabase
       .from('expenses')
@@ -87,25 +95,33 @@ export async function GET(
       .eq('status', 'active')
       .order('amount', { ascending: false });
 
-    // Obtener ventas POS del día
-    const { data: salesTransactions } = await supabase
+    // Obtener ventas POS del día usando rango de México
+    const { data: salesTransactions, error: salesError } = await supabase
       .from('sales')
       .select('id, created_at, total_amount, customer_name, sale_items(product:products(name), quantity)')
       .eq('sale_type', 'sale')
       .eq('status', 'completed')
-      .gte('created_at', `${cut.cut_date}T00:00:00`)
-      .lt('created_at', `${cut.cut_date}T23:59:59`)
+      .gte('created_at', dateRange.startISO)
+      .lte('created_at', dateRange.endISO)
       .order('created_at', { ascending: false })
       .limit(20);
 
-    // Obtener pagos de membresías del día
-    const { data: membershipTransactions } = await supabase
+    if (salesError) {
+      console.error('⚠️ [CUT-PDF] Error obteniendo ventas:', salesError);
+    }
+
+    // Obtener pagos de membresías del día usando rango de México
+    const { data: membershipTransactions, error: membError } = await supabase
       .from('user_memberships')
       .select('id, created_at, total_cost, user:Users(firstName, lastName), plan:plans(name)')
-      .gte('created_at', `${cut.cut_date}T00:00:00`)
-      .lt('created_at', `${cut.cut_date}T23:59:59`)
+      .gte('created_at', dateRange.startISO)
+      .lte('created_at', dateRange.endISO)
       .order('created_at', { ascending: false })
       .limit(20);
+
+    if (membError) {
+      console.error('⚠️ [CUT-PDF] Error obteniendo membresías:', membError);
+    }
 
     console.log('✅ [CUT-PDF] Transacciones obtenidas - POS:', salesTransactions?.length || 0, 'Membresías:', membershipTransactions?.length || 0);
 
@@ -145,14 +161,14 @@ export async function GET(
         doc.setFontSize(9);
         doc.text(`Página ${i} de ${pageCount}`, LAYOUT.PAGE_WIDTH - LAYOUT.MARGIN_RIGHT, LAYOUT.FOOTER_Y + 6, { align: 'right' });
 
-        // 📅 FECHA DE IMPRESIÓN
+        // 📅 FECHA DE IMPRESIÓN (Timezone México)
         const currentDate = new Date();
-        const dateStr = `${currentDate.getDate().toString().padStart(2, '0')}/${(currentDate.getMonth() + 1).toString().padStart(2, '0')}/${currentDate.getFullYear()}`;
-        const timeStr = `${currentDate.getHours().toString().padStart(2, '0')}:${currentDate.getMinutes().toString().padStart(2, '0')}`;
+        const printDate = formatDateForDisplay(currentDate.toISOString());
+        const printTime = formatMexicoTime(currentDate);
         doc.setTextColor(...COLORS.LIGHT_GRAY);
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(7);
-        doc.text(`Impreso: ${dateStr} ${timeStr}`, LAYOUT.MARGIN_LEFT, LAYOUT.FOOTER_Y + 16);
+        doc.text(`Impreso: ${printDate} ${printTime}`, LAYOUT.MARGIN_LEFT, LAYOUT.FOOTER_Y + 16);
       }
     };
 
