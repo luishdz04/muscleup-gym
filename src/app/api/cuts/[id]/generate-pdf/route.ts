@@ -163,12 +163,19 @@ export async function GET(
 
         // 📅 FECHA DE IMPRESIÓN (Timezone México)
         const currentDate = new Date();
-        const printDate = formatDateForDisplay(currentDate.toISOString());
-        const printTime = formatMexicoTime(currentDate);
+        const printDateTime = new Intl.DateTimeFormat('es-MX', {
+          timeZone: 'America/Mexico_City',
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: true
+        }).format(currentDate);
         doc.setTextColor(...COLORS.LIGHT_GRAY);
         doc.setFont('helvetica', 'normal');
         doc.setFontSize(7);
-        doc.text(`Impreso: ${printDate} ${printTime}`, LAYOUT.MARGIN_LEFT, LAYOUT.FOOTER_Y + 16);
+        doc.text(`Impreso: ${printDateTime}`, LAYOUT.MARGIN_LEFT, LAYOUT.FOOTER_Y + 16);
       }
     };
 

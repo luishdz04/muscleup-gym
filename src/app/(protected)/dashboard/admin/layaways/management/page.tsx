@@ -245,7 +245,8 @@ const LayawayManagementPage = memo(() => {
       loadCustomers();
       searchItems({ sale_type: 'layaway' });
     }
-  }, [hydrated, loadCustomers, searchItems]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [hydrated]);
 
   // ✅ FUNCIONES HELPER MEMOIZADAS
   const formatPrice = useCallback((price: number): string => {
