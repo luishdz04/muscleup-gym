@@ -57,8 +57,7 @@ import {
   Info as InfoIcon,
   Refresh as RefreshIcon,
   MoneyOff as MoneyOffIcon,
-  PictureAsPdf as PictureAsPdfIcon,
-  ArrowBack as ArrowBackIcon
+  PictureAsPdf as PictureAsPdfIcon
 } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
