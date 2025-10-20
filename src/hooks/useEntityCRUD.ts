@@ -55,18 +55,18 @@ export const useEntityCRUD = <T extends { id: string }>({
 
     try {
       setLoading(true);
-      
+
       // ✅ USAR CAMPO DE ORDEN CORRECTO SEGÚN TABLA
       const orderByField = getOrderByField(tableName);
       console.log(`🔄 Ordenando por: ${orderByField} para tabla: ${tableName}`);
-      
+
       const { data: result, error } = await supabase
         .from(tableName)
         .select(selectQuery)
         .order(orderByField, { ascending: false });
-        
+
       if (error) throw error;
-      
+
       // ✅ VALIDACIÓN DE TIPO ANTES DE SETDATA
       if (Array.isArray(result)) {
         setData(result as unknown as T[]);
@@ -76,14 +76,16 @@ export const useEntityCRUD = <T extends { id: string }>({
     } catch (err: any) {
       const errorMsg = err.message || 'Error al cargar datos';
       setError(errorMsg);
-      onError?.(errorMsg);
+      if (onError) {
+        onError(errorMsg);
+      }
       setData([]); // ✅ RESET DATA EN CASO DE ERROR
       console.error(`❌ Error en fetchData para ${tableName}:`, err);
     } finally {
       setLoading(false);
       setInitialLoad(false);
     }
-  }, [tableName, selectQuery, hydrated, supabase]); // ✅ REMOVIDO getOrderByField y onError
+  }, [tableName, selectQuery, hydrated, supabase, onError, getTableAuditInfo]); // ✅ CORREGIDO: agregado getTableAuditInfo
 
   useEffect(() => {
     if (hydrated) {
@@ -210,7 +212,7 @@ export const useEntityCRUD = <T extends { id: string }>({
     try {
       setLoading(true);
       let query = supabase.from(tableName).select(selectQuery);
-      
+
       // Aplicar filtros dinámicamente
       Object.entries(filters).forEach(([key, value]) => {
         if (value !== null && value !== undefined && value !== '') {
@@ -221,13 +223,13 @@ export const useEntityCRUD = <T extends { id: string }>({
           }
         }
       });
-      
+
       // ✅ USAR CAMPO DE ORDEN CORRECTO
       const orderByField = getOrderByField(tableName);
       const { data: result, error } = await query.order(orderByField, { ascending: false });
-      
+
       if (error) throw error;
-      
+
       // ✅ VALIDACIÓN DE TIPO ANTES DE SETDATA
       if (Array.isArray(result)) {
         setData(result as unknown as T[]);
@@ -239,14 +241,16 @@ export const useEntityCRUD = <T extends { id: string }>({
     } catch (err: any) {
       const errorMsg = `Error en búsqueda: ${err.message}`;
       setError(errorMsg);
-      onError?.(errorMsg);
+      if (onError) {
+        onError(errorMsg);
+      }
       setData([]); // ✅ RESET DATA EN CASO DE ERROR
       console.error(`❌ Error en searchItems para ${tableName}:`, err);
       throw err;
     } finally {
       setLoading(false);
     }
-  }, [tableName, selectQuery, supabase, onError, getOrderByField]);
+  }, [tableName, selectQuery, supabase, onError, getTableAuditInfo]);
 
   // ✅ FUNCIÓN PARA PAGINACIÓN CON ORDEN CORRECTO
   const loadMore = useCallback(async (page: number, pageSize: number = 20) => {
@@ -254,18 +258,18 @@ export const useEntityCRUD = <T extends { id: string }>({
       setLoading(true);
       const from = page * pageSize;
       const to = from + pageSize - 1;
-      
+
       // ✅ USAR CAMPO DE ORDEN CORRECTO
       const orderByField = getOrderByField(tableName);
-      
+
       const { data: result, error } = await supabase
         .from(tableName)
         .select(selectQuery)
         .order(orderByField, { ascending: false })
         .range(from, to);
-        
+
       if (error) throw error;
-      
+
       // ✅ VALIDACIÓN DE TIPO ANTES DE SETDATA
       if (Array.isArray(result)) {
         const validResult = result as unknown as T[];
@@ -284,7 +288,9 @@ export const useEntityCRUD = <T extends { id: string }>({
     } catch (err: any) {
       const errorMsg = `Error al cargar más datos: ${err.message}`;
       setError(errorMsg);
-      onError?.(errorMsg);
+      if (onError) {
+        onError(errorMsg);
+      }
       if (page === 0) {
         setData([]); // ✅ RESET DATA EN CASO DE ERROR
       }
@@ -293,7 +299,7 @@ export const useEntityCRUD = <T extends { id: string }>({
     } finally {
       setLoading(false);
     }
-  }, [tableName, selectQuery, supabase, onError, getOrderByField]);
+  }, [tableName, selectQuery, supabase, onError, getTableAuditInfo]);
 
   return {
     // ✅ DATOS Y ESTADOS
