@@ -58,7 +58,6 @@ export const useEntityCRUD = <T extends { id: string }>({
 
       // ✅ USAR CAMPO DE ORDEN CORRECTO SEGÚN TABLA
       const orderByField = getOrderByField(tableName);
-      console.log(`🔄 Ordenando por: ${orderByField} para tabla: ${tableName}`);
 
       const { data: result, error } = await supabase
         .from(tableName)
@@ -85,7 +84,7 @@ export const useEntityCRUD = <T extends { id: string }>({
       setLoading(false);
       setInitialLoad(false);
     }
-  }, [tableName, selectQuery, hydrated, supabase, onError, getTableAuditInfo]); // ✅ CORREGIDO: agregado getTableAuditInfo
+  }, [tableName, selectQuery, hydrated, supabase, onError]); // ✅ REMOVIDO getTableAuditInfo que causa loop
 
   useEffect(() => {
     if (hydrated) {
@@ -250,7 +249,7 @@ export const useEntityCRUD = <T extends { id: string }>({
     } finally {
       setLoading(false);
     }
-  }, [tableName, selectQuery, supabase, onError, getTableAuditInfo]);
+  }, [tableName, selectQuery, supabase, onError]);
 
   // ✅ FUNCIÓN PARA PAGINACIÓN CON ORDEN CORRECTO
   const loadMore = useCallback(async (page: number, pageSize: number = 20) => {
@@ -299,7 +298,7 @@ export const useEntityCRUD = <T extends { id: string }>({
     } finally {
       setLoading(false);
     }
-  }, [tableName, selectQuery, supabase, onError, getTableAuditInfo]);
+  }, [tableName, selectQuery, supabase, onError]);
 
   return {
     // ✅ DATOS Y ESTADOS
