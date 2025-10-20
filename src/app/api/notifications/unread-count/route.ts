@@ -4,28 +4,11 @@
 // GET /api/notifications/unread-count
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@supabase/ssr';
+import { createServerSupabaseClient } from '@/lib/supabase/server';
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          // ✅ MÉTODO MODERNO: getAll (reemplaza get)
-          getAll() {
-            return request.cookies.getAll();
-          },
-          // ✅ MÉTODO MODERNO: setAll (reemplaza set y remove)
-          setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value, options }) => {
-              request.cookies.set(name, value);
-            });
-          },
-        },
-      }
-    );
+    const supabase = createServerSupabaseClient();
     
     // ✅ VERIFICAR AUTENTICACIÓN
     const { data: { user }, error: sessionError } = await supabase.auth.getUser();

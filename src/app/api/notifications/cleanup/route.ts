@@ -5,28 +5,11 @@
 // Ejecutar semanalmente (puede ser manual o automático)
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@supabase/ssr';
+import { createServerSupabaseClient } from '@/lib/supabase/server';
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          // ✅ MÉTODO MODERNO: getAll (reemplaza get)
-          getAll() {
-            return request.cookies.getAll();
-          },
-          // ✅ MÉTODO MODERNO: setAll (reemplaza set y remove)
-          setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value, options }) => {
-              request.cookies.set(name, value);
-            });
-          },
-        },
-      }
-    );
+    const supabase = createServerSupabaseClient();
     
     // ✅ VERIFICAR AUTENTICACIÓN Y PERMISOS (SOLO ADMIN)
     const { data: { user }, error: sessionError } = await supabase.auth.getUser();

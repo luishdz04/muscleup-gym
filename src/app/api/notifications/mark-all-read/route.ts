@@ -4,26 +4,11 @@
 // POST /api/notifications/mark-all-read
 
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerClient } from '@supabase/ssr';
+import { createServerSupabaseClient } from '@/lib/supabase/server';
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          // ✅ MÉTODO MODERNO: getAll (reemplaza get)
-          getAll() {
-            return request.cookies.getAll();
-          },
-          // ✅ MÉTODO MODERNO: setAll
-          setAll(cookiesToSet) {
-            // No es necesario en POST, pero requerido por el tipo
-          },
-        },
-      }
-    );
+    const supabase = createServerSupabaseClient();
     
     // ✅ VERIFICAR AUTENTICACIÓN
     const { data: { user }, error: sessionError } = await supabase.auth.getUser();
