@@ -124,12 +124,6 @@ const UsersPage = memo(() => {
   }, [hydrated, initialLoad]); // ✅ Solo cuando cambia hydrated o initialLoad
 
   const normalizedUsers = useMemo(() => {
-    // 🐛 DEBUG: Ver estructura completa de datos
-    if (users.length > 0) {
-      console.log('🔍 [DEBUG] Total usuarios:', users.length);
-      console.log('🔍 [DEBUG] Primer usuario completo:', JSON.stringify(users[0], null, 2));
-    }
-    
     return users.map(user => {
       const membershipSource = (user as any).membership ?? (user as any).membership_info ?? null;
       const addressSource = (user as any).address ?? (user as any).addresses ?? null;
