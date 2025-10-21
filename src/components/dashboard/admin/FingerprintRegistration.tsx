@@ -151,16 +151,6 @@ interface WebSocketMessage {
   clientId?: string;
 }
 
-interface CaptureResult {
-  success: boolean;
-  template: string;
-  templateSize: number;
-  quality: string;
-  qualityScore: number;
-  captureTime: number;
-  fingerprintId: string;
-}
-
 // 🚀 COMPONENTE PRINCIPAL
 export default function FingerprintRegistration({
   open,
@@ -180,7 +170,7 @@ export default function FingerprintRegistration({
   
   // 🔄 Estados de captura múltiple
   const [currentCapture, setCurrentCapture] = useState<number>(0);
-  const [captureResults, setCaptureResults] = useState<CaptureResult[]>([]);
+  const [capturesCompleted, setCapturesCompleted] = useState<boolean[]>([false, false, false]); // ✅ Track chips visuales
   const [finalQuality, setFinalQuality] = useState<number | null>(null);
   const [combinedTemplate, setCombinedTemplate] = useState<any>(null);
   
@@ -249,7 +239,7 @@ export default function FingerprintRegistration({
     setMessage('');
     setError(null);
     setCurrentCapture(0);
-    setCaptureResults([]);
+    setCapturesCompleted([false, false, false]); // ✅ Reset chips
     setFinalQuality(null);
     setCombinedTemplate(null);
     setElapsedTime(0);
@@ -318,36 +308,49 @@ export default function FingerprintRegistration({
     
     console.log('🔢 Device User ID secuencial asignado:', deviceUserId);
     
+    // ✅ ESTRUCTURA CORRECTA PARA EL API (según schema y ruta POST)
     const fingerprintData = {
       user_id: user.id,
       finger_index: selectedFingerRef.current,
       finger_name: FINGER_CONFIG.find(f => f.id === selectedFingerRef.current)?.name || 'Desconocido',
-      
-      template: combinedTemplate.primary.template,
-      primary_template: combinedTemplate.primary.template,
-      verification_template: combinedTemplate.verification.template,
-      backup_template: combinedTemplate.backup.template,
-      combined_template: combinedTemplate,
-      
-      average_quality: Math.round(combinedTemplate.averageQuality),
-      capture_count: 3,
-      capture_time_ms: combinedTemplate.totalCaptureTime * 1000,
-      
-      device_user_id: deviceUserId, // ID SECUENCIAL (1, 2, 3, 4...)
-      
+
+      // ✅ Template fusionado del servidor C# (después de DBMerge)
+      template: combinedTemplate.template,
+
+      // ✅ Templates individuales: NULL porque el servidor C# ya fusionó con DBMerge
+      // El flujo correcto es: 3 capturas → DBMerge → 1 template fusionado
+      primary_template: null,
+      verification_template: null,
+      backup_template: null,
+
+      // ✅ Metadata del enrollamiento
+      combined_template: {
+        fusedTemplate: combinedTemplate.template,
+        quality: combinedTemplate.quality,
+        qualityScore: combinedTemplate.qualityScore,
+        templateSize: combinedTemplate.templateSize,
+        fingerprintId: combinedTemplate.fingerprintId,
+        enrolledAt: combinedTemplate.enrolledAt
+      },
+
+      average_quality: Math.round(combinedTemplate.qualityScore),
+      capture_count: 3, // 3 capturas realizadas por el servidor
+      capture_time_ms: totalTime, // Tiempo total del proceso
+
+      device_user_id: deviceUserId, // ✅ ID SECUENCIAL del API (1, 2, 3, 4...)
+
+      enrolled_at: combinedTemplate.enrolledAt,
+
       device_info: {
-        deviceType: 'ZKTeco',
-        captureMethod: 'multiple_capture',
+        deviceType: 'ZK9500', // ✅ ZK9500 (no F22)
+        captureMethod: 'EnrollFingerprintAsync', // ✅ Método del servidor C#
         totalCaptures: 3,
         wsConnection: WS_URL.replace('ws://', '').replace('wss://', ''),
         deviceUserId: deviceUserId,
-        qualities: [
-          combinedTemplate.primary.qualityScore,
-          combinedTemplate.verification.qualityScore,
-          combinedTemplate.backup.qualityScore
-        ],
-        capturedBy: 'luishdz044',
-        capturedAt: new Date().toISOString()
+        quality: combinedTemplate.quality,
+        qualityScore: combinedTemplate.qualityScore,
+        capturedBy: 'system',
+        capturedAt: combinedTemplate.enrolledAt
       }
     };
     
@@ -396,15 +399,22 @@ export default function FingerprintRegistration({
           setMessage(statusMessage);
           setProgress(statusProgress);
 
-          // ✅ Actualizar step basado en el progreso
+          // ✅ Actualizar step Y chips basado en el progreso
           if (statusProgress >= 90) {
             setCurrentStep('processing');
+            setCapturesCompleted([true, true, true]); // ✅ Todas completas
           } else if (statusProgress >= 60) {
             setCurrentStep('capture3');
+            setCurrentCapture(2);
+            setCapturesCompleted([true, true, false]); // ✅ 2 completas
           } else if (statusProgress >= 30) {
             setCurrentStep('capture2');
+            setCurrentCapture(1);
+            setCapturesCompleted([true, false, false]); // ✅ 1 completa
           } else if (statusProgress >= 10) {
             setCurrentStep('capture1');
+            setCurrentCapture(0);
+            setCapturesCompleted([false, false, false]); // ✅ Iniciando
           }
         }
         break;
@@ -429,25 +439,29 @@ export default function FingerprintRegistration({
           console.log('   Calidad:', qualityScore + '%');
           console.log('   Tamaño:', templateData.templateSize || templateData.size || 0, 'bytes');
 
-          // ✅ Guardar el template fusionado final
+          // ✅ Guardar el template fusionado final en combinedTemplate
           const finalTemplate = templateData.template || templateData.templateData;
+          const templateSize = templateData.templateSize || templateData.size || 0;
+
+          // ✅ Guardar en estructura compatible con confirmFingerprintData
+          setCombinedTemplate({
+            template: finalTemplate,
+            templateSize: templateSize,
+            quality: quality,
+            qualityScore: qualityScore,
+            fingerprintId: templateData.fingerprintId || templateData.id || `fp_${Date.now()}`,
+            imageData: templateData.imageData || null,
+            enrolledAt: new Date().toISOString()
+          });
 
           setCurrentStep('ready');
-          setMessage('¡Enrollamiento completado exitosamente!');
+          setMessage('¡Enrollamiento completado exitosamente! Presione "Confirmar Huella" para guardar.');
           setProgress(100);
           setFinalQuality(qualityScore);
           setIsProcessing(false);
           stopTimersRef.current?.();
 
-          // ✅ Notificar al componente padre con los datos del template fusionado
-          onFingerprintDataReady({
-            template: finalTemplate,
-            templateSize: templateData.templateSize || templateData.size || 0,
-            quality: quality,
-            qualityScore: qualityScore,
-            fingerprintId: templateData.fingerprintId || templateData.id || `fp_${Date.now()}`,
-            imageData: templateData.imageData || null
-          });
+          console.log('✅ Datos guardados en combinedTemplate, esperando confirmación del usuario...');
 
         } else {
           // ✅ ERROR en el enrollamiento
@@ -578,7 +592,7 @@ export default function FingerprintRegistration({
     setElapsedTime(0);
     setTotalTime(0);
     setCurrentCapture(0);
-    setCaptureResults([]);
+    setCapturesCompleted([false, false, false]); // ✅ Reset chips
     setFinalQuality(null);
     setCombinedTemplate(null);
 
@@ -645,7 +659,7 @@ export default function FingerprintRegistration({
       setMessage('');
       setError(null);
       setCurrentCapture(0);
-      setCaptureResults([]);
+      setCapturesCompleted([false, false, false]); // ✅ Reset chips
       setFinalQuality(null);
       setCombinedTemplate(null);
       setElapsedTime(0);
@@ -935,20 +949,20 @@ export default function FingerprintRegistration({
                 <Chip
                   key={index}
                   icon={
-                    captureResults[index] ? <CheckCircleIcon /> :
+                    capturesCompleted[index] ? <CheckCircleIcon /> :
                     currentCapture === index ? <CaptureIcon /> :
                     <FingerprintIcon />
                   }
                   label={`Plantilla ${index + 1}`}
                   size="small"
                   sx={{
-                    bgcolor: captureResults[index] ? `${colorTokens.success}20` :
+                    bgcolor: capturesCompleted[index] ? `${colorTokens.success}20` :
                              currentCapture === index ? `${colorTokens.brand}20` :
                              `${colorTokens.neutral500}20`,
-                    color: captureResults[index] ? colorTokens.success :
+                    color: capturesCompleted[index] ? colorTokens.success :
                            currentCapture === index ? colorTokens.brand :
                            colorTokens.neutral900,
-                    border: `1px solid ${captureResults[index] ? colorTokens.success :
+                    border: `1px solid ${capturesCompleted[index] ? colorTokens.success :
                                         currentCapture === index ? colorTokens.brand :
                                         colorTokens.neutral500}40`
                   }}
@@ -989,10 +1003,10 @@ export default function FingerprintRegistration({
                   }}
                 />
               )}
-              {captureResults.length > 0 && (
+              {capturesCompleted.filter(Boolean).length > 0 && (
                 <Chip
                   icon={<FingerprintIcon />}
-                  label={`${captureResults.length}/3 capturas`}
+                  label={`${capturesCompleted.filter(Boolean).length}/3 capturas`}
                   size="small"
                   sx={{
                     bgcolor: `${colorTokens.brand}20`,
@@ -1222,45 +1236,43 @@ export default function FingerprintRegistration({
                     />
                   </Box>
                   
-                  {captureResults.length > 0 && (
+                  {combinedTemplate && (
                     <Box>
                       <Typography variant="body1" sx={{ color: colorTokens.neutral1200, mb: 2, fontWeight: 600 }}>
-                        📊 Resumen de Capturas:
+                        📊 Template Fusionado:
                       </Typography>
-                      {captureResults.map((result, index) => (
-                        <Box key={index} sx={{ 
-                          display: 'flex', 
-                          justifyContent: 'space-between', 
-                          alignItems: 'center', 
-                          mb: 1,
-                          p: 2,
-                          bgcolor: `${colorTokens.neutral100}50`,
-                          borderRadius: 1
-                        }}>
-                          <Typography variant="body2" sx={{ color: colorTokens.neutral1200, fontWeight: 600 }}>
-                            Captura {index + 1}:
+                      <Box sx={{
+                        display: 'flex',
+                        justifyContent: 'space-between',
+                        alignItems: 'center',
+                        mb: 1,
+                        p: 2,
+                        bgcolor: `${colorTokens.neutral100}50`,
+                        borderRadius: 1
+                      }}>
+                        <Typography variant="body2" sx={{ color: colorTokens.neutral1200, fontWeight: 600 }}>
+                          Calidad Final:
+                        </Typography>
+                        <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                          <Chip
+                            label={`${combinedTemplate.qualityScore}%`}
+                            size="small"
+                            sx={{
+                              bgcolor: combinedTemplate.qualityScore >= 90 ? `${colorTokens.success}20` :
+                                       combinedTemplate.qualityScore >= 75 ? `${colorTokens.warning}20` :
+                                       `${colorTokens.danger}20`,
+                              color: combinedTemplate.qualityScore >= 90 ? colorTokens.success :
+                                     combinedTemplate.qualityScore >= 75 ? colorTokens.warning :
+                                     colorTokens.danger,
+                              fontSize: '0.75rem',
+                              fontWeight: 600
+                            }}
+                          />
+                          <Typography variant="body2" sx={{ color: colorTokens.neutral1000, fontSize: '0.8rem' }}>
+                            {(totalTime / 1000).toFixed(1)}s
                           </Typography>
-                          <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                            <Chip
-                              label={`${result.qualityScore}%`}
-                              size="small"
-                              sx={{
-                                bgcolor: result.qualityScore >= 90 ? `${colorTokens.success}20` : 
-                                         result.qualityScore >= 75 ? `${colorTokens.warning}20` : 
-                                         `${colorTokens.danger}20`,
-                                color: result.qualityScore >= 90 ? colorTokens.success : 
-                                       result.qualityScore >= 75 ? colorTokens.warning : 
-                                       colorTokens.danger,
-                                fontSize: '0.75rem',
-                                fontWeight: 600
-                              }}
-                            />
-                            <Typography variant="body2" sx={{ color: colorTokens.neutral1000, fontSize: '0.8rem' }}>
-                              {(result.captureTime / 1000).toFixed(1)}s
-                            </Typography>
-                          </Box>
                         </Box>
-                      ))}
+                      </Box>
                     </Box>
                   )}
                 </Box>
