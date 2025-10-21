@@ -1,25 +1,35 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase/admin';
 
-// GET /api/admin/users - Obtener todos los usuarios
+// GET /api/admin/users - Obtener todos los usuarios con datos relacionados
 export async function GET(request: NextRequest) {
   try {
+    console.log('📊 [API-USERS] Obteniendo usuarios con datos relacionados...');
+
     const { data: users, error } = await supabaseAdmin
       .from('Users')
-      .select('*')
-      .order('lastName', { ascending: true });
-    
+      .select(`
+        *,
+        addresses(*),
+        emergency_contacts(*),
+        membership_info(*)
+      `)
+      .order('createdAt', { ascending: false });
+
     if (error) {
+      console.error('❌ [API-USERS] Error en query:', error);
       return NextResponse.json(
         { message: 'Error al obtener usuarios: ' + error.message },
         { status: 500 }
       );
     }
-    
+
+    console.log(`✅ [API-USERS] ${users?.length || 0} usuarios obtenidos exitosamente`);
+
     return NextResponse.json(users);
-    
+
   } catch (error: any) {
-    console.error('Error en API:', error);
+    console.error('❌ [API-USERS] Error en API:', error);
     return NextResponse.json(
       { message: 'Error interno: ' + (error.message || 'Error desconocido') },
       { status: 500 }

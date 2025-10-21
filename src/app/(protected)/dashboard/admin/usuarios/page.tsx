@@ -37,10 +37,9 @@ import {
 // ✅ IMPORTS ENTERPRISE OBLIGATORIOS v6.0
 import { useHydrated } from '@/hooks/useHydrated';
 import { useUserTracking } from '@/hooks/useUserTracking';
-import { useEntityCRUD } from '@/hooks/useEntityCRUD';
-import { 
+import {
   formatTimestampForDisplay,
-  getCurrentTimestamp 
+  getCurrentTimestamp
 } from '@/utils/dateUtils';
 import { colorTokens } from '@/theme';
 import { notify } from '@/utils/notifications';
@@ -61,36 +60,94 @@ const UsersPage = memo(() => {
   
   // ✅ AUDITORÍA INTELIGENTE v6.0
   const { addAuditFieldsFor } = useUserTracking();
-
-  // ✅ CRUD ENTERPRISE v6.0 CON AUDITORÍA AUTOMÁTICA - INTERFACE UNIFICADA
-  const {
-    data: users,
-    loading,
-    initialLoad,
-    error,
-    auditInfo,
-    createItem,
-    updateItem,
-    deleteItem,
-    searchItems,
-    refreshData,
-    stats
-  } = useEntityCRUD<User>({
-    tableName: 'Users', // Auditoría camelCase automática
-    selectQuery: `
-      *,
-      addresses(*),
-      emergency_contacts(*),
-      membership_info(*)
-    `,
-    onError: (errorMsg) => {
-      console.error('❌ [USUARIOS] Error en useEntityCRUD:', errorMsg);
-      console.error('Error completo:', errorMsg);
-      toast.error(`Error cargando usuarios: ${errorMsg}`);
-    }
-  });
-
   const { toast, alert } = useNotifications();
+
+  // ✅ ESTADO DE DATOS - USAR API ROUTE EN LUGAR DE QUERY DIRECTA
+  const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [initialLoad, setInitialLoad] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // ✅ FUNCIÓN PARA CARGAR USUARIOS DESDE API
+  const refreshData = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      console.log('📊 [USUARIOS] Cargando desde API...');
+
+      const response = await fetch('/api/admin/users');
+
+      if (!response.ok) {
+        throw new Error(`Error ${response.status}: ${response.statusText}`);
+      }
+
+      const data = await response.json();
+      console.log(`✅ [USUARIOS] ${data.length} usuarios cargados desde API`);
+
+      setUsers(Array.isArray(data) ? data : []);
+    } catch (err: any) {
+      const errorMsg = err.message || 'Error al cargar usuarios';
+      console.error('❌ [USUARIOS] Error:', errorMsg);
+      setError(errorMsg);
+      toast.error(`Error cargando usuarios: ${errorMsg}`);
+    } finally {
+      setLoading(false);
+      setInitialLoad(false);
+    }
+  }, [toast]);
+
+  // ✅ FUNCIONES CRUD QUE USAN API
+  const createItem = useCallback(async (userData: Omit<User, 'id'>) => {
+    const response = await fetch('/api/admin/users', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(userData)
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || 'Error al crear usuario');
+    }
+
+    const newUser = await response.json();
+    await refreshData(); // Recargar lista
+    return newUser;
+  }, [refreshData]);
+
+  const updateItem = useCallback(async (id: string, updates: Partial<User>) => {
+    const response = await fetch(`/api/admin/users/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updates)
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || 'Error al actualizar usuario');
+    }
+
+    const updatedUser = await response.json();
+    await refreshData(); // Recargar lista
+    return updatedUser;
+  }, [refreshData]);
+
+  const deleteItem = useCallback(async (id: string) => {
+    const response = await fetch(`/api/admin/users/${id}`, {
+      method: 'DELETE'
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.message || 'Error al eliminar usuario');
+    }
+
+    await refreshData(); // Recargar lista
+  }, [refreshData]);
+
+  const searchItems = useCallback(async (filters: Record<string, any>) => {
+    await refreshData();
+    return users;
+  }, [refreshData, users]);
 
   // ESTADOS LOCALES DE UI
   const [formDialogOpen, setFormDialogOpen] = useState(false);
@@ -104,24 +161,24 @@ const UsersPage = memo(() => {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('desc');
   const [syncing, setSyncing] = useState(false);
 
+  // ✅ Cargar usuarios cuando el componente se monta
+  useEffect(() => {
+    if (hydrated) {
+      console.log('🌊 [USUARIOS] Primera carga de usuarios...');
+      refreshData();
+    }
+  }, [hydrated, refreshData]);
+
   // ✅ FIX: Función simple sin dependencias problemáticas
   const loadClients = useCallback(async () => {
     try {
       console.log('🔄 [USUARIOS] Cargando clientes...');
-      await refreshData(); // ✅ Usar refreshData del hook en lugar de searchItems
+      await refreshData();
       console.log('✅ [USUARIOS] Clientes cargados exitosamente');
     } catch (error: any) {
       console.error('❌ [USUARIOS] Error loading clients:', error);
     }
-  }, [refreshData]); // ✅ refreshData es estable desde useEntityCRUD
-
-  // ✅ Cargar solo una vez cuando el componente se hidrata
-  useEffect(() => {
-    if (hydrated && initialLoad) {
-      console.log('🌊 [USUARIOS] Primera carga de usuarios...');
-      // refreshData ya se llama automáticamente en useEntityCRUD
-    }
-  }, [hydrated, initialLoad]); // ✅ Solo cuando cambia hydrated o initialLoad
+  }, [refreshData]);
 
   const normalizedUsers = useMemo(() => {
     return users.map(user => {
