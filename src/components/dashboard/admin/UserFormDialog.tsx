@@ -968,8 +968,13 @@ const UserFormDialogOptimized: React.FC<UserFormDialogProps> = ({
       setHasExistingContract(!!user.contractPdfUrl);
       
       // ✅ INICIALIZAR ESTADO DE HUELLA
+      console.log('🔍 [UserFormDialog] Inicializando con huella:', {
+        userId: user.id,
+        fingerprint: user.fingerprint,
+        booleanValue: Boolean(user.fingerprint)
+      });
       initializeWithFingerprint(Boolean(user.fingerprint));
-      
+
       // ✅ CARGAR DATOS RELACIONADOS DESPUÉS
       loadRelatedData(user.id);
     } else if (open && !user) {
@@ -978,7 +983,7 @@ const UserFormDialogOptimized: React.FC<UserFormDialogProps> = ({
       // ✅ LIMPIAR TODO AL CERRAR EL DIÁLOGO
       resetForm();
     }
-  }, [open, user, loadRelatedData, resetForm]); // ✅ initializeWithFingerprint es estable, no necesita estar en deps
+  }, [open, user, loadRelatedData, resetForm]); // initializeWithFingerprint es estable desde useCallback
 
   // ✅ SSR SAFETY - MOVER DESPUÉS DE TODOS LOS HOOKS
   if (!hydrated) {
