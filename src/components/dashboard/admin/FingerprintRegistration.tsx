@@ -86,24 +86,24 @@ const PROCESS_STEPS = [
     icon: <ProgressIcon />,
     color: colorTokens.warning
   },
-  { 
-    id: 'capture1', 
-    label: 'Captura 1/3', 
-    description: 'Primera captura - Template principal',
+  {
+    id: 'capture1',
+    label: 'Plantilla Principal',
+    description: 'Capturando primera plantilla biométrica',
     icon: <OneIcon />,
     color: colorTokens.brand
   },
-  { 
-    id: 'capture2', 
-    label: 'Captura 2/3', 
-    description: 'Segunda captura - Verificación',
+  {
+    id: 'capture2',
+    label: 'Plantilla de Verificación',
+    description: 'Capturando segunda plantilla biométrica',
     icon: <TwoIcon />,
     color: colorTokens.info
   },
-  { 
-    id: 'capture3', 
-    label: 'Captura 3/3', 
-    description: 'Tercera captura - Respaldo',
+  {
+    id: 'capture3',
+    label: 'Plantilla de Respaldo',
+    description: 'Capturando tercera plantilla biométrica',
     icon: <ThreeIcon />,
     color: colorTokens.warning
   },
@@ -418,8 +418,8 @@ export default function FingerprintRegistration({
   }, [processFinalTemplate]);
 
   const startSingleCapture = useCallback((captureNumber: number) => {
-    console.log(`🚀 Iniciando captura ${captureNumber}/3`);
-    
+    console.log(`🚀 Iniciando captura de plantilla ${captureNumber}/3`);
+
     const fingerIndex = selectedFingerRef.current || selectedFinger;
     if (!fingerIndex) {
       console.error('❌ No hay dedo seleccionado');
@@ -429,10 +429,10 @@ export default function FingerprintRegistration({
       stopTimersRef.current?.();
       return;
     }
-    
+
     setCurrentCapture(captureNumber - 1);
     setCurrentStep(`capture${captureNumber}`);
-    setMessage(`Coloque el dedo en el sensor - Captura ${captureNumber}/3`);
+    setMessage(`Coloque el dedo en el sensor - Plantilla ${captureNumber}/3`);
     setProgress(0);
     setCaptureStartTime(Date.now());
     
@@ -458,9 +458,9 @@ export default function FingerprintRegistration({
         }
       }
     };
-    
-    console.log(`📤 Enviando comando de captura ${captureNumber}/3:`, captureCommand);
-    
+
+    console.log(`📤 Enviando comando para plantilla ${captureNumber}/3:`, captureCommand);
+
     try {
       if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
         wsRef.current.send(JSON.stringify(captureCommand));
@@ -536,25 +536,25 @@ export default function FingerprintRegistration({
             fingerprintId: templateData.fingerprintId || templateData.id || `fp_${Date.now()}`
           };
           
-          console.log(`✅ Captura ${currentCapture + 1}/3 exitosa - Calidad: ${qualityScore}%`, captureResult);
-          
+          console.log(`✅ Plantilla ${currentCapture + 1}/3 capturada exitosamente - Calidad: ${qualityScore}%`, captureResult);
+
           setCaptureResults(prev => {
             const newResults = [...prev, captureResult];
             const capturesCompleted = newResults.length;
-            
-            console.log(`📊 Capturas completadas: ${capturesCompleted}/3`);
-            
+
+            console.log(`📊 Plantillas completadas: ${capturesCompleted}/3`);
+
             // ✅ Usar refs para evitar dependencias
             setTimeout(() => {
               if (capturesCompleted < 3) {
-                console.log(`🔄 Iniciando siguiente captura: ${capturesCompleted + 1}/3`);
+                console.log(`🔄 Iniciando captura de plantilla ${capturesCompleted + 1}/3`);
                 startSingleCaptureRef.current?.(capturesCompleted + 1);
               } else {
-                console.log('🎊 Todas las capturas completadas - Procesando templates');
+                console.log('🎊 Todas las plantillas capturadas - Procesando y combinando templates');
                 processFinalTemplateRef.current?.();
               }
             }, capturesCompleted < 3 ? 1500 : 500);
-            
+
             return newResults;
           });
           
@@ -678,8 +678,8 @@ export default function FingerprintRegistration({
       return;
     }
     
-    console.log('🚀 Iniciando proceso de captura múltiple con dedo:', fingerIndex);
-    
+    console.log('🚀 Iniciando proceso de captura de 3 plantillas biométricas con dedo:', fingerIndex);
+
     setIsProcessing(true);
     setError(null);
     setProgress(0);
@@ -691,10 +691,10 @@ export default function FingerprintRegistration({
     setCombinedTemplate(null);
     
     setCurrentStep('preparation');
-    setMessage('Preparando para registro de huella múltiple...');
-    
+    setMessage('Preparando para captura de 3 plantillas biométricas...');
+
     startTotalTimer();
-    
+
     setTimeout(() => {
       startSingleCapture(1);
     }, 2000);
@@ -1005,21 +1005,21 @@ export default function FingerprintRegistration({
                 <Chip
                   key={index}
                   icon={
-                    captureResults[index] ? <CheckCircleIcon /> : 
-                    currentCapture === index ? <CaptureIcon /> : 
+                    captureResults[index] ? <CheckCircleIcon /> :
+                    currentCapture === index ? <CaptureIcon /> :
                     <FingerprintIcon />
                   }
-                  label={`Captura ${index + 1}`}
+                  label={`Plantilla ${index + 1}`}
                   size="small"
                   sx={{
-                    bgcolor: captureResults[index] ? `${colorTokens.success}20` : 
-                             currentCapture === index ? `${colorTokens.brand}20` : 
+                    bgcolor: captureResults[index] ? `${colorTokens.success}20` :
+                             currentCapture === index ? `${colorTokens.brand}20` :
                              `${colorTokens.neutral500}20`,
-                    color: captureResults[index] ? colorTokens.success : 
-                           currentCapture === index ? colorTokens.brand : 
+                    color: captureResults[index] ? colorTokens.success :
+                           currentCapture === index ? colorTokens.brand :
                            colorTokens.neutral900,
-                    border: `1px solid ${captureResults[index] ? colorTokens.success : 
-                                        currentCapture === index ? colorTokens.brand : 
+                    border: `1px solid ${captureResults[index] ? colorTokens.success :
+                                        currentCapture === index ? colorTokens.brand :
                                         colorTokens.neutral500}40`
                   }}
                 />
