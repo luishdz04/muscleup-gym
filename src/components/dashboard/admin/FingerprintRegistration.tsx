@@ -602,19 +602,33 @@ export default function FingerprintRegistration({
     handleWebSocketMessageRef.current = handleWebSocketMessage;
   }, [handleWebSocketMessage]);
 
+  // ✅ HELPER: Cerrar WebSocket existente de forma segura
+  const closeExistingWebSocket = useCallback(() => {
+    if (wsRef.current) {
+      console.log('🔌 Cerrando WebSocket existente...');
+      try {
+        if (wsRef.current.readyState === WebSocket.OPEN ||
+            wsRef.current.readyState === WebSocket.CONNECTING) {
+          wsRef.current.close(1000, 'Closing before new connection');
+        }
+      } catch (error) {
+        console.error('Error cerrando WebSocket:', error);
+      }
+      wsRef.current = null;
+    }
+  }, []);
+
   // ✅ FUNCIÓN SIMPLIFICADA PARA RECONECTAR MANUALMENTE (SOLO PARA BOTÓN DE ERROR)
   const connectWebSocket = useCallback(() => {
-    if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-      console.log('⚠️ Ya hay una conexión WebSocket activa');
-      return;
-    }
+    // ✅ CERRAR CONEXIÓN EXISTENTE ANTES DE CREAR NUEVA
+    closeExistingWebSocket();
 
     try {
       console.log('🔌 Reconectando manualmente a ZK Access Agent...');
       setWsReconnecting(true);
       setWsError(null);
       reconnectAttemptsRef.current = 0;
-      
+
       wsRef.current = new WebSocket(WS_URL);
       
       wsRef.current.onopen = () => {
@@ -654,7 +668,7 @@ export default function FingerprintRegistration({
       setWsError('No se pudo conectar al sensor biométrico');
       setWsReconnecting(false);
     }
-  }, []); // ✅ SIN DEPENDENCIAS
+  }, [closeExistingWebSocket]);
 
   // ✅ FUNCIÓN DE INICIO SIMPLIFICADA
   const startMultipleCaptureProcess = useCallback(() => {
@@ -708,11 +722,14 @@ export default function FingerprintRegistration({
       setTotalTime(0);
       setIsProcessing(false);
       
+      // ✅ CERRAR CONEXIÓN EXISTENTE ANTES DE CREAR NUEVA
+      closeExistingWebSocket();
+
       // ✅ Conectar INMEDIATAMENTE sin setTimeout
       console.log('🔌 Conectando a ZK Access Agent...');
       setWsReconnecting(true);
       setWsError(null);
-      
+
       wsRef.current = new WebSocket(WS_URL);
       
       wsRef.current.onopen = () => {
@@ -752,19 +769,22 @@ export default function FingerprintRegistration({
                 console.log('🔌 Reconectando a ZK Access Agent...');
                 setWsReconnecting(true);
                 setWsError(null);
-                
-                const newWs = new WebSocket(WS_URL);
-                
+
+                // ✅ CERRAR CONEXIÓN EXISTENTE ANTES DE RECONECTAR
+                closeExistingWebSocket();
+
+                wsRef.current = new WebSocket(WS_URL);
+
                 // ✅ CRÍTICO: Configurar TODOS los event handlers para la reconexión
-                newWs.onopen = () => {
+                wsRef.current.onopen = () => {
                   console.log('✅ WebSocket reconectado exitosamente');
                   setWsConnected(true);
                   setWsReconnecting(false);
                   setWsError(null);
                   reconnectAttemptsRef.current = 0;
                 };
-                
-                newWs.onmessage = (ev) => {
+
+                wsRef.current.onmessage = (ev) => {
                   try {
                     const msg: WebSocketMessage = JSON.parse(ev.data);
                     // ✅ USAR REF en lugar de función directa
@@ -773,23 +793,21 @@ export default function FingerprintRegistration({
                     console.error('❌ Error parseando mensaje WebSocket:', err);
                   }
                 };
-                
-                newWs.onclose = (ev) => {
+
+                wsRef.current.onclose = (ev) => {
                   console.log('🔌 WebSocket reconectado se desconectó:', ev.code, ev.reason);
                   setWsConnected(false);
                   setWsReconnecting(false);
                   setDeviceConnected(false);
                 };
-                
-                newWs.onerror = (err) => {
+
+                wsRef.current.onerror = (err) => {
                   console.error('❌ Error en WebSocket reconectado:', err);
                   setWsError('Error de conexión con el sensor biométrico');
                   setWsConnected(false);
                   setWsReconnecting(false);
                   setDeviceConnected(false);
                 };
-                
-                wsRef.current = newWs;
               }
             }, RECONNECT_INTERVAL);
           } else {
@@ -840,7 +858,7 @@ export default function FingerprintRegistration({
         totalTimerRef.current = null;
       }
     }
-  }, [open]); // ✅ SOLO DEPENDE DE 'open'
+  }, [open, closeExistingWebSocket]); // ✅ Depende de 'open' y closeExistingWebSocket
 
   const getCurrentStepInfo = () => {
     return PROCESS_STEPS.find(step => step.id === currentStep) || PROCESS_STEPS[0];
