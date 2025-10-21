@@ -204,8 +204,6 @@ export default function FingerprintRegistration({
   const selectedFingerRef = useRef<number | null>(null);
   
   // ✅ Refs para funciones que cambian frecuentemente (optimización)
-  const startSingleCaptureRef = useRef<((captureNumber: number) => void) | null>(null);
-  const processFinalTemplateRef = useRef<(() => void) | null>(null);
   const stopTimersRef = useRef<(() => void) | null>(null);
   const handleWebSocketMessageRef = useRef<((message: WebSocketMessage) => void) | null>(null);
   
@@ -360,126 +358,9 @@ export default function FingerprintRegistration({
     
   }, [combinedTemplate, user, getNextDeviceUserId, onFingerprintDataReady, handleClose]);
 
-  const processFinalTemplate = useCallback(() => {
-    setCurrentStep('processing');
-    setMessage('Combinando templates biométricos...');
-    setProgress(0);
-    
-    setCaptureResults(currentResults => {
-      console.log('🔄 Procesando templates finales:', currentResults);
-      
-      if (currentResults.length !== 3) {
-        console.error('❌ Error: Se esperaban 3 capturas, se recibieron:', currentResults.length);
-        setError('Error en el proceso de captura múltiple');
-        setIsProcessing(false);
-        setCurrentStep('selection');
-        return currentResults;
-      }
-      
-      const processInterval = setInterval(() => {
-        setProgress(prev => {
-          const newProgress = prev + 10;
-          if (newProgress >= 100) {
-            clearInterval(processInterval);
-            
-            const avgQuality = currentResults.reduce((sum, result) => sum + result.qualityScore, 0) / currentResults.length;
-            setFinalQuality(Math.round(avgQuality));
-            
-            const combinedTemplateData = {
-              primary: currentResults[0],
-              verification: currentResults[1], 
-              backup: currentResults[2],
-              averageQuality: avgQuality,
-              totalCaptureTime: totalTime,
-              combinedAt: new Date().toISOString()
-            };
-            
-            setCombinedTemplate(combinedTemplateData);
-            setCurrentStep('ready');
-            setMessage('¡Datos de huella listos! Presione "Confirmar" para agregar al formulario.');
-            setIsProcessing(false);
-            
-            // Usar ref en lugar de dependencia directa
-            stopTimersRef.current?.();
-            
-            return 100;
-          }
-          return newProgress;
-        });
-      }, 200);
-      
-      return currentResults;
-    });
-  }, [totalTime]);
-  
-  // ✅ Actualizar ref cuando processFinalTemplate cambie
-  useEffect(() => {
-    processFinalTemplateRef.current = processFinalTemplate;
-  }, [processFinalTemplate]);
-
-  const startSingleCapture = useCallback((captureNumber: number) => {
-    console.log(`🚀 Iniciando captura de plantilla ${captureNumber}/3`);
-
-    const fingerIndex = selectedFingerRef.current || selectedFinger;
-    if (!fingerIndex) {
-      console.error('❌ No hay dedo seleccionado');
-      setError('Error: Se perdió la selección del dedo');
-      setIsProcessing(false);
-      setCurrentStep('selection');
-      stopTimersRef.current?.();
-      return;
-    }
-
-    setCurrentCapture(captureNumber - 1);
-    setCurrentStep(`capture${captureNumber}`);
-    setMessage(`Coloque el dedo en el sensor - Plantilla ${captureNumber}/3`);
-    setProgress(0);
-    setCaptureStartTime(Date.now());
-    
-    // ✅ FORMATO CORRECTO COMPATIBLE CON EL SERVIDOR
-    const captureCommand = {
-      type: 'capture_fingerprint',
-      data: { // ✅ CRÍTICO: Anidar los datos para compatibilidad con el backend
-        userId: user.id,
-        userName: `${user.firstName} ${user.lastName}`,
-        fingerIndex: fingerIndex,
-        captureNumber: captureNumber,
-        options: {
-          timeout: 15000,
-          qualityThreshold: 60
-        },
-        client_info: {
-          client_id: `fingerprint_registration_${user.id}`,
-          location: 'Registro de Usuario',
-          timestamp: new Date().toISOString(),
-          mode: 'enrollment',
-          capture_number: captureNumber,
-          total_captures: 3
-        }
-      }
-    };
-
-    console.log(`📤 Enviando comando para plantilla ${captureNumber}/3:`, captureCommand);
-
-    try {
-      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-        wsRef.current.send(JSON.stringify(captureCommand));
-      } else {
-        throw new Error('WebSocket no está conectado');
-      }
-    } catch (error) {
-      console.error('❌ Error enviando comando:', error);
-      setError('Error de comunicación con el sensor');
-      setIsProcessing(false);
-      setCurrentStep('selection');
-      stopTimersRef.current?.();
-    }
-  }, [selectedFinger, user]);
-  
-  // ✅ Actualizar ref cuando startSingleCapture cambie
-  useEffect(() => {
-    startSingleCaptureRef.current = startSingleCapture;
-  }, [startSingleCapture]);
+  // ✅ ELIMINADO: processFinalTemplate ya no es necesario
+  // El servidor maneja las 3 capturas + DBMerge internamente con EnrollFingerprintAsync()
+  // Solo recibimos el template fusionado final en el mensaje capture_result
 
   const handleWebSocketMessage = useCallback((message: WebSocketMessage) => {
     console.log('📨 Mensaje recibido:', message);
@@ -504,70 +385,80 @@ export default function FingerprintRegistration({
         break;
         
       case 'capture_status':
+        // ✅ PROCESAR MENSAJES DE PROGRESO DEL SERVIDOR
+        // El servidor envía mensajes como "Captura 1/3: ✓ Captura 1/3 OK - Levante dedo"
         if (message.data) {
-          setMessage(message.data.message || '');
-          setProgress(message.data.progress || 0);
+          const statusMessage = message.data.message || '';
+          const statusProgress = message.data.progress || 0;
+
+          console.log(`📊 [STATUS] Progreso: ${statusProgress}% - ${statusMessage}`);
+
+          setMessage(statusMessage);
+          setProgress(statusProgress);
+
+          // ✅ Actualizar step basado en el progreso
+          if (statusProgress >= 90) {
+            setCurrentStep('processing');
+          } else if (statusProgress >= 60) {
+            setCurrentStep('capture3');
+          } else if (statusProgress >= 30) {
+            setCurrentStep('capture2');
+          } else if (statusProgress >= 10) {
+            setCurrentStep('capture1');
+          }
         }
         break;
-        
+
       case 'capture_result':
-      case 'fingerprint_captured':  // ✅ Agregar caso alternativo del servidor
-        // ✅ Soportar múltiples formatos de respuesta
+      case 'fingerprint_captured':
+        // ✅ RESULTADO FINAL DEL ENROLLAMIENTO
         const captureData = message.data?.data || message.data;
         const isSuccess = message.data?.success !== false && message.success !== false;
-        
+
         if (isSuccess && captureData && (captureData.template || captureData.fingerprintData)) {
           const qualityMap: { [key: string]: number } = {
             'excellent': 98, 'very_good': 92, 'good': 85, 'fair': 75, 'poor': 50
           };
-          
-          // ✅ Extraer datos del template (soportar múltiples formatos)
+
+          // ✅ Extraer datos del template fusionado
           const templateData = captureData.fingerprintData || captureData;
           const quality = templateData.quality || 'good';
           const qualityScore = qualityMap[quality.toLowerCase()] || 85;
-          
-          const captureResult: CaptureResult = {
-            success: true,
-            template: templateData.template || templateData.templateData,
+
+          console.log('🎊 ENROLLAMIENTO COMPLETADO - Template fusionado recibido');
+          console.log('   Calidad:', qualityScore + '%');
+          console.log('   Tamaño:', templateData.templateSize || templateData.size || 0, 'bytes');
+
+          // ✅ Guardar el template fusionado final
+          const finalTemplate = templateData.template || templateData.templateData;
+
+          setCurrentStep('ready');
+          setMessage('¡Enrollamiento completado exitosamente!');
+          setProgress(100);
+          setFinalQuality(qualityScore);
+          setIsProcessing(false);
+          stopTimersRef.current?.();
+
+          // ✅ Notificar al componente padre con los datos del template fusionado
+          onFingerprintDataReady({
+            template: finalTemplate,
             templateSize: templateData.templateSize || templateData.size || 0,
             quality: quality,
             qualityScore: qualityScore,
-            captureTime: Date.now() - captureStartTime,
-            fingerprintId: templateData.fingerprintId || templateData.id || `fp_${Date.now()}`
-          };
-          
-          console.log(`✅ Plantilla ${currentCapture + 1}/3 capturada exitosamente - Calidad: ${qualityScore}%`, captureResult);
-
-          setCaptureResults(prev => {
-            const newResults = [...prev, captureResult];
-            const capturesCompleted = newResults.length;
-
-            console.log(`📊 Plantillas completadas: ${capturesCompleted}/3`);
-
-            // ✅ Usar refs para evitar dependencias
-            setTimeout(() => {
-              if (capturesCompleted < 3) {
-                console.log(`🔄 Iniciando captura de plantilla ${capturesCompleted + 1}/3`);
-                startSingleCaptureRef.current?.(capturesCompleted + 1);
-              } else {
-                console.log('🎊 Todas las plantillas capturadas - Procesando y combinando templates');
-                processFinalTemplateRef.current?.();
-              }
-            }, capturesCompleted < 3 ? 1500 : 500);
-
-            return newResults;
+            fingerprintId: templateData.fingerprintId || templateData.id || `fp_${Date.now()}`,
+            imageData: templateData.imageData || null
           });
-          
+
         } else {
-          // ✅ LÓGICA DE ERROR MEJORADA
+          // ✅ ERROR en el enrollamiento
           const errorPayload = message.data || message;
-          const errorMsg = errorPayload.error || (typeof errorPayload === 'string' ? errorPayload : 'Error en captura de huella');
-          
-          console.error('❌ Fallo en el proceso de captura reportado por el servidor.');
+          const errorMsg = errorPayload.error || (typeof errorPayload === 'string' ? errorPayload : 'Error en enrollamiento');
+
+          console.error('❌ Error en el enrollamiento');
           console.error('   Mensaje:', errorMsg);
           console.error('   Payload completo:', message);
 
-          setError(`Fallo del sensor: ${errorMsg}`);
+          setError(`Error: ${errorMsg}`);
           setIsProcessing(false);
           setCurrentStep('selection');
           stopTimersRef.current?.();
@@ -670,15 +561,16 @@ export default function FingerprintRegistration({
     }
   }, [closeExistingWebSocket]);
 
-  // ✅ FUNCIÓN DE INICIO SIMPLIFICADA
+  // ✅ FUNCIÓN MODIFICADA: Enviar UN SOLO comando al servidor
   const startMultipleCaptureProcess = useCallback(() => {
     const fingerIndex = selectedFingerRef.current || selectedFinger;
     if (!fingerIndex || !wsConnected || !deviceConnected) {
       setError('Seleccione un dedo y verifique la conexión del dispositivo');
       return;
     }
-    
-    console.log('🚀 Iniciando proceso de captura de 3 plantillas biométricas con dedo:', fingerIndex);
+
+    console.log('🚀 Enviando UN SOLO comando de enrollamiento al servidor (3 capturas automáticas)');
+    console.log('   Dedo seleccionado:', fingerIndex);
 
     setIsProcessing(true);
     setError(null);
@@ -689,17 +581,55 @@ export default function FingerprintRegistration({
     setCaptureResults([]);
     setFinalQuality(null);
     setCombinedTemplate(null);
-    
+
     setCurrentStep('preparation');
-    setMessage('Preparando para captura de 3 plantillas biométricas...');
+    setMessage('Preparando para enrollamiento (3 capturas automáticas)...');
 
     startTotalTimer();
 
     setTimeout(() => {
-      startSingleCapture(1);
+      // ✅ ENVIAR UN SOLO COMANDO - El servidor maneja las 3 capturas internamente
+      const enrollCommand = {
+        type: 'capture_fingerprint',
+        data: {
+          userId: user.id,
+          userName: `${user.firstName} ${user.lastName}`,
+          fingerIndex: fingerIndex,
+          captureNumber: 1, // Siempre 1 - el servidor hace las 3 capturas
+          options: {
+            timeout: 90000, // 90 segundos para 3 capturas
+            qualityThreshold: 60
+          },
+          client_info: {
+            client_id: `fingerprint_registration_${user.id}`,
+            location: 'Registro de Usuario',
+            timestamp: new Date().toISOString(),
+            mode: 'enrollment',
+            total_captures: 3
+          }
+        }
+      };
+
+      console.log('📤 Enviando comando único de enrollamiento:', enrollCommand);
+
+      try {
+        if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+          wsRef.current.send(JSON.stringify(enrollCommand));
+          setCurrentStep('capture1');
+          setMessage('Coloque el dedo en el sensor...');
+        } else {
+          throw new Error('WebSocket no está conectado');
+        }
+      } catch (error) {
+        console.error('❌ Error enviando comando:', error);
+        setError('Error de comunicación con el sensor');
+        setIsProcessing(false);
+        setCurrentStep('selection');
+        stopTimersRef.current?.();
+      }
     }, 2000);
-    
-  }, [selectedFinger, wsConnected, deviceConnected, startTotalTimer, startSingleCapture]);
+
+  }, [selectedFinger, wsConnected, deviceConnected, startTotalTimer, user]);
 
   // ✅ useEffect para inicialización - SIN DEPENDENCIA DE handleWebSocketMessage
   useEffect(() => {
