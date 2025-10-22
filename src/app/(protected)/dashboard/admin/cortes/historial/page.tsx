@@ -331,6 +331,7 @@ export default function CutsHistoryPage() {
   const [editTabValue, setEditTabValue] = useState(0);
   const [realExpensesAmount, setRealExpensesAmount] = useState<number | null>(null);
   const [loadingRealExpenses, setLoadingRealExpenses] = useState(false);
+  const [generatingPDF, setGeneratingPDF] = useState<string | null>(null); // ID del corte generando PDF
 
   // Paginación
   const [page, setPage] = useState(1);
@@ -557,7 +558,9 @@ export default function CutsHistoryPage() {
 
   const downloadCutPDF = async (cutId: string, cutNumber?: string) => {
     try {
-      console.log('📄 [HISTORIAL] Descargando PDF para corte:', cutId);
+      console.log('📄 [HISTORIAL] Generando PDF para corte:', cutId);
+      setGeneratingPDF(cutId); // Mostrar estado de generación
+      setError(null);
 
       const response = await fetch(`/api/cuts/${cutId}/generate-pdf`);
 
@@ -566,20 +569,35 @@ export default function CutsHistoryPage() {
       }
 
       const blob = await response.blob();
+
+      // Obtener el nombre del archivo del header Content-Disposition
+      const contentDisposition = response.headers.get('Content-Disposition');
+      let filename = `Corte_${cutNumber || cutId}.pdf`;
+
+      if (contentDisposition) {
+        const matches = /filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/.exec(contentDisposition);
+        if (matches && matches[1]) {
+          filename = matches[1].replace(/['"]/g, '');
+        }
+      }
+
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      // El nombre del archivo viene del servidor en Content-Disposition header
-      a.download = ''; // Dejar vacío para usar el nombre del servidor
+      a.download = filename;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
 
-      console.log('✅ [HISTORIAL] PDF descargado exitosamente');
+      console.log('✅ [HISTORIAL] PDF generado y descargado:', filename);
+      // Mostrar mensaje de éxito
+      setError(null);
     } catch (error) {
-      console.error('❌ [HISTORIAL] Error descargando PDF:', error);
-      setError('Error al descargar el PDF del corte');
+      console.error('❌ [HISTORIAL] Error generando PDF:', error);
+      setError('Error al generar el PDF del corte');
+    } finally {
+      setGeneratingPDF(null); // Limpiar estado de generación
     }
   };
 
@@ -1476,18 +1494,23 @@ export default function CutsHistoryPage() {
                                 </IconButton>
                               </Tooltip>
 
-                              <Tooltip title="Descargar PDF">
+                              <Tooltip title={generatingPDF === cut.id ? "Generando PDF..." : "Generar PDF"}>
                                 <IconButton
                                   size="small"
                                   onClick={() => downloadCutPDF(cut.id, cut.cut_number)}
+                                  disabled={generatingPDF === cut.id}
                                   sx={{
-                                    color: colorTokens.danger,
+                                    color: generatingPDF === cut.id ? colorTokens.neutral600 : colorTokens.danger,
                                     '&:hover': {
-                                      backgroundColor: `${colorTokens.danger}20`
+                                      backgroundColor: generatingPDF === cut.id ? 'transparent' : `${colorTokens.danger}20`
                                     }
                                   }}
                                 >
-                                  <PictureAsPdfIcon fontSize="small" />
+                                  {generatingPDF === cut.id ? (
+                                    <CircularProgress size={20} sx={{ color: colorTokens.danger }} />
+                                  ) : (
+                                    <PictureAsPdfIcon fontSize="small" />
+                                  )}
                                 </IconButton>
                               </Tooltip>
 

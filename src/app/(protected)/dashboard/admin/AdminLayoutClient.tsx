@@ -44,9 +44,8 @@ import Link from 'next/link';
 
 // ✅ IMPORTS ENTERPRISE v7.0
 import { colorTokens } from '@/theme';
-import { useNotifications } from '@/hooks/useNotifications';
 import { formatMexicoTime } from '@/utils/dateUtils';
-import NotificationsMenu from '@/components/NotificationsMenu';
+import { useToast } from '@/hooks/useToast';
 
 // 🎨 ICONOS ORGANIZADOS POR CATEGORÍA
 import MenuIcon from '@mui/icons-material/Menu';
@@ -56,7 +55,6 @@ import DashboardIcon from '@mui/icons-material/Dashboard';
 import LogoutIcon from '@mui/icons-material/Logout';
 import ExpandLess from '@mui/icons-material/ExpandLess';
 import ExpandMore from '@mui/icons-material/ExpandMore';
-import NotificationsIcon from '@mui/icons-material/Notifications';
 import HomeIcon from '@mui/icons-material/Home';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import EditIcon from '@mui/icons-material/Edit';
@@ -581,7 +579,6 @@ export default function AdminLayoutClient({ children, user }: AdminLayoutClientP
   // 🔧 ESTADOS MEJORADOS
   const [drawerOpen, setDrawerOpen] = useState(!isMobile);
   const [userMenuAnchor, setUserMenuAnchor] = useState<null | HTMLElement>(null);
-  const [notificationsMenuAnchor, setNotificationsMenuAnchor] = useState<null | HTMLElement>(null);
   const [activeSection, setActiveSection] = useState<string>('');
   
   // ✅ ESTADO SIMPLIFICADO PARA SUBMENÚS (solo uno abierto a la vez)
@@ -593,8 +590,8 @@ export default function AdminLayoutClient({ children, user }: AdminLayoutClientP
   const [bottomNavMenuAnchor, setBottomNavMenuAnchor] = useState<null | HTMLElement>(null);
   const [selectedBottomNavItem, setSelectedBottomNavItem] = useState<MenuItem | null>(null);
 
-  // ✅ HOOK DE NOTIFICACIONES v7.0 - CON FUNCIONALIDAD REAL
-  const { toast, unreadCount } = useNotifications();
+  // ✅ HOOK DE TOAST para notificaciones
+  const toast = useToast();
   
   // ✅ useEffect OPTIMIZADO - SIN menuItems como dependencia
   useEffect(() => {
@@ -1059,50 +1056,8 @@ export default function AdminLayoutClient({ children, user }: AdminLayoutClientP
               </Tooltip>
             </Box>
 
-            {/* 🔔 ÁREA DE NOTIFICACIONES Y USUARIO - RESPONSIVE */}
+            {/* 👤 ÁREA DE USUARIO - RESPONSIVE */}
             <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.5, sm: 1 } }}>
-              <Tooltip title={unreadCount > 0 ? `${unreadCount} notificaciones sin leer` : 'Sin notificaciones'}>
-                <IconButton
-                  color="inherit"
-                  onClick={(e) => setNotificationsMenuAnchor(e.currentTarget)}
-                  sx={{
-                    mr: { xs: 0.5, sm: 1 },
-                    position: 'relative',
-                    padding: { xs: '6px', sm: '8px' },
-                    '&:hover': {
-                      backgroundColor: alpha(colorTokens.brand, 0.1),
-                    }
-                  }}
-                  aria-label="mostrar notificaciones"
-                >
-                  <Badge
-                    badgeContent={unreadCount}
-                    max={99}
-                    sx={{
-                      '& .MuiBadge-badge': {
-                        background: `linear-gradient(135deg, ${colorTokens.danger}, #ff6666)`,
-                        color: colorTokens.white,
-                        fontWeight: 800,
-                        fontSize: { xs: '0.65rem', sm: '0.7rem' },
-                        minWidth: { xs: '18px', sm: '20px' },
-                        height: { xs: '18px', sm: '20px' },
-                        borderRadius: '10px',
-                        padding: '0 6px',
-                        top: '3px',
-                        right: '3px',
-                        border: `2px solid ${colorTokens.black}`,
-                        boxShadow: `0 2px 8px ${alpha(colorTokens.danger, 0.5)}`,
-                        animation: unreadCount > 0 ? `${pulse} 2s ease-in-out infinite` : 'none'
-                      }
-                    }}
-                  >
-                    <NotificationsIcon sx={{
-                      color: colorTokens.brand,
-                      fontSize: { xs: 22, sm: 26, md: 28 }
-                    }} />
-                  </Badge>
-                </IconButton>
-              </Tooltip>
 
               {/* Chip de bienvenida solo en desktop */}
               <Chip
@@ -1782,13 +1737,6 @@ export default function AdminLayoutClient({ children, user }: AdminLayoutClientP
           borderRadius: '12px',
           boxShadow: `0 8px 25px ${alpha(colorTokens.black, 0.3)}`
         }}
-      />
-      
-      {/* 🔔 MENÚ DE NOTIFICACIONES */}
-      <NotificationsMenu
-        anchorEl={notificationsMenuAnchor}
-        open={Boolean(notificationsMenuAnchor)}
-        onClose={() => setNotificationsMenuAnchor(null)}
       />
 
       {/* BOTTOM NAVIGATION MÓVIL */}

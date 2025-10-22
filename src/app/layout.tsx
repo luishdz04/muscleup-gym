@@ -4,6 +4,7 @@ import './globals.css';
 import Navbar from '@/components/Navbar';
 // Footer eliminado del layout global - se agrega en páginas públicas específicas
 import MUIThemeProvider from '@/components/providers/ThemeProvider';
+import NotificationProvider from '@/providers/NotificationProvider';
 import type { Metadata, Viewport } from 'next';
 
 export const metadata: Metadata = {
@@ -43,10 +44,11 @@ export default function RootLayout({
       </head>
       <body className="relative flex flex-col min-h-screen bg-black text-white">
         <MUIThemeProvider>
-          {/* 2. AÑADE EL COMPONENTE AQUÍ */}          
-          <Navbar />
-          <main className="flex-grow">{children}</main>
-          {/* Footer eliminado - se agrega individualmente en páginas públicas */}
+          <NotificationProvider>
+            <Navbar />
+            <main className="flex-grow">{children}</main>
+            {/* Footer eliminado - se agrega individualmente en páginas públicas */}
+          </NotificationProvider>
         </MUIThemeProvider>
       </body>
     </html>

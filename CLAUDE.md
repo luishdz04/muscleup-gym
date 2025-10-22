@@ -16,6 +16,7 @@ MuscleUp Gym is a comprehensive gym management system built with Next.js 15, fea
 - **Biometric Integration**: ZKTeco ZK9500 fingerprint devices via WebSocket
 - **PDF Generation**: @react-pdf/renderer, PDFKit
 - **Animations**: Framer Motion, GSAP
+- **Desktop App**: Electron 38.x for native Windows/Mac/Linux application
 
 ## Common Commands
 
@@ -25,6 +26,15 @@ npm run dev        # Start development server with Turbo on 0.0.0.0
 npm run build      # Build for production
 npm start          # Start production server
 npm run lint       # Run ESLint
+```
+
+### Electron Desktop App
+```bash
+npm run electron:dev           # Start Electron app in development mode
+npm run electron:build         # Build for all platforms
+npm run electron:build:win     # Build for Windows (NSIS + Portable)
+npm run electron:build:mac     # Build for macOS (DMG + ZIP)
+npm run electron:build:linux   # Build for Linux (AppImage + deb + rpm)
 ```
 
 ### Database
@@ -746,4 +756,186 @@ Cuando agregues nuevas páginas similares:
 - [ ] Agregar ruta en `AdminLayoutClient.tsx`
 - [ ] Verificar 0 errores de TypeScript
 - [ ] Probar funcionalidad completa
+
+---
+
+## Aplicación de Escritorio (Electron)
+
+### Overview
+
+El sistema MuscleUp Gym Admin está disponible como aplicación de escritorio nativa usando Electron 38.x. Esto proporciona:
+
+- **Mejor integración con hardware**: Lectores biométricos, impresoras, etc.
+- **Rendimiento mejorado**: App nativa sin overhead del navegador
+- **Funcionalidad offline**: Preparada para trabajar sin conexión (futuro)
+- **Experiencia profesional**: Ventana nativa dedicada para el personal administrativo
+
+### Arquitectura Electron
+
+**Proceso Principal** (`electron/main.js`):
+- Maneja la ventana principal de la aplicación
+- Configuración: 1400x900 (mínimo 1024x768)
+- Menú personalizado con opciones de administración
+- IPC handlers para comunicación segura
+- Context isolation habilitado
+
+**Preload Script** (`electron/preload.js`):
+- Context bridge para exponer APIs al renderer
+- Comunicación segura entre main y renderer process
+- Expone `window.electron` con métodos seguros
+
+**Configuración de Build** (`electron-builder.json`):
+- Targets: Windows (NSIS + Portable), macOS (DMG + ZIP), Linux (AppImage + deb + rpm)
+- AppId: `com.muscleupgym.admin`
+- Auto-updates configurables
+
+### Scripts Disponibles
+
+```bash
+# Desarrollo (requiere Next.js corriendo)
+npm run electron:dev
+
+# Build para todas las plataformas
+npm run electron:build
+
+# Build específico por plataforma
+npm run electron:build:win     # Windows
+npm run electron:build:mac     # macOS
+npm run electron:build:linux   # Linux
+```
+
+### Estructura de Archivos
+
+```
+electron/
+├── main.js                    # Proceso principal
+├── preload.js                 # Script preload (context bridge)
+├── entitlements.mac.plist     # Permisos macOS
+└── assets/
+    ├── icon.ico               # Ícono Windows
+    ├── icon.icns              # Ícono macOS
+    └── icons/                 # Íconos PNG para Linux
+
+electron-builder.json          # Configuración de empaquetado
+ELECTRON_APP.md               # Documentación completa
+```
+
+### Modo Desarrollo vs Producción
+
+**Desarrollo:**
+- Conecta a `http://localhost:3000/dashboard/admin`
+- Hot reload disponible
+- DevTools abierto automáticamente
+- Variables de entorno de desarrollo
+
+**Producción:**
+- Carga archivos estáticos de `/out/`
+- No requiere servidor Node.js corriendo
+- Optimizado y minificado
+
+### Detección de Entorno Electron
+
+En componentes React, detectar si está corriendo en Electron:
+
+```typescript
+if (typeof window !== 'undefined' && window.electron?.isElectron) {
+  // Código específico para Electron
+  const version = await window.electron.getAppVersion();
+  const platform = window.electron.platform; // 'win32', 'darwin', 'linux'
+}
+```
+
+### IPC Communication
+
+**Agregar nuevo handler:**
+
+1. En `electron/main.js`:
+```javascript
+ipcMain.handle('my-new-handler', async (event, arg) => {
+  // Lógica del main process
+  return result;
+});
+```
+
+2. En `electron/preload.js`:
+```javascript
+contextBridge.exposeInMainWorld('electron', {
+  // ... existing methods
+  myNewMethod: (arg) => ipcRenderer.invoke('my-new-handler', arg)
+});
+```
+
+3. En componentes React:
+```typescript
+const result = await window.electron.myNewMethod(arg);
+```
+
+### Distribución
+
+**Outputs generados** (en `/dist/`):
+
+**Windows:**
+- `MuscleUp Gym Admin-0.1.0-x64.exe` - Instalador NSIS
+- `MuscleUp Gym Admin-0.1.0-portable.exe` - Versión portable
+
+**macOS:**
+- `MuscleUp Gym Admin-0.1.0.dmg` - Imagen de disco
+- `MuscleUp Gym Admin-0.1.0-mac.zip` - Archivo comprimido
+
+**Linux:**
+- `MuscleUp Gym Admin-0.1.0.AppImage` - AppImage universal
+- `MuscleUp Gym Admin-0.1.0.deb` - Paquete Debian/Ubuntu
+- `MuscleUp Gym Admin-0.1.0.rpm` - Paquete RedHat/Fedora
+
+### Iconos de la Aplicación
+
+**Requerimientos:**
+- Windows: `icon.ico` (256x256, multi-resolución)
+- macOS: `icon.icns` (hasta 1024x1024, multi-resolución)
+- Linux: Carpeta `icons/` con PNG (16, 32, 48, 64, 128, 256, 512)
+
+**Generar iconos:**
+1. Crear PNG 1024x1024 con logo de MuscleUp Gym
+2. Usar https://www.electron.build/icons o `electron-icon-builder`
+3. Colocar en `electron/assets/`
+
+Ver `electron/assets/README.md` para instrucciones detalladas.
+
+### Seguridad
+
+**Configuración de seguridad aplicada:**
+- Context Isolation: ✅ Habilitado
+- Node Integration: ❌ Deshabilitado
+- Remote Module: ❌ Deshabilitado
+- Preload Script: ✅ Configurado
+- Sandboxing: ✅ Activo
+
+**Nunca:**
+- Deshabilitar context isolation
+- Habilitar nodeIntegration en webPreferences
+- Exponer módulos completos de Node.js en preload
+
+### Próximas Mejoras
+
+1. **Auto-Updates**: Implementar electron-updater
+2. **Exportación Estática**: Configurar Next.js con `output: 'export'`
+3. **Notificaciones Nativas**: Sistema de notificaciones del SO
+4. **Tray Icon**: App en bandeja del sistema
+5. **Base de Datos Local**: SQLite para modo offline
+6. **Global Shortcuts**: Atajos de teclado globales
+
+### Troubleshooting
+
+**Ventana en blanco:**
+- Verificar que Next.js esté corriendo en puerto 3000
+- Abrir DevTools (F12) y revisar errores
+- Verificar `startURL` en `electron/main.js`
+
+**Build falla:**
+- Windows: Ejecutar como admin, agregar excepción en antivirus
+- macOS: Deshabilitar firma con `CSC_IDENTITY_AUTO_DISCOVERY=false`
+- Linux: Instalar dependencias del sistema (libgconf-2-4, etc.)
+
+**Más información:**
+Ver documentación completa en [ELECTRON_APP.md](ELECTRON_APP.md)
 

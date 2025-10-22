@@ -3,7 +3,55 @@ import { createServerSupabaseClient } from '@/lib/supabase/server';
 import jsPDF from 'jspdf';
 import { getGymSettings, getGymEmail } from '@/lib/gymSettings';
 import { formatCurrency } from '@/utils/formHelpers';
-import { formatDateForDisplay, formatMexicoTime, getTodayInMexico, getMexicoDateRange } from '@/utils/dateUtils';
+import { formatDateForDisplay, getMexicoDateRange } from '@/utils/dateUtils';
+
+// Helper function to format time from UTC timestamp to Mexico timezone
+function formatTimeFromUTC(timestamp: string): string {
+  if (!timestamp) return 'N/A';
+
+  // Ensure the timestamp is treated as UTC
+  let dateString = timestamp.trim();
+
+  // If timestamp doesn't have timezone info, add 'Z' to indicate UTC
+  const hasTimezone = dateString.includes('Z') || dateString.indexOf('+') > 10 || dateString.indexOf('-', 10) > 10;
+  if (!hasTimezone) {
+    dateString = dateString.replace(' ', 'T') + 'Z';
+  }
+
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) {
+    return 'Hora inválida';
+  }
+
+  // Format time in Mexico timezone
+  return new Intl.DateTimeFormat('es-MX', {
+    timeZone: 'America/Mexico_City',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true
+  }).format(date);
+}
+
+// Helper function to format time that is already in Mexico timezone
+function formatTimeAlreadyMexico(timestamp: string): string {
+  if (!timestamp) return 'N/A';
+
+  // This timestamp is already in Mexico time, just format it
+  let dateString = timestamp.trim().replace(' ', 'T');
+
+  // Parse as local time (not UTC)
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) {
+    return 'Hora inválida';
+  }
+
+  // Format directly without timezone conversion
+  return new Intl.DateTimeFormat('es-MX', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true
+  }).format(date);
+}
 
 // 🎨 COLORES CORPORATIVOS ENTERPRISE
 const COLORS = {
@@ -40,17 +88,12 @@ function safeValue(value: any, defaultValue: string = 'N/A'): string {
   return String(value).trim();
 }
 
-interface RouteParams {
-  params: {
-    id: string;
-  };
-}
-
 export async function GET(
   request: NextRequest,
-  { params }: RouteParams
+  context: { params: Promise<{ id: string }> }
 ) {
   try {
+    const params = await context.params;
     console.log('📊 [CUT-PDF] Iniciando generación de PDF para corte:', params.id);
 
     const supabase = createServerSupabaseClient();
@@ -91,22 +134,20 @@ export async function GET(
     const dateRange = getMexicoDateRange(cut.cut_date);
     console.log('📅 [CUT-PDF] Rango México para', cut.cut_date, ':', dateRange);
 
-    // ✅ Obtener ventas POS directamente (sin fetch)
+    // ✅ Obtener ventas POS directamente (sin fetch) - SIN LÍMITE para ver todas
     const { data: salesData, error: salesError } = await supabase
       .from('sales')
       .select(`
         id,
         created_at,
         total_amount,
-        customer_name,
-        sale_items(product_name, quantity)
+        sale_items(product_name, quantity, unit_price)
       `)
       .eq('sale_type', 'sale')
       .eq('status', 'completed')
       .gte('created_at', dateRange.startISO)
       .lte('created_at', dateRange.endISO)
-      .order('created_at', { ascending: false })
-      .limit(20);
+      .order('created_at', { ascending: false });
 
     if (salesError) {
       console.error('❌ [CUT-PDF] Error consultando ventas:', salesError);
@@ -114,16 +155,16 @@ export async function GET(
 
     console.log('📦 [CUT-PDF] Ventas obtenidas:', salesData?.length || 0);
 
-    // ✅ Procesar ventas POS
+    // ✅ Procesar ventas POS con más detalles
     const salesTransactions = (salesData || []).map((sale: any) => {
       const products = (sale.sale_items || [])
-        .map((item: any) => `${item.quantity}x ${item.product_name}`)
+        .map((item: any) => `${item.quantity}x ${item.product_name} ($${item.unit_price || 0})`)
         .join(', ');
 
       return {
         id: sale.id,
         created_at: sale.created_at,
-        customer_name: sale.customer_name || 'Cliente',
+        customer_name: 'Cliente General', // La tabla sales no tiene customer_name
         product_name: products || 'Venta POS',
         amount: sale.total_amount || 0
       };
@@ -263,7 +304,7 @@ export async function GET(
     };
 
     // 🎨 FUNCIÓN PARA CREAR TABLA
-    const createTable = (headers: string[], rows: string[][], startY: number, columnWidths: number[]): number => {
+    const createTable = (headers: string[], rows: string[][], startY: number, columnWidths: number[], alignments?: ('left' | 'right' | 'center')[]): number => {
       let currentY = startY;
 
       // Header de tabla
@@ -276,7 +317,9 @@ export async function GET(
 
       let xPosition = LAYOUT.MARGIN_LEFT + 2;
       headers.forEach((header, i) => {
-        doc.text(header, xPosition, currentY + 4.5);
+        const headerAlign = alignments?.[i] || 'left';
+        const headerX = headerAlign === 'right' ? xPosition + columnWidths[i] - 2 : xPosition;
+        doc.text(header, headerX, currentY + 4.5, { align: headerAlign as 'left' | 'right' | 'center' });
         xPosition += columnWidths[i];
       });
 
@@ -298,9 +341,17 @@ export async function GET(
 
         xPosition = LAYOUT.MARGIN_LEFT + 2;
         row.forEach((cell, i) => {
-          const align = i > 0 ? 'right' : 'left'; // Números alineados a la derecha
-          const cellX = align === 'right' ? xPosition + columnWidths[i] - 2 : xPosition;
-          doc.text(cell, cellX, currentY + 4.5, { align });
+          // Usar alineación específica si se proporciona, sino por defecto a la izquierda
+          const align = alignments?.[i] || 'left';
+          let cellX = xPosition;
+
+          if (align === 'right') {
+            cellX = xPosition + columnWidths[i] - 2;
+          } else if (align === 'center') {
+            cellX = xPosition + columnWidths[i] / 2;
+          }
+
+          doc.text(cell, cellX, currentY + 4.5, { align: align as 'left' | 'right' | 'center' });
           xPosition += columnWidths[i];
         });
 
@@ -391,9 +442,9 @@ export async function GET(
     doc.text('Hora de Corte:', LAYOUT.MARGIN_LEFT + 5, currentY);
     doc.setTextColor(...COLORS.WHITE);
     doc.setFont('helvetica', 'normal');
-    // Usar created_at que es un timestamp completo con timezone
+    // El created_at del corte ya está en hora de México, solo formatearlo
     const cutTimeFormatted = cut.created_at
-      ? formatMexicoTime(new Date(cut.created_at))
+      ? formatTimeAlreadyMexico(cut.created_at)
       : 'N/A';
     doc.text(cutTimeFormatted, LAYOUT.MARGIN_LEFT + 50, currentY);
 
@@ -521,7 +572,9 @@ export async function GET(
       ]
     ];
 
-    currentY = createTable(sourceHeaders, sourceRows, currentY, sourceWidths);
+    // Fuente a la izquierda, montos a la derecha, Trans. a la derecha
+    const sourceAlignments: ('left' | 'right' | 'center')[] = ['left', 'right', 'right', 'right', 'right', 'right', 'right'];
+    currentY = createTable(sourceHeaders, sourceRows, currentY, sourceWidths, sourceAlignments);
     currentY += 5;
 
     // --- TOTALES POR MÉTODO DE PAGO ---
@@ -538,7 +591,9 @@ export async function GET(
       ['Tarjeta de Crédito', formatCurrency(cut.total_credito || 0)]
     ];
 
-    currentY = createTable(methodHeaders, methodRows, currentY, methodWidths);
+    // Método a la izquierda, monto a la derecha
+    const methodAlignments: ('left' | 'right' | 'center')[] = ['left', 'right'];
+    currentY = createTable(methodHeaders, methodRows, currentY, methodWidths, methodAlignments);
     currentY += 5;
 
     // Línea de total
@@ -571,7 +626,9 @@ export async function GET(
         formatCurrency(expense.amount || 0)
       ]);
 
-      currentY = createTable(expenseHeaders, expenseRows, currentY, expenseWidths);
+      // Categoría y descripción a la izquierda, monto a la derecha
+      const expenseAlignments: ('left' | 'right' | 'center')[] = ['left', 'left', 'right'];
+      currentY = createTable(expenseHeaders, expenseRows, currentY, expenseWidths, expenseAlignments);
       currentY += 5;
 
       // Total de gastos
@@ -604,7 +661,9 @@ export async function GET(
       ['Comisiones Membresías', formatCurrency(cut.membership_commissions || 0)]
     ];
 
-    currentY = createTable(commissionHeaders, commissionRows, currentY, commissionWidths);
+    // Concepto a la izquierda, monto a la derecha
+    const commissionAlignments: ('left' | 'right' | 'center')[] = ['left', 'right'];
+    currentY = createTable(commissionHeaders, commissionRows, currentY, commissionWidths, commissionAlignments);
     currentY += 5;
 
     doc.setDrawColor(...COLORS.GOLD);
@@ -652,53 +711,87 @@ export async function GET(
       currentY = checkPageSpace(currentY, 60);
       currentY = createSectionHeader('DETALLE DE TRANSACCIONES', currentY);
 
-      // Ventas POS
+      // Ventas POS - MOSTRAR TODAS (o máximo 20 para no sobrecargar)
       if (salesTransactions && salesTransactions.length > 0) {
         doc.setTextColor(...COLORS.GOLD);
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(10);
-        doc.text('Ventas POS', LAYOUT.MARGIN_LEFT + 5, currentY);
+        doc.text(`Ventas POS (${salesTransactions.length} transacciones)`, LAYOUT.MARGIN_LEFT + 5, currentY);
         currentY += 7;
 
         const salesHeaders = ['Hora', 'Cliente', 'Productos', 'Monto'];
-        const salesWidths = [25, 50, 80, 32];
+        const salesWidths = [25, 45, 85, 32];
 
-        const salesRows = salesTransactions.slice(0, 10).map((sale: any) => {
+        // Mostrar hasta 20 transacciones para no saturar el PDF
+        const maxTransactions = Math.min(salesTransactions.length, 20);
+        const salesRows = salesTransactions.slice(0, maxTransactions).map((sale: any) => {
+          // Las ventas están en UTC, convertir a hora de México
+          const mexicoTimeStr = formatTimeFromUTC(sale.created_at);
+
           return [
-            formatMexicoTime(new Date(sale.created_at)),
+            mexicoTimeStr,
             (sale.customer_name || 'Cliente').substring(0, 25),
-            (sale.product_name || 'Sin detalle').substring(0, 40),
+            (sale.product_name || 'Sin detalle').substring(0, 45),
             formatCurrency(sale.amount || 0)
           ];
         });
 
-        currentY = createTable(salesHeaders, salesRows, currentY, salesWidths);
+        // Solo el último campo (Monto) alineado a la derecha
+        const salesAlignments: ('left' | 'right' | 'center')[] = ['left', 'left', 'left', 'right'];
+        currentY = createTable(salesHeaders, salesRows, currentY, salesWidths, salesAlignments);
+
+        // Si hay más transacciones, indicarlo
+        if (salesTransactions.length > maxTransactions) {
+          currentY += 5;
+          doc.setTextColor(...COLORS.LIGHT_GRAY);
+          doc.setFont('helvetica', 'italic');
+          doc.setFontSize(8);
+          doc.text(`... y ${salesTransactions.length - maxTransactions} transacciones más`, LAYOUT.MARGIN_LEFT + 5, currentY);
+        }
+
         currentY += 10;
       }
 
-      // Membresías
+      // Membresías - MOSTRAR TODAS (o máximo 20)
       if (membershipTransactions && membershipTransactions.length > 0) {
         currentY = checkPageSpace(currentY, 40);
 
         doc.setTextColor(...COLORS.GOLD);
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(10);
-        doc.text('Pagos de Membresías', LAYOUT.MARGIN_LEFT + 5, currentY);
+        doc.text(`Pagos de Membresías (${membershipTransactions.length} transacciones)`, LAYOUT.MARGIN_LEFT + 5, currentY);
         currentY += 7;
 
         const membHeaders = ['Hora', 'Cliente', 'Plan', 'Monto'];
         const membWidths = [25, 60, 70, 32];
 
-        const membRows = membershipTransactions.slice(0, 10).map((memb: any) => {
+        // Mostrar hasta 20 transacciones
+        const maxMemberships = Math.min(membershipTransactions.length, 20);
+        const membRows = membershipTransactions.slice(0, maxMemberships).map((memb: any) => {
+          // Las membresías están en UTC, convertir a hora de México
+          const mexicoTimeStr = formatTimeFromUTC(memb.created_at);
+
           return [
-            formatMexicoTime(new Date(memb.created_at)),
+            mexicoTimeStr,
             (memb.customer_name || 'Cliente').substring(0, 30),
             (memb.membership_type || 'Plan').substring(0, 35),
             formatCurrency(memb.amount || 0)
           ];
         });
 
-        currentY = createTable(membHeaders, membRows, currentY, membWidths);
+        // Solo el último campo (Monto) alineado a la derecha
+        const membAlignments: ('left' | 'right' | 'center')[] = ['left', 'left', 'left', 'right'];
+        currentY = createTable(membHeaders, membRows, currentY, membWidths, membAlignments);
+
+        // Si hay más transacciones, indicarlo
+        if (membershipTransactions.length > maxMemberships) {
+          currentY += 5;
+          doc.setTextColor(...COLORS.LIGHT_GRAY);
+          doc.setFont('helvetica', 'italic');
+          doc.setFontSize(8);
+          doc.text(`... y ${membershipTransactions.length - maxMemberships} transacciones más`, LAYOUT.MARGIN_LEFT + 5, currentY);
+        }
+
         currentY += LAYOUT.SECTION_SPACING;
       }
     }
@@ -741,8 +834,18 @@ export async function GET(
     // 📦 GENERAR BUFFER
     const pdfBuffer = Buffer.from(doc.output('arraybuffer'));
 
-    // 📤 NOMBRE DEL ARCHIVO = cut_number del corte
-    const pdfFilename = `${cut.cut_number}.pdf`;
+    // 📤 NOMBRE DEL ARCHIVO = Formateado profesionalmente
+    // Usar la fecha real del corte en México (cut.cut_date ya está en formato YYYY-MM-DD)
+    // PERO: Necesitamos verificar si la fecha está correcta
+    console.log('📅 [CUT-PDF] Fecha del corte (cut_date):', cut.cut_date);
+    console.log('📅 [CUT-PDF] Fecha de creación (created_at):', cut.created_at);
+
+    // Usar cut_date que ya viene en formato YYYY-MM-DD
+    const dateStr = cut.cut_date;
+
+    // Crear nombre descriptivo: Corte_2024-12-20_001
+    const cutNumberClean = cut.cut_number.replace(/[^0-9A-Za-z-_]/g, '_');
+    const pdfFilename = `Corte_${dateStr}_${cutNumberClean}.pdf`;
     console.log('📄 [CUT-PDF] Nombre del archivo:', pdfFilename);
 
     // 📤 RETORNAR PDF

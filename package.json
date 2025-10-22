@@ -2,11 +2,20 @@
   "name": "muscleup-gym",
   "version": "0.1.0",
   "private": true,
+  "main": "electron/main.js",
   "scripts": {
     "dev": "next dev --turbo -H 0.0.0.0",
+    "dev:no-turbo": "next dev -H 0.0.0.0",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "electron": "node node_modules/electron/cli.js .",
+    "electron:dev": "concurrently \"cross-env BROWSER=none npm run dev:no-turbo\" \"wait-on http://localhost:3000 && node node_modules/electron/cli.js .\"",
+    "electron:build": "next build && electron-builder",
+    "electron:build:win": "next build && electron-builder --win",
+    "electron:build:mac": "next build && electron-builder --mac",
+    "electron:build:linux": "next build && electron-builder --linux",
+    "postinstall": "electron-builder install-app-deps"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
@@ -18,7 +27,7 @@
     "@mui/icons-material": "^7.3.4",
     "@mui/lab": "^7.0.0-beta.13",
     "@mui/material": "^7.3.4",
-    "@mui/x-charts": "^8.14.0",
+    "@mui/x-charts": "^8.14.1",
     "@mui/x-date-pickers": "^8.12.0",
     "@prisma/client": "^6.17.0",
     "@radix-ui/react-slot": "^1.2.3",
@@ -85,11 +94,16 @@
     "@types/react-dom": "^19.2.1",
     "@types/react-pdf": "^5.0.7",
     "autoprefixer": "^10.4.21",
+    "concurrently": "^9.2.1",
+    "cross-env": "^10.1.0",
+    "electron": "^38.3.0",
+    "electron-builder": "^26.0.12",
     "eslint": "^9.37.0",
     "eslint-config-next": "^15.5.4",
     "postcss": "^8.5.4",
     "prisma": "^6.17.0",
     "tailwindcss": "^4.1.14",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "wait-on": "^9.0.1"
   }
 }
