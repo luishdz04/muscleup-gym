@@ -60,64 +60,90 @@ export async function DELETE(
 
     console.log('📦 [DELETE-SALE] Items de la venta:', sale.sale_items.length);
 
-    // 2. Restaurar el inventario para cada item ANTES de eliminar
-    // IMPORTANTE: Esto es necesario porque los triggers pueden no funcionar correctamente al eliminar
+    // 2. Crear registros en inventory_movements (como en cancelación/devolución)
+    // Esto activará los triggers de Supabase para actualizar el stock automáticamente
+    const inventoryMovements = sale.sale_items
+      .filter(item => item.product_id && item.quantity && item.source_warehouse_id)
+      .map(item => ({
+        product_id: item.product_id,
+        movement_type: 'devolucion_cliente',
+        quantity: item.quantity,
+        target_warehouse_id: item.source_warehouse_id,
+        reason: `Eliminación completa de Venta #${sale.sale_number} - Error de registro`,
+        reference_id: id,
+        created_by: user.id,
+        created_at: new Date().toISOString()
+      }));
+
+    if (inventoryMovements.length > 0) {
+      console.log(`📝 [DELETE-SALE] Insertando ${inventoryMovements.length} movimientos de inventario`);
+
+      const { error: movementError } = await supabase
+        .from('inventory_movements')
+        .insert(inventoryMovements);
+
+      if (movementError) {
+        console.error('❌ [DELETE-SALE] Error creando inventory_movements:', movementError);
+        // No detener el proceso, pero logearlo
+      } else {
+        console.log(`✅ [DELETE-SALE] Movimientos de inventario creados, los triggers actualizarán el stock`);
+      }
+    }
+
+    // 3. Verificación adicional: Restaurar manualmente si es necesario
+    // (Por si los triggers fallan o no están configurados)
     for (const item of sale.sale_items) {
       if (item.product_id && item.quantity && item.source_warehouse_id) {
-        console.log(`🔄 [DELETE-SALE] Restaurando inventario - Producto: ${item.product_id}, Cantidad: ${item.quantity}, Almacén: ${item.source_warehouse_id}`);
-
-        // Primero verificar el stock actual
-        const { data: currentStock } = await supabase
+        // Verificar si el stock fue actualizado por los triggers
+        const { data: stockCheck } = await supabase
           .from('product_warehouse_stock')
-          .select('current_stock')
+          .select('current_stock, updated_at')
           .eq('product_id', item.product_id)
           .eq('warehouse_id', item.source_warehouse_id)
           .single();
 
-        if (currentStock) {
-          // Actualizar el stock sumando la cantidad vendida
-          const newStock = (currentStock.current_stock || 0) + item.quantity;
+        // Si el stock no fue actualizado en los últimos 5 segundos, actualizarlo manualmente
+        if (stockCheck) {
+          const lastUpdate = new Date(stockCheck.updated_at);
+          const now = new Date();
+          const diffSeconds = (now.getTime() - lastUpdate.getTime()) / 1000;
 
-          const { error: stockError } = await supabase
-            .from('product_warehouse_stock')
-            .update({
-              current_stock: newStock,
-              updated_at: new Date().toISOString()
-            })
-            .eq('product_id', item.product_id)
-            .eq('warehouse_id', item.source_warehouse_id);
+          if (diffSeconds > 5) {
+            console.log(`⚠️ [DELETE-SALE] Stock no actualizado por triggers, restaurando manualmente`);
 
-          if (stockError) {
-            console.error(`❌ [DELETE-SALE] Error restaurando stock:`, stockError);
-          } else {
-            console.log(`✅ [DELETE-SALE] Stock restaurado - Nuevo stock: ${newStock}`);
+            const newStock = (stockCheck.current_stock || 0) + item.quantity;
+
+            await supabase
+              .from('product_warehouse_stock')
+              .update({
+                current_stock: newStock,
+                updated_at: now.toISOString()
+              })
+              .eq('product_id', item.product_id)
+              .eq('warehouse_id', item.source_warehouse_id);
+
+            // También actualizar products table
+            const { data: product } = await supabase
+              .from('products')
+              .select('stock')
+              .eq('id', item.product_id)
+              .single();
+
+            if (product) {
+              await supabase
+                .from('products')
+                .update({
+                  stock: (product.stock || 0) + item.quantity,
+                  updated_at: now.toISOString()
+                })
+                .eq('id', item.product_id);
+            }
           }
-        }
-
-        // También actualizar el stock total en la tabla products
-        const { data: product } = await supabase
-          .from('products')
-          .select('stock')
-          .eq('id', item.product_id)
-          .single();
-
-        if (product) {
-          const newTotalStock = (product.stock || 0) + item.quantity;
-
-          await supabase
-            .from('products')
-            .update({
-              stock: newTotalStock,
-              updated_at: new Date().toISOString()
-            })
-            .eq('id', item.product_id);
-
-          console.log(`✅ [DELETE-SALE] Stock total actualizado: ${newTotalStock}`);
         }
       }
     }
 
-    // 3. Registrar en logs antes de eliminar
+    // 4. Registrar en logs antes de eliminar
     const logData = {
       action: 'DELETE_SALE',
       table_name: 'sales',
@@ -140,7 +166,7 @@ export async function DELETE(
 
     console.log('📝 [DELETE-SALE] Log de eliminación creado');
 
-    // 4. Eliminar los detalles de pago primero (por las foreign keys)
+    // 5. Eliminar los detalles de pago primero (por las foreign keys)
     if (sale.sale_payment_details && sale.sale_payment_details.length > 0) {
       const { error: paymentDeleteError } = await supabase
         .from('sale_payment_details')
@@ -154,7 +180,7 @@ export async function DELETE(
       }
     }
 
-    // 5. Eliminar los items de la venta
+    // 6. Eliminar los items de la venta
     const { error: itemsDeleteError } = await supabase
       .from('sale_items')
       .delete()
@@ -173,7 +199,7 @@ export async function DELETE(
 
     console.log(`✅ [DELETE-SALE] ${sale.sale_items.length} items eliminados`);
 
-    // 6. Finalmente eliminar la venta principal
+    // 7. Finalmente eliminar la venta principal
     const { error: deleteError } = await supabase
       .from('sales')
       .delete()

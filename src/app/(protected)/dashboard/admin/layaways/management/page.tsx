@@ -48,7 +48,8 @@ import {
   FilterList as FilterIcon,
   Bookmark as BookmarkIcon,
     CheckCircle as CheckCircleIcon,
-  AccessTime as TimeIcon
+  AccessTime as TimeIcon,
+  Delete as DeleteIcon
 } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -76,6 +77,9 @@ import {
 import PaymentToLayawayDialog from '@/components/dialogs/PaymentToLayawayDialog';
 import LayawayDetailsDialog from '@/components/dialogs/LayawayDetailsDialog';
 import CancelLayawayDialog from '@/components/dialogs/CancelLayawayDialog';
+
+// SWEETALERT2 para confirmaciones de eliminación
+import MySwal, { showDeleteConfirmation } from '@/lib/notifications/MySwal';
 
 // ✅ INTERFACE ESPECÍFICA PARA CLIENTES DEL FILTRO
 interface CustomerFilter {
@@ -504,22 +508,109 @@ const totalPending = processedLayaways
       notify.error('⚠️ Apartado inválido');
       return;
     }
-    
+
     if (layaway.status !== 'pending') {
       notify.error('⚠️ Solo se pueden cancelar apartados pendientes');
       return;
     }
-    
+
     if (!layaway.source_warehouse_id) {
       notify.error('⚠️ Almacén origen no configurado - contacta al administrador');
       console.error('Apartado sin source_warehouse_id:', layaway);
       return;
     }
-    
+
     console.log(`❌ Cancelando apartado - ${layaway.sale_number}, Almacén: ${layaway.source_warehouse_id}`);
     setSelectedLayaway(layaway);
     setCancelDialogOpen(true);
   }, []);
+
+  // ✅ FUNCIÓN PARA ELIMINAR APARTADO COMPLETAMENTE
+  const handleDeleteLayaway = useCallback(async (layaway: LayawayWithDetails) => {
+    if (!layaway?.id) {
+      notify.error('⚠️ Apartado inválido');
+      return;
+    }
+
+    // Calcular el total pagado
+    const totalPaid = layaway.sale_payment_details?.reduce((sum, payment) => sum + (payment.amount || 0), 0) || 0;
+    const pendingAmount = layaway.total_amount - totalPaid;
+
+    // Crear descripción para SweetAlert
+    const itemDescription = `
+      Apartado #${layaway.sale_number}
+      Cliente: ${layaway.customer?.firstName} ${layaway.customer?.lastName || ''}
+      Total: $${layaway.total_amount.toFixed(2)}
+      Pagado: $${totalPaid.toFixed(2)}
+      Pendiente: $${pendingAmount.toFixed(2)}
+    `;
+
+    // Primera confirmación con SweetAlert
+    const result = await showDeleteConfirmation(itemDescription);
+
+    if (!result.isConfirmed) return;
+
+    // Segunda confirmación con más detalles
+    const secondConfirm = await MySwal.fire({
+      icon: 'warning',
+      title: '🔴 SEGUNDA CONFIRMACIÓN',
+      html: `
+        <div style="text-align: center;">
+          <p><strong>Apartado #${layaway.sale_number}</strong></p>
+          <p>Cliente: <strong>${layaway.customer?.firstName} ${layaway.customer?.lastName || ''}</strong></p>
+          ${totalPaid > 0 ? `
+            <div style="background: ${colorTokens.warning}20; border: 1px solid ${colorTokens.warning}40; border-radius: 8px; padding: 12px; margin: 16px 0;">
+              <p style="color: ${colorTokens.warning}; margin: 0;">⚠️ Este apartado tiene $${totalPaid.toFixed(2)} en pagos que se perderán</p>
+            </div>
+          ` : ''}
+          <div style="background: ${colorTokens.danger}20; border: 1px solid ${colorTokens.danger}40; border-radius: 8px; padding: 12px; margin: 16px 0;">
+            <p style="color: ${colorTokens.danger}; margin: 0;">⚠️ El inventario reservado será liberado</p>
+          </div>
+          <p style="margin-top: 20px;">¿Realmente deseas continuar?</p>
+        </div>
+      `,
+      showCancelButton: true,
+      confirmButtonText: 'Sí, eliminar definitivamente',
+      cancelButtonText: 'Cancelar',
+      confirmButtonColor: colorTokens.danger,
+      cancelButtonColor: colorTokens.neutral600,
+      focusCancel: true,
+    });
+
+    if (!secondConfirm.isConfirmed) return;
+
+    const progressToast = notify.loading('Eliminando apartado y liberando inventario...');
+
+    try {
+      const response = await fetch(`/api/layaways/${layaway.id}/delete`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Error al eliminar el apartado');
+      }
+
+      notify.dismiss(progressToast);
+      notify.success(
+        `✅ Apartado eliminado completamente\n\n` +
+        `${result.message}\n` +
+        `Inventario liberado: ${result.details.items_released} items`
+      );
+
+      // Refrescar la lista
+      setTimeout(() => loadLayaways(), 1000);
+
+    } catch (error: any) {
+      notify.dismiss(progressToast);
+      notify.error(`❌ Error al eliminar el apartado: ${error.message}`);
+      console.error('Error eliminando apartado:', error);
+    }
+  }, [loadLayaways]);
 
   // ✅ FUNCIONES DE ÉXITO SIMPLIFICADAS
   const handleDialogSuccess = useCallback(() => {
@@ -1136,6 +1227,25 @@ const totalPending = processedLayaways
                         <Tooltip title="Cancelar Apartado">
                           <IconButton size="small" onClick={() => handleCancelLayaway(layaway)} disabled={layaway.status !== 'pending'} sx={{ color: colorTokens.textSecondary, '&:hover': { backgroundColor: `${colorTokens.danger}20`, color: colorTokens.danger }, '&.Mui-disabled': { color: colorTokens.textDisabled }}}>
                             <CancelIcon />
+                          </IconButton>
+                        </Tooltip>
+
+                        <Divider orientation="vertical" flexItem sx={{ mx: 0.5, borderColor: colorTokens.border }} />
+
+                        <Tooltip title="Eliminar Permanentemente">
+                          <IconButton
+                            size="small"
+                            onClick={() => handleDeleteLayaway(layaway)}
+                            sx={{
+                              color: colorTokens.danger,
+                              '&:hover': {
+                                backgroundColor: `${colorTokens.danger}20`,
+                                color: colorTokens.danger,
+                                transform: 'scale(1.1)'
+                              }
+                            }}
+                          >
+                            <DeleteIcon />
                           </IconButton>
                         </Tooltip>
                       </Stack>
