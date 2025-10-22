@@ -603,14 +603,14 @@ const totalPending = processedLayaways
       );
 
       // Refrescar la lista
-      setTimeout(() => loadLayaways(), 1000);
+      setTimeout(() => refreshData(), 1000);
 
     } catch (error: any) {
       notify.dismiss(progressToast);
       notify.error(`❌ Error al eliminar el apartado: ${error.message}`);
       console.error('Error eliminando apartado:', error);
     }
-  }, [loadLayaways]);
+  }, [refreshData]);
 
   // ✅ FUNCIONES DE ÉXITO SIMPLIFICADAS
   const handleDialogSuccess = useCallback(() => {
