@@ -51,7 +51,9 @@ import {
   Undo,
   Analytics,
   Assessment,
-  History
+  History,
+  Delete,
+  Warning
 } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -72,6 +74,9 @@ import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 // ✅ IMPORT DEL EDITDIALOG
 import EditDialog from '@/components/pos/EditDialog';
 import SaleDetailsDialog from '@/components/dialogs/SaleDetailsDialog';
+
+// SWEETALERT2 para confirmaciones de eliminación
+import MySwal, { showDeleteConfirmation } from '@/lib/notifications/MySwal';
 
 
 // ✅ CONSTANTE FUERA DEL COMPONENTE PARA ESTABILIDAD
@@ -769,19 +774,34 @@ const SalesHistoryPage = memo(() => {
 
   // ✅ CANCELACIÓN/DEVOLUCIÓN CON INVENTORY_MOVEMENTS
   const processTransactionReversal = useCallback(async (
-    sale: SaleWithRelations, 
+    sale: SaleWithRelations,
     actionType: 'cancel' | 'refund'
   ) => {
     const actionName = actionType === 'cancel' ? 'cancelación' : 'devolución';
-    
-    const confirmed = await alert.confirm(
-      `¿Confirmar ${actionName} de la venta #${sale.sale_number}?\n\n` +
-      `Monto: ${formatPrice(sale.total_amount)}\n\n` +
-      `Esta acción restaurará el inventario automáticamente y no se puede deshacer.\n` +
-      `¿Continuar?`
-    );
 
-    if (!confirmed) {
+    // Confirmación con SweetAlert
+    const result = await MySwal.fire({
+      icon: 'question',
+      title: `¿Confirmar ${actionName}?`,
+      html: `
+        <div style="text-align: center;">
+          <p><strong>Venta #${sale.sale_number}</strong></p>
+          <p>Monto: <strong>${formatPrice(sale.total_amount)}</strong></p>
+          <div style="background: ${colorTokens.warning}20; border: 1px solid ${colorTokens.warning}40; border-radius: 8px; padding: 12px; margin: 16px 0;">
+            <p style="color: ${colorTokens.warning}; margin: 0;">⚠️ Esta acción restaurará el inventario automáticamente</p>
+          </div>
+          <p>¿Deseas continuar?</p>
+        </div>
+      `,
+      showCancelButton: true,
+      confirmButtonText: `Sí, ${actionName}`,
+      cancelButtonText: 'Cancelar',
+      confirmButtonColor: actionType === 'cancel' ? colorTokens.warning : colorTokens.info,
+      cancelButtonColor: colorTokens.neutral600,
+      focusCancel: true,
+    });
+
+    if (!result.isConfirmed) {
       handleMenuClose();
       return;
     }
@@ -854,6 +874,91 @@ const SalesHistoryPage = memo(() => {
   const handleCancelSale = useCallback(async (sale: SaleWithRelations) => {
     await processTransactionReversal(sale, 'cancel');
   }, [processTransactionReversal]);
+
+  // ✅ NUEVA FUNCIÓN: ELIMINAR VENTA COMPLETAMENTE
+  const handleDeleteSale = useCallback(async (sale: SaleWithRelations) => {
+    // Crear descripción para el diálogo
+    const itemDescription = `
+      Venta #${sale.sale_number}
+      Monto: ${formatPrice(sale.total_amount)}
+      Items: ${sale.items_count || 0}
+    `;
+
+    // Primera confirmación con SweetAlert
+    const result = await showDeleteConfirmation(itemDescription);
+
+    if (!result.isConfirmed) {
+      handleMenuClose();
+      return;
+    }
+
+    // Segunda confirmación con SweetAlert personalizado
+    const secondConfirm = await MySwal.fire({
+      icon: 'warning',
+      title: '🔴 SEGUNDA CONFIRMACIÓN',
+      html: `
+        <div style="text-align: center;">
+          <p><strong>Venta #${sale.sale_number}</strong></p>
+          <p>Monto: <strong>${formatPrice(sale.total_amount)}</strong></p>
+          <div style="background: ${colorTokens.danger}20; border: 1px solid ${colorTokens.danger}40; border-radius: 8px; padding: 12px; margin: 16px 0;">
+            <p style="color: ${colorTokens.danger}; margin: 0;">⚠️ El inventario será restaurado automáticamente</p>
+          </div>
+          <p style="margin-top: 20px;">¿Realmente deseas continuar?</p>
+        </div>
+      `,
+      showCancelButton: true,
+      confirmButtonText: 'Sí, eliminar definitivamente',
+      cancelButtonText: 'Cancelar',
+      confirmButtonColor: colorTokens.danger,
+      cancelButtonColor: colorTokens.neutral600,
+      focusCancel: true,
+    });
+
+    if (!secondConfirm.isConfirmed) {
+      handleMenuClose();
+      return;
+    }
+
+    const progressToast = notify.loading('Eliminando venta y restaurando inventario...');
+
+    try {
+      const response = await fetch(`/api/sales/${sale.id}/delete`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Error al eliminar la venta');
+      }
+
+      notify.dismiss(progressToast);
+      notify.success(
+        `✅ Venta eliminada completamente\n\n` +
+        `Venta #${sale.sale_number}\n` +
+        `Monto: ${formatPrice(sale.total_amount)}\n` +
+        `Items restaurados: ${result.details?.items_restored || 0}\n` +
+        `Inventario restaurado: ✓`
+      );
+
+      // Remover la venta del estado local inmediatamente
+      setAllSales(prev => prev.filter(s => s.id !== sale.id));
+      setGlobalSalesData(prev => prev.filter(s => s.id !== sale.id));
+
+      // Refrescar los datos después de un momento
+      setTimeout(() => refreshData(), 1000);
+
+    } catch (error) {
+      notify.dismiss(progressToast);
+      notify.error(`Error al eliminar la venta: ${(error as Error).message}`);
+      console.error('Error eliminando venta:', error);
+    }
+
+    handleMenuClose();
+  }, [alert, handleMenuClose, formatPrice, refreshData]);
 
   // ✅ REFRESH MANUAL
   const handleRefresh = useCallback(async () => {
@@ -1697,6 +1802,31 @@ const SalesHistoryPage = memo(() => {
         <MenuItem onClick={() => menuSale && handleEditSale(menuSale)} sx={{ color: colorTokens.textSecondary }}>
           <Edit sx={{ mr: 2, color: colorTokens.textMuted }} />
           Editar
+        </MenuItem>
+
+        <Divider sx={{ borderColor: colorTokens.border, my: 1 }} />
+
+        <MenuItem
+          onClick={() => menuSale && handleDeleteSale(menuSale)}
+          sx={{
+            color: colorTokens.danger,
+            '&:hover': {
+              backgroundColor: `${colorTokens.danger}20`,
+              '& .MuiSvgIcon-root': {
+                color: colorTokens.danger
+              }
+            }
+          }}
+        >
+          <Delete sx={{ mr: 2, color: colorTokens.danger }} />
+          <Box>
+            <Typography variant="body2" fontWeight="600">
+              Eliminar Permanentemente
+            </Typography>
+            <Typography variant="caption" sx={{ color: colorTokens.textMuted }}>
+              Solo si fue un error
+            </Typography>
+          </Box>
         </MenuItem>
       </Menu>
 

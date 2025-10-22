@@ -49,6 +49,9 @@ import BulkOperationModal from '@/components/membership/BulkOperationModal';
 import MembershipDetailsModal from '@/components/membership/MembershipDetailsModal';
 import MembershipEditModal from '@/components/membership/MembershipEditModal';
 
+// SWEETALERT2 para confirmaciones
+import MySwal, { showDeleteConfirmation } from '@/lib/notifications/MySwal';
+
 // UTILIDADES Y TIPOS
 import type { 
   MembershipHistory, 
@@ -72,7 +75,9 @@ import {
   Pause as PauseIcon,
   PlayArrow as PlayArrowIcon,
   Block as BlockIcon,
-  BatchPrediction as BatchIcon
+  BatchPrediction as BatchIcon,
+  Delete as DeleteIcon,
+  Warning as WarningIcon
 } from '@mui/icons-material';
 
 // OPCIONES DE CONFIGURACIÓN
@@ -96,7 +101,7 @@ const paymentMethodOptions: PaymentMethodOption[] = [
 export default function HistorialMembresiaPage() {
   const router = useRouter();
   const hydrated = useHydrated();
-  
+
   // ✅ AUDITORÍA AUTOMÁTICA ENTERPRISE v6.0
   const { addAuditFieldsFor } = useUserTracking();
   
@@ -223,23 +228,85 @@ export default function HistorialMembresiaPage() {
   const handleUnfreezeMembership = useCallback(async (membership: MembershipHistory) => {
     try {
       setUnfreezeLoading(true);
-      
+
       if (membership.status !== 'frozen') {
         notify.error('Solo se pueden reactivar membresías congeladas');
         return;
       }
 
       await handleStatusChange(membership, 'active');
-      
+
       notify.success('✅ Membresía reactivada exitosamente');
       setActionMenuAnchor(null);
-      
+
     } catch (err: any) {
       notify.error(`❌ Error al reactivar membresía: ${err.message}`);
     } finally {
       setUnfreezeLoading(false);
     }
   }, [handleStatusChange]);
+
+  // Handler para eliminar membresía
+  const handleDeleteMembership = useCallback(async (membership: MembershipHistory) => {
+    try {
+      // Crear el mensaje personalizado para SweetAlert
+      const itemDescription = `
+        Usuario: ${membership.user?.firstName} ${membership.user?.lastName}
+        Plan: ${membership.plan?.name}
+        Total: ${formatPrice(membership.total_amount)}
+      `;
+
+      // Mostrar confirmación con SweetAlert
+      const result = await showDeleteConfirmation(itemDescription);
+
+      if (!result.isConfirmed) return;
+
+      // Segunda confirmación con SweetAlert nativo
+      const secondConfirm = await MySwal.fire({
+        icon: 'warning',
+        title: '🔴 SEGUNDA CONFIRMACIÓN',
+        html: `
+          <div style="text-align: center;">
+            <p>Esta es una acción <strong>IRREVERSIBLE</strong>.</p>
+            <p>La membresía será eliminada <strong>PERMANENTEMENTE</strong>.</p>
+            <p style="margin-top: 20px;">¿Realmente deseas continuar?</p>
+          </div>
+        `,
+        showCancelButton: true,
+        confirmButtonText: 'Sí, eliminar definitivamente',
+        cancelButtonText: 'Cancelar',
+        confirmButtonColor: colorTokens.danger,
+        cancelButtonColor: colorTokens.neutral600,
+        focusCancel: true,
+      });
+
+      if (!secondConfirm.isConfirmed) return;
+
+      // Realizar la eliminación
+      const response = await fetch(`/api/memberships/${membership.id}/delete`, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Error al eliminar la membresía');
+      }
+
+      notify.success('✅ Membresía eliminada exitosamente');
+      setActionMenuAnchor(null);
+
+      // Recargar las membresías
+      await forceReloadMemberships();
+
+    } catch (err: any) {
+      console.error('Error eliminando membresía:', err);
+      notify.error(`❌ Error al eliminar la membresía: ${err.message}`);
+    }
+  }, [formatPrice, forceReloadMemberships]);
 
   // HANDLERS MEMOIZADOS PARA COMPONENTES
   const handleViewDetails = useCallback((membership: MembershipHistory) => {
@@ -755,7 +822,7 @@ export default function HistorialMembresiaPage() {
           ]}
           
           {selectedMembership?.status === 'frozen' && (
-            <MenuItemComponent 
+            <MenuItemComponent
               onClick={() => {
                 if (selectedMembership) {
                   handleUnfreezeMembership(selectedMembership);
@@ -773,6 +840,37 @@ export default function HistorialMembresiaPage() {
               </ListItemIcon>
               <ListItemText>
                 {unfreezeLoading ? 'Reactivando...' : '🔄 Reactivar Membresía'}
+              </ListItemText>
+            </MenuItemComponent>
+          )}
+
+          {/* Opción de eliminar - disponible para todas las membresías */}
+          {selectedMembership && (
+            <MenuItemComponent
+              onClick={() => {
+                if (selectedMembership) {
+                  handleDeleteMembership(selectedMembership);
+                  setActionMenuAnchor(null);
+                }
+              }}
+              sx={{
+                color: colorTokens.danger,
+                mt: 1,
+                borderTop: `1px solid ${colorTokens.border}`,
+                pt: 1,
+                '&:hover': {
+                  backgroundColor: `${colorTokens.danger}10`
+                }
+              }}
+            >
+              <ListItemIcon>
+                <DeleteIcon sx={{ color: colorTokens.danger }} />
+              </ListItemIcon>
+              <ListItemText>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <WarningIcon sx={{ fontSize: 16 }} />
+                  Eliminar Permanentemente
+                </Box>
               </ListItemText>
             </MenuItemComponent>
           )}
