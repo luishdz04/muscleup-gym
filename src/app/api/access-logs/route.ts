@@ -1,5 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAsyncServerSupabaseClient } from '@/lib/supabase/server-async';
+import { 
+  getTodayInMexico, 
+  getMexicoDateTimeInfo,
+  getYesterdayInMexico,
+  getMexicoTimestampWithOffset
+} from '@/utils/dateUtils';
 
 export async function GET(request: NextRequest) {
   console.log('🔄 [ACCESS-LOGS] API called - v2');
@@ -194,10 +200,9 @@ export async function GET(request: NextRequest) {
       // Solo contar clientes, excluir empleados y admins
       if (log.user && log.user.rol === 'cliente') {
         const userId = log.user_id;
-        // Obtener solo la fecha (sin hora) en timezone de México
-        const logDate = new Date(log.created_at).toLocaleDateString('en-CA', {
-          timeZone: 'America/Mexico_City'
-        });
+        // Usar dateUtils para obtener fecha en México
+        const mexicoInfo = getMexicoDateTimeInfo(log.created_at);
+        const logDate = mexicoInfo.date; // Formato YYYY-MM-DD
 
         if (topUsersMap.has(userId)) {
           // Agregar el día al Set (automáticamente evita duplicados)
@@ -221,16 +226,12 @@ export async function GET(request: NextRequest) {
       .sort((a, b) => b.count - a.count)
       .slice(0, 10);
 
-    // Análisis de horarios pico (usando timezone de México)
+    // Análisis de horarios pico (usando dateUtils)
     const hourlyStats = new Map<number, number>();
     logs?.forEach((log: any) => {
-      // Convertir a hora de México
-      const mexicoTime = new Date(log.created_at).toLocaleString('en-US', {
-        timeZone: 'America/Mexico_City',
-        hour: 'numeric',
-        hour12: false
-      });
-      const hour = parseInt(mexicoTime.split(',')[0]);
+      // Usar dateUtils para obtener hora en México
+      const mexicoInfo = getMexicoDateTimeInfo(log.created_at);
+      const hour = mexicoInfo.hour; // Hora en formato 24h
       hourlyStats.set(hour, (hourlyStats.get(hour) || 0) + 1);
     });
 
@@ -243,25 +244,14 @@ export async function GET(request: NextRequest) {
       ? logs.length / hourlyStats.size
       : 0;
 
-    // Comparación hoy vs ayer (usando timezone de México)
-    const nowMexico = new Date().toLocaleString('en-US', { timeZone: 'America/Mexico_City' });
-    const nowDate = new Date(nowMexico);
-
-    // Hoy en México
-    const todayYear = nowDate.getFullYear();
-    const todayMonth = String(nowDate.getMonth() + 1).padStart(2, '0');
-    const todayDay = String(nowDate.getDate()).padStart(2, '0');
-    const todayStart = `${todayYear}-${todayMonth}-${todayDay}T00:00:00`;
-    const todayEnd = `${todayYear}-${todayMonth}-${todayDay}T23:59:59`;
-
-    // Ayer en México
-    const yesterday = new Date(nowDate);
-    yesterday.setDate(yesterday.getDate() - 1);
-    const yesterdayYear = yesterday.getFullYear();
-    const yesterdayMonth = String(yesterday.getMonth() + 1).padStart(2, '0');
-    const yesterdayDay = String(yesterday.getDate()).padStart(2, '0');
-    const yesterdayStart = `${yesterdayYear}-${yesterdayMonth}-${yesterdayDay}T00:00:00`;
-    const yesterdayEnd = `${yesterdayYear}-${yesterdayMonth}-${yesterdayDay}T23:59:59`;
+    // Comparación hoy vs ayer (usando dateUtils)
+    const todayMexico = getTodayInMexico();
+    const yesterdayMexico = getYesterdayInMexico();
+    
+    const todayStart = `${todayMexico}T00:00:00`;
+    const todayEnd = `${todayMexico}T23:59:59`;
+    const yesterdayStart = `${yesterdayMexico}T00:00:00`;
+    const yesterdayEnd = `${yesterdayMexico}T23:59:59`;
 
     console.log('📅 [TODAY VS YESTERDAY] Hoy:', todayStart, 'a', todayEnd);
     console.log('📅 [TODAY VS YESTERDAY] Ayer:', yesterdayStart, 'a', yesterdayEnd);
@@ -286,14 +276,8 @@ export async function GET(request: NextRequest) {
     };
 
     // Capacidad actual (últimos 30 minutos en México)
-    const thirtyMinutesAgo = new Date(nowDate.getTime() - 30 * 60 * 1000);
-    const thirtyMinAgoYear = thirtyMinutesAgo.getFullYear();
-    const thirtyMinAgoMonth = String(thirtyMinutesAgo.getMonth() + 1).padStart(2, '0');
-    const thirtyMinAgoDay = String(thirtyMinutesAgo.getDate()).padStart(2, '0');
-    const thirtyMinAgoHour = String(thirtyMinutesAgo.getHours()).padStart(2, '0');
-    const thirtyMinAgoMin = String(thirtyMinutesAgo.getMinutes()).padStart(2, '0');
-    const thirtyMinAgoSec = String(thirtyMinutesAgo.getSeconds()).padStart(2, '0');
-    const thirtyMinutesAgoISO = `${thirtyMinAgoYear}-${thirtyMinAgoMonth}-${thirtyMinAgoDay}T${thirtyMinAgoHour}:${thirtyMinAgoMin}:${thirtyMinAgoSec}`;
+    const thirtyMinutesAgo = getMexicoTimestampWithOffset(-30 * 60 * 1000); // -30 minutos
+    const thirtyMinutesAgoISO = thirtyMinutesAgo.toISOString();
 
     const { count: currentCapacity } = await supabase
       .from('access_logs')
