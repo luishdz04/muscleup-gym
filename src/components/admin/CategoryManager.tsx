@@ -329,92 +329,112 @@ export default function CategoryManager({
                   No hay categorías registradas. Agrega la primera categoría arriba.
                 </Alert>
               ) : (
-                <List sx={{ bgcolor: 'background.paper', borderRadius: 2 }}>
-                  {categories.map((category, index) => (
-                    <React.Fragment key={category.id}>
-                      <ListItem sx={{ py: 2, flexDirection: 'column', alignItems: 'stretch' }}>
-                        <Box sx={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                          {editingCategory === category.id ? (
-                            <Box display="flex" alignItems="center" gap={2} sx={{ flexGrow: 1 }}>
-                              <TextField
-                                size="small"
-                                value={editingCategoryName}
-                                onChange={(e) => setEditingCategoryName(e.target.value)}
-                                onKeyPress={(e) => e.key === 'Enter' && handleEditCategory(category.id, editingCategoryName)}
-                                sx={{ flexGrow: 1 }}
-                              />
-                              <Button
-                                size="small"
-                                variant="contained"
-                                onClick={() => handleEditCategory(category.id, editingCategoryName)}
-                                sx={{ 
-                                  backgroundColor: colorTokens.brand,
-                                  '&:hover': { backgroundColor: colorTokens.brandHover }
-                                }}
-                              >
-                                Guardar
-                              </Button>
-                              <Button
-                                size="small"
-                                variant="outlined"
-                                onClick={() => {
-                                  setEditingCategory(null);
-                                  setEditingCategoryName('');
-                                }}
-                              >
-                                Cancelar
-                              </Button>
-                            </Box>
-                          ) : (
-                            <Box display="flex" alignItems="center" gap={2} sx={{ flexGrow: 1 }}>
-                              <CategoryIcon sx={{ color: colorTokens.brand, fontSize: 24 }} />
-                              <Typography variant="h6" sx={{ fontWeight: 600, color: colorTokens.textPrimary }}>
-                                {category.name}
-                              </Typography>
-                              <Chip 
-                                label={`${category.subcategories.length} subcategorías`}
-                                size="small"
-                                sx={{ 
-                                  backgroundColor: `${colorTokens.brand}20`,
-                                  color: colorTokens.brand,
-                                  fontWeight: 500,
-                                  border: `1px solid ${colorTokens.brand}40`
-                                }}
-                              />
-                            </Box>
-                          )}
-                          
-                          <Box display="flex" gap={1}>
-                            <IconButton
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                  {categories.map((category) => (
+                    <Card key={category.id} sx={{ 
+                      border: `1px solid ${colorTokens.brand}20`,
+                      borderRadius: 2,
+                      overflow: 'hidden',
+                      '&:hover': {
+                        borderColor: colorTokens.brand,
+                        boxShadow: `0 4px 12px ${colorTokens.brand}20`
+                      }
+                    }}>
+                      <CardContent sx={{ p: 3 }}>
+                        {editingCategory === category.id ? (
+                          <Box display="flex" alignItems="center" gap={2}>
+                            <TextField
                               size="small"
+                              value={editingCategoryName}
+                              onChange={(e) => setEditingCategoryName(e.target.value)}
+                              onKeyPress={(e) => e.key === 'Enter' && handleEditCategory(category.id, editingCategoryName)}
+                              sx={{ flexGrow: 1 }}
+                              placeholder="Nombre de la categoría"
+                            />
+                            <Button
+                              size="small"
+                              variant="contained"
+                              onClick={() => handleEditCategory(category.id, editingCategoryName)}
+                              sx={{ 
+                                backgroundColor: colorTokens.brand,
+                                '&:hover': { backgroundColor: colorTokens.brandHover }
+                              }}
+                            >
+                              Guardar
+                            </Button>
+                            <Button
+                              size="small"
+                              variant="outlined"
                               onClick={() => {
-                                setEditingCategory(category.id);
-                                setEditingCategoryName(category.name);
-                              }}
-                              sx={{ 
-                                color: colorTokens.brand,
-                                '&:hover': { backgroundColor: `${colorTokens.brand}10` }
+                                setEditingCategory(null);
+                                setEditingCategoryName('');
                               }}
                             >
-                              <EditIcon />
-                            </IconButton>
-                            <IconButton
-                              size="small"
-                              onClick={() => handleDeleteCategory(category.id)}
-                              sx={{ 
-                                color: colorTokens.error,
-                                '&:hover': { backgroundColor: `${colorTokens.error}10` }
-                              }}
-                            >
-                              <DeleteIcon />
-                            </IconButton>
+                              Cancelar
+                            </Button>
                           </Box>
-                        </Box>
+                        ) : (
+                          <Box display="flex" alignItems="center" justifyContent="space-between">
+                            <Box display="flex" alignItems="center" gap={2}>
+                              <Box sx={{ 
+                                p: 1, 
+                                borderRadius: 1, 
+                                backgroundColor: `${colorTokens.brand}10`,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center'
+                              }}>
+                                <CategoryIcon sx={{ color: colorTokens.brand, fontSize: 20 }} />
+                              </Box>
+                              <Box>
+                                <Typography variant="h6" sx={{ fontWeight: 600, color: colorTokens.textPrimary, mb: 0.5 }}>
+                                  {category.name}
+                                </Typography>
+                                <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
+                                  {category.subcategories.length} subcategorías
+                                </Typography>
+                              </Box>
+                            </Box>
+                            
+                            <Box display="flex" gap={1}>
+                              <IconButton
+                                size="small"
+                                onClick={() => {
+                                  setEditingCategory(category.id);
+                                  setEditingCategoryName(category.name);
+                                }}
+                                sx={{ 
+                                  color: colorTokens.brand,
+                                  '&:hover': { backgroundColor: `${colorTokens.brand}10` }
+                                }}
+                              >
+                                <EditIcon />
+                              </IconButton>
+                              <IconButton
+                                size="small"
+                                onClick={() => handleDeleteCategory(category.id)}
+                                sx={{ 
+                                  color: colorTokens.error,
+                                  '&:hover': { backgroundColor: `${colorTokens.error}10` }
+                                }}
+                              >
+                                <DeleteIcon />
+                              </IconButton>
+                            </Box>
+                          </Box>
+                        )}
                         
                         {category.subcategories.length > 0 && (
-                          <Box sx={{ mt: 2, ml: 4 }}>
-                            <Typography variant="body2" sx={{ color: colorTokens.textSecondary, mb: 1, fontWeight: 500 }}>
-                              Subcategorías:
+                          <Box sx={{ mt: 2, pt: 2, borderTop: `1px solid ${colorTokens.brand}10` }}>
+                            <Typography variant="body2" sx={{ 
+                              color: colorTokens.textSecondary, 
+                              mb: 1.5, 
+                              fontWeight: 500,
+                              textTransform: 'uppercase',
+                              letterSpacing: 0.5,
+                              fontSize: '0.75rem'
+                            }}>
+                              Subcategorías
                             </Typography>
                             <Box display="flex" flexWrap="wrap" gap={1}>
                               {category.subcategories.map((subcategory) => (
@@ -425,7 +445,7 @@ export default function CategoryManager({
                                   variant="outlined"
                                   onDelete={() => handleDeleteSubcategory(category.id, subcategory)}
                                   sx={{
-                                    borderColor: `${colorTokens.brand}60`,
+                                    borderColor: `${colorTokens.brand}40`,
                                     color: colorTokens.textSecondary,
                                     backgroundColor: `${colorTokens.brand}05`,
                                     '& .MuiChip-deleteIcon': {
@@ -442,11 +462,10 @@ export default function CategoryManager({
                             </Box>
                           </Box>
                         )}
-                      </ListItem>
-                      {index < categories.length - 1 && <Divider />}
-                    </React.Fragment>
+                      </CardContent>
+                    </Card>
                   ))}
-                </List>
+                </Box>
               )}
             </Grid>
           </Grid>
