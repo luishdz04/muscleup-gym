@@ -193,12 +193,11 @@ export default function CategoryManager({
         display: 'flex',
         alignItems: 'center',
         gap: 2,
-        p: 3
+        p: 3,
+        fontSize: '1.25rem'
       }}>
         <CategoryIcon sx={{ fontSize: 28 }} />
-        <Typography variant="subtitle1" sx={{ fontSize: '1.25rem', fontWeight: 600 }}>
-          Gestión de Categorías y Subcategorías
-        </Typography>
+        Gestión de Categorías y Subcategorías
       </DialogTitle>
 
       <DialogContent sx={{ p: 3 }}>
@@ -215,7 +214,7 @@ export default function CategoryManager({
         ) : (
           <Grid container spacing={3}>
             {/* AGREGAR NUEVA CATEGORÍA */}
-            <Grid item xs={12}>
+            <Grid size={12}>
               <Card sx={{ border: `1px solid ${colorTokens.brand}20` }}>
                 <CardContent>
                   <Typography variant="h6" sx={{ mb: 2, color: colorTokens.brand, fontWeight: 600 }}>
@@ -255,7 +254,7 @@ export default function CategoryManager({
             </Grid>
 
             {/* AGREGAR SUBCATEGORÍA */}
-            <Grid item xs={12}>
+            <Grid size={12}>
               <Card sx={{ border: `1px solid ${colorTokens.brand}20` }}>
                 <CardContent>
                   <Typography variant="h6" sx={{ mb: 2, color: colorTokens.brand, fontWeight: 600 }}>
@@ -263,7 +262,7 @@ export default function CategoryManager({
                     Agregar Subcategoría
                   </Typography>
                   <Grid container spacing={2} alignItems="center">
-                    <Grid item xs={12} md={4}>
+                    <Grid size={{ xs: 12, md: 4 }}>
                       <FormControl fullWidth>
                         <InputLabel sx={{ color: colorTokens.textSecondary }}>
                           Categoría
@@ -298,7 +297,7 @@ export default function CategoryManager({
                         </Select>
                       </FormControl>
                     </Grid>
-                    <Grid item xs={12} md={4}>
+                    <Grid size={{ xs: 12, md: 4 }}>
                       <TextField
                         fullWidth
                         label="Nombre de la subcategoría"
@@ -314,7 +313,7 @@ export default function CategoryManager({
                         }}
                       />
                     </Grid>
-                    <Grid item xs={12} md={4}>
+                    <Grid size={{ xs: 12, md: 4 }}>
                       <Button
                         variant="contained"
                         onClick={handleAddSubcategory}
@@ -334,7 +333,7 @@ export default function CategoryManager({
             </Grid>
 
             {/* LISTA DE CATEGORÍAS */}
-            <Grid item xs={12}>
+            <Grid size={12}>
               <Typography variant="h6" sx={{ mb: 2, color: colorTokens.textPrimary, fontWeight: 600 }}>
                 Categorías Existentes ({categories.length})
               </Typography>
@@ -427,10 +426,10 @@ export default function CategoryManager({
                               </IconButton>
                               <IconButton
                                 size="small"
-                                onClick={() => handleDeleteCategory(category.id)}
+                                onClick={() => handleDeleteCategory(category)}
                                 sx={{ 
-                                  color: colorTokens.error,
-                                  '&:hover': { backgroundColor: `${colorTokens.error}10` }
+                                  color: '#f44336',
+                                  '&:hover': { backgroundColor: '#f4433610' }
                                 }}
                               >
                                 <DeleteIcon />
@@ -464,8 +463,8 @@ export default function CategoryManager({
                                     color: colorTokens.textSecondary,
                                     backgroundColor: `${colorTokens.brand}05`,
                                     '& .MuiChip-deleteIcon': {
-                                      color: colorTokens.error,
-                                      '&:hover': { color: colorTokens.error }
+                                      color: '#f44336',
+                                      '&:hover': { color: '#f44336' }
                                     },
                                     '&:hover': {
                                       backgroundColor: `${colorTokens.brand}10`,
