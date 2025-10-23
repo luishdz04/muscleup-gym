@@ -318,7 +318,7 @@ export default function ProveedoresPage() {
                   <CardContent>
                     <Box display="flex" alignItems="center" justifyContent="space-between">
                       <Box>
-                        <Typography variant="h3" fontWeight="bold" sx={{ color: colorTokens.info }}>
+                        <Typography variant="h4" fontWeight="bold" sx={{ color: colorTokens.info }}>
                           {stats.totalSuppliers}
                         </Typography>
                         <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
@@ -345,7 +345,7 @@ export default function ProveedoresPage() {
                   <CardContent>
                     <Box display="flex" alignItems="center" justifyContent="space-between">
                       <Box>
-                        <Typography variant="h3" fontWeight="bold" sx={{ color: colorTokens.success }}>
+                        <Typography variant="h4" fontWeight="bold" sx={{ color: colorTokens.success }}>
                           {stats.activeSuppliers}
                         </Typography>
                         <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>

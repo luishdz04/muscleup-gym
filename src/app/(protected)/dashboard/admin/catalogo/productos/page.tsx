@@ -45,7 +45,8 @@ import {
   Refresh as RefreshIcon,
   Visibility as VisibilityIcon,
   VisibilityOff as VisibilityOffIcon,
-  CheckCircle as CheckCircleIcon
+  CheckCircle as CheckCircleIcon,
+  Category as CategoryIcon
 } from '@mui/icons-material';
 import { useRouter } from 'next/navigation';
 
@@ -57,6 +58,7 @@ import { formatTimestampForDisplay } from '@/utils/dateUtils';
 import { useProducts } from '@/hooks/useCatalog';
 import { Product } from '@/services/catalogService';
 import ProductFormDialog from '@/components/catalogo/ProductFormDialog';
+import CategoryManager from '@/components/admin/CategoryManager';
 
 const STATUS_FILTERS = [
   { value: 'active', label: 'Productos Activos' },
@@ -93,6 +95,8 @@ export default function ProductosPage() {
   const [productDialogOpen, setProductDialogOpen] = useState(false);
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
   const [menuProduct, setMenuProduct] = useState<Product | null>(null);
+  const [categoryManagerOpen, setCategoryManagerOpen] = useState(false);
+  const [categories, setCategories] = useState<Array<{id: string, name: string, subcategories: string[]}>>([]);
 
   // CATEGORÍAS ÚNICAS MEMORIZADAS
   const uniqueCategories = useMemo(() => {
@@ -277,6 +281,34 @@ export default function ProductosPage() {
               {loading ? <CircularProgress size={20} /> : <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>Actualizar</Box>}
               {loading ? '' : <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>Actualizar</Box>}
             </Button>
+
+            <Button
+              variant="contained"
+              startIcon={<CategoryIcon />}
+              onClick={() => setCategoryManagerOpen(true)}
+              sx={{
+                width: { xs: '100%', sm: 'auto' },
+                background: `linear-gradient(135deg, ${colorTokens.warning}, ${colorTokens.warning}dd)`,
+                color: colorTokens.textOnBrand,
+                fontWeight: 600,
+                px: { xs: 2, sm: 3 },
+                py: { xs: 1, sm: 1.5 },
+                borderRadius: 3,
+                fontSize: { xs: '0.875rem', sm: '1rem' },
+                '&:hover': {
+                  background: `linear-gradient(135deg, ${colorTokens.warning}dd, ${colorTokens.warning}bb)`,
+                  transform: 'translateY(-2px)',
+                  boxShadow: `0 8px 25px ${colorTokens.warning}40`
+                }
+              }}
+            >
+              <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+                Gestionar Categorías
+              </Box>
+              <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>
+                Categorías
+              </Box>
+            </Button>
           </Box>
 
           {/* ESTADÍSTICA PRINCIPAL - PRODUCTOS DISPONIBLES */}
@@ -299,7 +331,7 @@ export default function ProductosPage() {
                     mb: 2,
                     filter: `drop-shadow(0 4px 8px ${colorTokens.success}40)`
                   }} />
-                  <Typography variant="h2" fontWeight="bold" sx={{ 
+                  <Typography variant="h4" fontWeight="bold" sx={{ 
                     color: colorTokens.success,
                     mb: 1
                   }}>
@@ -686,6 +718,14 @@ export default function ProductosPage() {
         onClose={closeProductDialog}
         product={selectedProduct || undefined}
         onSave={handleProductSave}
+      />
+
+      {/* GESTIÓN DE CATEGORÍAS */}
+      <CategoryManager
+        open={categoryManagerOpen}
+        onClose={() => setCategoryManagerOpen(false)}
+        categories={categories}
+        onUpdateCategories={setCategories}
       />
     </Box>
   );
