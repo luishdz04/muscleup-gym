@@ -68,16 +68,6 @@ export default function CategoryManager({
   const [newSubcategoryName, setNewSubcategoryName] = useState('');
   const [selectedCategoryForSubcategory, setSelectedCategoryForSubcategory] = useState<string | null>(null);
 
-  // Test temporal para MySwal
-  const testMySwal = async () => {
-    console.log('🧪 [CategoryManager] Testing MySwal...');
-    try {
-      await showSuccess('Test de notificación de éxito', '✅ Test Exitoso');
-      console.log('✅ Test MySwal exitoso');
-    } catch (err) {
-      console.error('❌ Error en test MySwal:', err);
-    }
-  };
 
   // Agregar nueva categoría
   const handleAddCategory = async () => {
@@ -100,6 +90,10 @@ export default function CategoryManager({
     if (success) {
       await showSuccess(`Categoría "${newCategoryName}" agregada exitosamente`, '✅ Categoría Agregada');
       setNewCategoryName('');
+      // Cerrar el modal después de mostrar la notificación
+      setTimeout(() => {
+        handleClose();
+      }, 1000);
     } else {
       await showError('Error al agregar la categoría', '❌ Error');
     }
@@ -122,6 +116,12 @@ export default function CategoryManager({
       await showSuccess(`Categoría actualizada exitosamente`, '✅ Categoría Actualizada');
       setEditingCategory(null);
       setEditingCategoryName('');
+      // Cerrar el modal después de mostrar la notificación
+      setTimeout(() => {
+        handleClose();
+      }, 1000);
+    } else {
+      await showError('Error al actualizar la categoría', '❌ Error');
     }
   };
 
@@ -144,6 +144,12 @@ export default function CategoryManager({
         const success = await deleteCategory(category.id);
         if (success) {
           await showSuccess(`Categoría "${category.name}" eliminada exitosamente`, '✅ Eliminada');
+          // Cerrar el modal después de mostrar la notificación
+          setTimeout(() => {
+            handleClose();
+          }, 1000);
+        } else {
+          await showError('Error al eliminar la categoría', '❌ Error');
         }
       }
     }
@@ -175,6 +181,10 @@ export default function CategoryManager({
       await showSuccess(`Subcategoría "${newSubcategoryName}" agregada exitosamente`, '✅ Subcategoría Agregada');
       setNewSubcategoryName('');
       setSelectedCategoryForSubcategory(null);
+      // Cerrar el modal después de mostrar la notificación
+      setTimeout(() => {
+        handleClose();
+      }, 1000);
     } else {
       await showError('Error al agregar la subcategoría', '❌ Error');
     }
@@ -187,6 +197,12 @@ export default function CategoryManager({
       const success = await removeSubcategory(categoryId, subcategoryName);
       if (success) {
         await showSuccess(`Subcategoría "${subcategoryName}" eliminada exitosamente`, '✅ Eliminada');
+        // Cerrar el modal después de mostrar la notificación
+        setTimeout(() => {
+          handleClose();
+        }, 1000);
+      } else {
+        await showError('Error al eliminar la subcategoría', '❌ Error');
       }
     }
   };
@@ -226,19 +242,6 @@ export default function CategoryManager({
       }}>
         <CategoryIcon sx={{ fontSize: 28 }} />
         Gestión de Categorías y Subcategorías
-        <Button 
-          variant="outlined" 
-          size="small" 
-          onClick={testMySwal}
-          sx={{ 
-            ml: 'auto', 
-            color: colorTokens.textOnBrand,
-            borderColor: colorTokens.textOnBrand,
-            '&:hover': { backgroundColor: 'rgba(255,255,255,0.1)' }
-          }}
-        >
-          Test MySwal
-        </Button>
       </DialogTitle>
 
       <DialogContent sx={{ p: 3 }}>
