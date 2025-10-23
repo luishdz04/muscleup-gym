@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createServerSupabaseClient } from '@/lib/supabase/server';
+import { createAdminSupabaseClient } from '@/lib/supabase/admin';
 
 export async function GET(request: NextRequest) {
   try {
@@ -25,7 +25,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const supabase = createServerSupabaseClient();
+    const supabase = createAdminSupabaseClient();
 
     // Calcular primer y último día del mes en horario CDMX
     const [year, monthNum] = month.split('-').map(Number);
@@ -94,20 +94,22 @@ export async function GET(request: NextRequest) {
       throw new Error(`Error consultando abonos: ${abonosError.message}`);
     }
 
-    // 3. MEMBRESÍAS
+    // 3. MEMBRESÍAS - Filtrar por fecha de pago, no por fecha de creación de membresía
     const { data: membershipsData, error: membershipsError } = await supabase
-      .from('user_memberships')
+      .from('membership_payment_details')
       .select(`
         id,
-        paid_amount,
+        payment_method,
+        amount,
+        commission_amount,
         created_at,
-        membership_payment_details (
-          payment_method,
-          amount,
-          commission_amount
+        membership_id,
+        user_memberships!inner (
+          id,
+          status
         )
       `)
-      .eq('status', 'active')
+      .eq('user_memberships.status', 'active')
       .gte('created_at', startISO)
       .lte('created_at', endISO);
 
@@ -219,29 +221,27 @@ export async function GET(request: NextRequest) {
 
     if (membershipsData) {
       const uniqueMemberships = new Set();
-      membershipsData.forEach(membership => {
-        uniqueMemberships.add(membership.id);
-        membership.membership_payment_details?.forEach(payment => {
-          const amount = parseFloat(payment.amount.toString());
-          const commission = parseFloat(payment.commission_amount?.toString() || '0');
-          
-          memberships.commissions += commission;
-          
-          switch (payment.payment_method) {
-            case 'efectivo':
-              memberships.efectivo += amount;
-              break;
-            case 'transferencia':
-              memberships.transferencia += amount;
-              break;
-            case 'debito':
-              memberships.debito += amount;
-              break;
-            case 'credito':
-              memberships.credito += amount;
-              break;
-          }
-        });
+      membershipsData.forEach(payment => {
+        uniqueMemberships.add(payment.membership_id);
+        const amount = parseFloat(payment.amount.toString());
+        const commission = parseFloat(payment.commission_amount?.toString() || '0');
+        
+        memberships.commissions += commission;
+        
+        switch (payment.payment_method) {
+          case 'efectivo':
+            memberships.efectivo += amount;
+            break;
+          case 'transferencia':
+            memberships.transferencia += amount;
+            break;
+          case 'debito':
+            memberships.debito += amount;
+            break;
+          case 'credito':
+            memberships.credito += amount;
+            break;
+        }
       });
       memberships.transactions = uniqueMemberships.size;
     }
