@@ -50,6 +50,7 @@ import { useHydrated } from '@/hooks/useHydrated';
 import { useUserTracking } from '@/hooks/useUserTracking';
 import { getCurrentTimestamp } from '@/utils/dateUtils';
 import { notify } from '@/utils/notifications';
+import { showSuccess, showError } from '@/lib/notifications/MySwal';
 import { useEntityCRUD } from '@/hooks/useEntityCRUD';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 
@@ -282,7 +283,7 @@ export default function PaymentDialog({
     
     // ✅ VALIDACIÓN CRÍTICA: Verificar almacén configurado
     if (!warehouseId) {
-      notify.error('⚠️ Error: Almacén no configurado. Contacta al administrador.');
+      await showError('⚠️ Error: Almacén no configurado. Contacta al administrador.', '❌ Error de Configuración');
       return;
     }
 
@@ -439,7 +440,7 @@ export default function PaymentDialog({
       }
 
       // ✅ NOTIFICACIÓN DE ÉXITO CON BRANDING MUSCLEUP
-      notify.success(`✅ Venta completada: ${saleNumber} (Almacén: ${warehouseId})`);
+      await showSuccess(`✅ Venta completada: ${saleNumber} (Almacén: ${warehouseId})`, '🎉 Venta Exitosa');
       onSuccess();
       handleClose();
 
@@ -450,15 +451,15 @@ export default function PaymentDialog({
       
       // ✅ NOTIFICACIONES DE ERROR ESPECÍFICAS v10.1
       if (errorMsg.includes('insufficient_stock')) {
-        notify.error('⚠️ Stock insuficiente en el almacén. Verifica el inventario.');
+        await showError('⚠️ Stock insuficiente en el almacén. Verifica el inventario.', '📦 Stock Insuficiente');
       } else if (errorMsg.includes('inventory_movements_movement_type_check')) {
-        notify.error('⚠️ Error de configuración en inventario. Contacta al administrador.');
+        await showError('⚠️ Error de configuración en inventario. Contacta al administrador.', '⚙️ Error de Configuración');
       } else if (errorMsg.includes('constraint')) {
-        notify.error('⚠️ Error de validación en base de datos. Verifica los datos.');
+        await showError('⚠️ Error de validación en base de datos. Verifica los datos.', '🔒 Error de Validación');
       } else if (errorMsg.includes('trigger')) {
-        notify.error('⚠️ Error en actualización automática de stock. Contacta al administrador.');
+        await showError('⚠️ Error en actualización automática de stock. Contacta al administrador.', '🔄 Error de Actualización');
       } else {
-        notify.error(`❌ Error: ${errorMsg}`);
+        await showError(`❌ Error: ${errorMsg}`, '❌ Error General');
       }
     } finally {
       setProcessing(false);

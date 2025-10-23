@@ -55,6 +55,7 @@ import {
   addDaysToDate
 } from '@/utils/dateUtils';
 import { notify } from '@/utils/notifications';
+import { showSuccess, showError } from '@/lib/notifications/MySwal';
 import { useEntityCRUD } from '@/hooks/useEntityCRUD';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 
@@ -282,7 +283,7 @@ export default function LayawayDialog({
     if (!canCreateLayaway || !customer) return;
     
     if (!warehouseId) {
-      notify.error('⚠️ Error: Almacén no configurado. Contacta al administrador.');
+      await showError('⚠️ Error: Almacén no configurado. Contacta al administrador.', '❌ Error de Configuración');
       return;
     }
 
@@ -430,7 +431,7 @@ export default function LayawayDialog({
         if (couponError) throw couponError;
       }
 
-      notify.success(`Apartado creado: ${saleNumber}. Depósito cobrado: ${formatPrice(totalPayments)}`);
+      await showSuccess(`Apartado creado: ${saleNumber}. Depósito cobrado: ${formatPrice(totalPayments)}`, '🎉 Apartado Creado');
       onSuccess();
       handleClose();
 
@@ -439,11 +440,11 @@ export default function LayawayDialog({
       const errorMsg = error.message || 'Error al crear el apartado';
       
       if (errorMsg.includes('insufficient_stock')) {
-        notify.error('⚠️ Stock insuficiente para reservar. Verifica el inventario.');
+        await showError('⚠️ Stock insuficiente para reservar. Verifica el inventario.', '📦 Stock Insuficiente');
       } else if (errorMsg.includes('inventory_movements_movement_type_check')) {
-        notify.error('⚠️ Error de configuración en inventario. Contacta al administrador.');
+        await showError('⚠️ Error de configuración en inventario. Contacta al administrador.', '⚙️ Error de Configuración');
       } else {
-        notify.error(`Error: ${errorMsg}`);
+        await showError(`Error: ${errorMsg}`, '❌ Error General');
       }
     } finally {
       setProcessing(false);
