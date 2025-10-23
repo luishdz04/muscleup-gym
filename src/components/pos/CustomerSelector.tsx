@@ -165,15 +165,17 @@ export default function CustomerSelector({ open, onClose, onSelect }: CustomerSe
         p: { xs: 2, sm: 3 }
       }}>
         <PersonIcon sx={{ fontSize: { xs: 24, sm: 28 } }} />
-        <Typography variant="h6" sx={{
+        <Typography variant="subtitle1" sx={{
           fontSize: { xs: '1rem', sm: '1.25rem' },
-          display: { xs: 'none', sm: 'block' }
+          display: { xs: 'none', sm: 'block' },
+          fontWeight: 600
         }}>
           Seleccionar Cliente
         </Typography>
-        <Typography variant="h6" sx={{
+        <Typography variant="subtitle1" sx={{
           fontSize: '1rem',
-          display: { xs: 'block', sm: 'none' }
+          display: { xs: 'block', sm: 'none' },
+          fontWeight: 600
         }}>
           Cliente
         </Typography>
