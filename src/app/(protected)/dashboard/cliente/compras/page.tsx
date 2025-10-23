@@ -226,43 +226,8 @@ export default function ComprasPage() {
 
       {/* Stats Cards */}
       <Grid container spacing={{ xs: 2, sm: 3 }} sx={{ mb: 4 }}>
-        {/* Total gastado este año */}
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-          <Paper sx={{
-            p: 3,
-            background: `linear-gradient(135deg, ${alpha(colorTokens.surfaceLevel2, 0.9)}, ${alpha(colorTokens.surfaceLevel3, 0.85)})`,
-            backdropFilter: 'blur(20px)',
-            border: `1px solid ${alpha(colorTokens.brand, 0.1)}`,
-            borderRadius: 2,
-            transition: 'all 0.3s ease',
-            '&:hover': {
-              transform: 'translateY(-4px)',
-              boxShadow: `0 8px 24px ${alpha(colorTokens.black, 0.4)}`
-            }
-          }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <Box>
-                <Typography variant="body2" sx={{ color: colorTokens.textSecondary, mb: 1 }}>
-                  Gastado este año
-                </Typography>
-                <Typography variant="h4" sx={{ fontWeight: 800, color: colorTokens.textPrimary }}>
-                  {formatCurrency(data.stats.totalSpentThisYear)}
-                </Typography>
-              </Box>
-              <Box sx={{
-                p: 1.5,
-                borderRadius: 2,
-                bgcolor: alpha(colorTokens.success, 0.1),
-                border: `1px solid ${alpha(colorTokens.success, 0.2)}`
-              }}>
-                <MoneyIcon sx={{ fontSize: 32, color: colorTokens.success }} />
-              </Box>
-            </Box>
-          </Paper>
-        </Grid>
-
         {/* Total de compras */}
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+        <Grid size={{ xs: 12, sm: 6, md: 4 }}>
           <Paper sx={{
             p: 3,
             background: `linear-gradient(135deg, ${alpha(colorTokens.surfaceLevel2, 0.9)}, ${alpha(colorTokens.surfaceLevel3, 0.85)})`,
@@ -297,7 +262,7 @@ export default function ComprasPage() {
         </Grid>
 
         {/* Total de productos */}
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+        <Grid size={{ xs: 12, sm: 6, md: 4 }}>
           <Paper sx={{
             p: 3,
             background: `linear-gradient(135deg, ${alpha(colorTokens.surfaceLevel2, 0.9)}, ${alpha(colorTokens.surfaceLevel3, 0.85)})`,
@@ -332,7 +297,7 @@ export default function ComprasPage() {
         </Grid>
 
         {/* Pendiente de pago */}
-        <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+        <Grid size={{ xs: 12, sm: 6, md: 4 }}>
           <Paper sx={{
             p: 3,
             background: `linear-gradient(135deg, ${alpha(colorTokens.surfaceLevel2, 0.9)}, ${alpha(colorTokens.surfaceLevel3, 0.85)})`,
@@ -403,17 +368,13 @@ export default function ComprasPage() {
                 <TableCell>No. Venta</TableCell>
                 <TableCell>Fecha</TableCell>
                 <TableCell>Tipo</TableCell>
-                <TableCell align="right">Subtotal</TableCell>
-                <TableCell align="right">Descuento</TableCell>
-                <TableCell align="right">Total</TableCell>
-                <TableCell>Estado</TableCell>
                 <TableCell>Pago</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {data.purchases.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={9} align="center" sx={{ py: 8 }}>
+                  <TableCell colSpan={5} align="center" sx={{ py: 8 }}>
                     <Typography variant="body1" sx={{ color: colorTokens.textSecondary }}>
                       No se encontraron compras registradas
                     </Typography>
@@ -462,52 +423,6 @@ export default function ComprasPage() {
                           }}
                         />
                       </TableCell>
-                      <TableCell align="right" sx={{ color: colorTokens.textPrimary }}>
-                        {formatCurrency(sale.subtotal)}
-                      </TableCell>
-                      <TableCell align="right">
-                        {(sale.discount_amount > 0 || sale.coupon_discount > 0) ? (
-                          <Box>
-                            <Typography sx={{ color: colorTokens.success, fontWeight: 600, fontSize: '0.9rem' }}>
-                              -{formatCurrency(sale.discount_amount + sale.coupon_discount)}
-                            </Typography>
-                            {sale.coupon_discount > 0 && (
-                              <Chip
-                                icon={<CouponIcon sx={{ fontSize: 14 }} />}
-                                label="Cupón"
-                                size="small"
-                                sx={{
-                                  height: 20,
-                                  fontSize: '0.65rem',
-                                  mt: 0.5,
-                                  bgcolor: alpha(colorTokens.success, 0.1),
-                                  color: colorTokens.success,
-                                  '& .MuiChip-icon': { color: colorTokens.success }
-                                }}
-                              />
-                            )}
-                          </Box>
-                        ) : (
-                          <Typography sx={{ color: colorTokens.textSecondary }}>-</Typography>
-                        )}
-                      </TableCell>
-                      <TableCell align="right">
-                        <Typography sx={{ fontWeight: 700, color: colorTokens.brand }}>
-                          {formatCurrency(sale.total_amount)}
-                        </Typography>
-                      </TableCell>
-                      <TableCell>
-                        <Chip
-                          label={translateStatus(sale.status)}
-                          size="small"
-                          sx={{
-                            bgcolor: alpha(getStatusColor(sale.status), 0.1),
-                            color: getStatusColor(sale.status),
-                            border: `1px solid ${alpha(getStatusColor(sale.status), 0.2)}`,
-                            fontWeight: 600
-                          }}
-                        />
-                      </TableCell>
                       <TableCell>
                         <Chip
                           label={translatePaymentStatus(sale.payment_status)}
@@ -524,7 +439,7 @@ export default function ComprasPage() {
 
                     {/* Expanded Row - Items Details */}
                     <TableRow>
-                      <TableCell colSpan={9} sx={{ p: 0, borderBottom: expandedRows.has(sale.id) ? undefined : 'none' }}>
+                      <TableCell colSpan={5} sx={{ p: 0, borderBottom: expandedRows.has(sale.id) ? undefined : 'none' }}>
                         <Collapse in={expandedRows.has(sale.id)} timeout="auto" unmountOnExit>
                           <Box sx={{
                             p: 3,

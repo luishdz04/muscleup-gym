@@ -495,16 +495,22 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
                 alt="Muscle Up Gym"
                 onClick={() => router.push('/dashboard/cliente')}
               />
-              <Typography
-                variant="h6"
+              <Chip
+                label="PANEL MUP"
+                size="small"
                 sx={{
+                  backgroundColor: colorTokens.white,
+                  color: colorTokens.black,
                   fontWeight: 700,
-                  fontSize: '0.9rem',
-                  color: colorTokens.brand
+                  fontSize: '0.75rem',
+                  height: '24px',
+                  '& .MuiChip-label': {
+                    px: 1.5,
+                    fontWeight: 700,
+                    fontSize: '0.75rem'
+                  }
                 }}
-              >
-                PANEL MUP
-              </Typography>
+              />
             </Box>
 
 
