@@ -231,7 +231,7 @@ export async function GET(request: NextRequest) {
     logs?.forEach((log: any) => {
       // Usar dateUtils para obtener hora en México
       const mexicoInfo = getMexicoDateTimeInfo(log.created_at);
-      const hour = mexicoInfo.hour; // Hora en formato 24h
+      const hour = mexicoInfo.dateObject.getHours(); // Extraer hora del objeto Date
       hourlyStats.set(hour, (hourlyStats.get(hour) || 0) + 1);
     });
 
