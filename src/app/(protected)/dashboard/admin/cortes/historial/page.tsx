@@ -75,7 +75,7 @@ import { useUserTracking } from '@/hooks/useUserTracking';
 import { useNotifications } from '@/hooks/useNotifications';
 import { formatCurrency } from '@/utils/formHelpers';
 import { formatDateLong, formatMexicoTime } from '@/utils/dateUtils';
-import { showSuccess, showError, showDeleteConfirmation } from '@/lib/notifications/MySwal';
+import { showSuccess, showError, showDeleteConfirmation, showConfirmation } from '@/lib/notifications/MySwal';
 
 const formatPrice = (amount: number): string => formatCurrency(Number.isFinite(amount) ? amount : 0);
 
@@ -618,29 +618,20 @@ export default function CutsHistoryPage() {
     if (!result.isConfirmed) return;
 
     // Segunda confirmación con más detalles
-    const secondConfirm = await MySwal.fire({
-      background: colorTokens.neutral200,
-      color: colorTokens.neutral1200,
-      icon: 'warning',
-      title: '🔴 SEGUNDA CONFIRMACIÓN',
-      html: `
-        <div style="text-align: center; color: ${colorTokens.neutral1000};">
-          <p><strong>Corte #${cut.cut_number}</strong></p>
-          <p>Fecha: <strong>${formatDateLong(cut.cut_date)}</strong></p>
-          <p>Total: <strong>${formatPrice(cut.grand_total)}</strong></p>
-          <div style="background: ${colorTokens.danger}20; border: 1px solid ${colorTokens.danger}40; border-radius: 8px; padding: 12px; margin: 16px 0;">
-            <p style="color: ${colorTokens.danger}; margin: 0;">⚠️ Esta acción NO se puede deshacer</p>
-          </div>
-          <p style="margin-top: 20px;">¿Realmente deseas eliminar este corte de caja?</p>
-        </div>
-      `,
-      showCancelButton: true,
-      confirmButtonText: 'Sí, eliminar definitivamente',
-      cancelButtonText: 'Cancelar',
-      confirmButtonColor: colorTokens.danger,
-      cancelButtonColor: colorTokens.neutral600,
-      focusCancel: true,
-    });
+    const secondConfirm = await showConfirmation(
+      `¿Estás COMPLETAMENTE seguro de eliminar este corte?\n\n` +
+      `Corte: ${cut.cut_number}\n` +
+      `Fecha: ${formatDateLong(cut.cut_date)}\n` +
+      `Total: ${formatPrice(cut.grand_total)}\n\n` +
+      `Esta acción eliminará:\n` +
+      `• El corte y toda su información\n` +
+      `• Referencias en el sistema\n` +
+      `• Historial asociado\n\n` +
+      `⚠️ Esta acción NO se puede deshacer`,
+      '⚠️ Confirmación Final',
+      'Sí, eliminar definitivamente',
+      'Cancelar'
+    );
 
     if (!secondConfirm.isConfirmed) return;
 
@@ -658,41 +649,16 @@ export default function CutsHistoryPage() {
         setSelectedCuts(prev => prev.filter(id => id !== cutId));
 
         // Mostrar notificación de éxito con SweetAlert
-        await MySwal.fire({
-          background: colorTokens.neutral200,
-          color: colorTokens.neutral1200,
-          icon: 'success',
-          title: '✅ Éxito',
-          text: 'Corte eliminado exitosamente',
-          timer: 2000,
-          showConfirmButton: false,
-          iconColor: colorTokens.success
-        });
+        await showSuccess('Corte eliminado exitosamente', '✅ Corte Eliminado');
 
         loadCuts(); // Recargar para actualizar estadísticas
       } else {
         // Mostrar error con SweetAlert
-        await MySwal.fire({
-          background: colorTokens.neutral200,
-          color: colorTokens.neutral1200,
-          icon: 'error',
-          title: 'Error',
-          text: data.error || 'Error al eliminar el corte',
-          confirmButtonColor: colorTokens.brand,
-          iconColor: colorTokens.danger
-        });
+        await showError(data.error || 'Error al eliminar el corte', '❌ Error al Eliminar');
       }
     } catch (error) {
       console.error('Error eliminando corte:', error);
-      await MySwal.fire({
-        background: colorTokens.neutral200,
-        color: colorTokens.neutral1200,
-        icon: 'error',
-        title: 'Error',
-        text: 'Error al eliminar el corte',
-        confirmButtonColor: colorTokens.brand,
-        iconColor: colorTokens.danger
-      });
+      await showError('Error al eliminar el corte', '❌ Error al Eliminar');
     } finally {
       setLoadingDelete(false);
     }
@@ -757,54 +723,26 @@ export default function CutsHistoryPage() {
     if (selectedCuts.length === 0) return;
 
     // Primera confirmación con SweetAlert
-    const result = await MySwal.fire({
-      background: colorTokens.neutral200,
-      color: colorTokens.neutral1200,
-      icon: 'warning',
-      title: '⚠️ Eliminación Masiva',
-      html: `
-        <div style="text-align: center; color: ${colorTokens.neutral1000};">
-          <p>Estás a punto de eliminar <strong>${selectedCuts.length}</strong> corte(s)</p>
-          <div style="background: ${colorTokens.warning}20; border: 1px solid ${colorTokens.warning}40; border-radius: 8px; padding: 12px; margin: 16px 0;">
-            <p style="color: ${colorTokens.warning}; margin: 0;">⚠️ Esta operación es permanente</p>
-          </div>
-          <p>¿Deseas continuar?</p>
-        </div>
-      `,
-      showCancelButton: true,
-      confirmButtonText: 'Sí, eliminar todos',
-      cancelButtonText: 'Cancelar',
-      confirmButtonColor: colorTokens.danger,
-      cancelButtonColor: colorTokens.neutral600,
-      iconColor: colorTokens.warning,
-      focusCancel: true
-    });
+    const result = await showConfirmation(
+      `Estás a punto de eliminar ${selectedCuts.length} corte(s)\n\n` +
+      `Esta operación es permanente\n\n` +
+      `¿Deseas continuar?`,
+      '⚠️ Eliminación Masiva',
+      'Sí, eliminar todos',
+      'Cancelar'
+    );
 
     if (!result.isConfirmed) return;
 
     // Segunda confirmación
-    const secondConfirm = await MySwal.fire({
-      background: colorTokens.neutral200,
-      color: colorTokens.neutral1200,
-      icon: 'warning',
-      title: '🔴 CONFIRMACIÓN FINAL',
-      html: `
-        <div style="text-align: center; color: ${colorTokens.neutral1000};">
-          <p><strong>${selectedCuts.length} cortes</strong> serán eliminados permanentemente</p>
-          <div style="background: ${colorTokens.danger}20; border: 1px solid ${colorTokens.danger}40; border-radius: 8px; padding: 12px; margin: 16px 0;">
-            <p style="color: ${colorTokens.danger}; margin: 0;">⚠️ Esta acción NO se puede deshacer</p>
-          </div>
-          <p style="margin-top: 20px;">¿Realmente deseas eliminar todos estos cortes?</p>
-        </div>
-      `,
-      showCancelButton: true,
-      confirmButtonText: 'Sí, eliminar definitivamente',
-      cancelButtonText: 'Cancelar',
-      confirmButtonColor: colorTokens.danger,
-      cancelButtonColor: colorTokens.neutral600,
-      iconColor: colorTokens.danger,
-      focusCancel: true
-    });
+    const secondConfirm = await showConfirmation(
+      `${selectedCuts.length} cortes serán eliminados permanentemente\n\n` +
+      `Esta acción NO se puede deshacer\n\n` +
+      `¿Realmente deseas eliminar todos estos cortes?`,
+      '⚠️ Confirmación Final',
+      'Sí, eliminar definitivamente',
+      'Cancelar'
+    );
 
     if (!secondConfirm.isConfirmed) return;
 
@@ -823,42 +761,17 @@ export default function CutsHistoryPage() {
 
       if (data.success) {
         // Mostrar éxito con SweetAlert
-        await MySwal.fire({
-          background: colorTokens.neutral200,
-          color: colorTokens.neutral1200,
-          icon: 'success',
-          title: '✅ Éxito',
-          text: `Se eliminaron ${selectedCuts.length} cortes exitosamente`,
-          timer: 2000,
-          showConfirmButton: false,
-          iconColor: colorTokens.success
-        });
+        await showSuccess(`Se eliminaron ${selectedCuts.length} cortes exitosamente`, '✅ Cortes Eliminados');
 
         setSelectedCuts([]);
         loadCuts();
       } else {
         // Mostrar error con SweetAlert
-        await MySwal.fire({
-          background: colorTokens.neutral200,
-          color: colorTokens.neutral1200,
-          icon: 'error',
-          title: 'Error',
-          text: data.error || 'Error al eliminar cortes seleccionados',
-          confirmButtonColor: colorTokens.brand,
-          iconColor: colorTokens.danger
-        });
+        await showError(data.error || 'Error al eliminar cortes seleccionados', '❌ Error al Eliminar');
       }
     } catch (error) {
       console.error('Error eliminando cortes seleccionados:', error);
-      await MySwal.fire({
-        background: colorTokens.neutral200,
-        color: colorTokens.neutral1200,
-        icon: 'error',
-        title: 'Error',
-        text: 'Error al eliminar cortes seleccionados',
-        confirmButtonColor: colorTokens.brand,
-        iconColor: colorTokens.danger
-      });
+      await showError('Error al eliminar cortes seleccionados', '❌ Error al Eliminar');
     } finally {
       setLoadingBulkDelete(false);
     }
