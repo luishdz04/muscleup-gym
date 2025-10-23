@@ -114,9 +114,9 @@ export async function POST(request: NextRequest) {
     });
     
     // 🔢 GENERAR NÚMERO DE CORTE
-    const mexicoDate = new Date(mexicoTimestamp);
-    const dateStr = mexicoDate.toISOString().split('T')[0].replace(/-/g, '');
-    const timestamp = mexicoDate.getTime();
+    // Usar directamente la fecha de México sin convertir a UTC
+    const dateStr = mexicoInfo.date.replace(/-/g, '');
+    const timestamp = new Date(mexicoTimestamp).getTime();
     const cutNumber = `CORTE-${dateStr}-${timestamp}`;
     
     console.log('📊 Creando corte con dateHelpers:', {
