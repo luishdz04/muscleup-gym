@@ -90,10 +90,7 @@ export default function CategoryManager({
     if (success) {
       await showSuccess(`Categoría "${newCategoryName}" agregada exitosamente`, '✅ Categoría Agregada');
       setNewCategoryName('');
-      // Cerrar el modal después de mostrar la notificación
-      setTimeout(() => {
-        handleClose();
-      }, 1000);
+      handleClose();
     } else {
       await showError('Error al agregar la categoría', '❌ Error');
     }
@@ -116,10 +113,7 @@ export default function CategoryManager({
       await showSuccess(`Categoría actualizada exitosamente`, '✅ Categoría Actualizada');
       setEditingCategory(null);
       setEditingCategoryName('');
-      // Cerrar el modal después de mostrar la notificación
-      setTimeout(() => {
-        handleClose();
-      }, 1000);
+      handleClose();
     } else {
       await showError('Error al actualizar la categoría', '❌ Error');
     }
@@ -144,10 +138,7 @@ export default function CategoryManager({
         const success = await deleteCategory(category.id);
         if (success) {
           await showSuccess(`Categoría "${category.name}" eliminada exitosamente`, '✅ Eliminada');
-          // Cerrar el modal después de mostrar la notificación
-          setTimeout(() => {
-            handleClose();
-          }, 1000);
+          handleClose();
         } else {
           await showError('Error al eliminar la categoría', '❌ Error');
         }
@@ -181,10 +172,7 @@ export default function CategoryManager({
       await showSuccess(`Subcategoría "${newSubcategoryName}" agregada exitosamente`, '✅ Subcategoría Agregada');
       setNewSubcategoryName('');
       setSelectedCategoryForSubcategory(null);
-      // Cerrar el modal después de mostrar la notificación
-      setTimeout(() => {
-        handleClose();
-      }, 1000);
+      handleClose();
     } else {
       await showError('Error al agregar la subcategoría', '❌ Error');
     }
@@ -197,10 +185,7 @@ export default function CategoryManager({
       const success = await removeSubcategory(categoryId, subcategoryName);
       if (success) {
         await showSuccess(`Subcategoría "${subcategoryName}" eliminada exitosamente`, '✅ Eliminada');
-        // Cerrar el modal después de mostrar la notificación
-        setTimeout(() => {
-          handleClose();
-        }, 1000);
+        handleClose();
       } else {
         await showError('Error al eliminar la subcategoría', '❌ Error');
       }
