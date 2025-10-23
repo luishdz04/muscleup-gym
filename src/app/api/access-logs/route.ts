@@ -3,7 +3,7 @@ import { createAsyncServerSupabaseClient } from '@/lib/supabase/server-async';
 import { 
   getTodayInMexico, 
   getMexicoDateTimeInfo,
-  getYesterdayInMexico,
+  getMexicoDateDaysAgo,
   getMexicoTimestampWithOffset
 } from '@/utils/dateUtils';
 
@@ -246,7 +246,7 @@ export async function GET(request: NextRequest) {
 
     // Comparación hoy vs ayer (usando dateUtils)
     const todayMexico = getTodayInMexico();
-    const yesterdayMexico = getYesterdayInMexico();
+    const yesterdayMexico = getMexicoDateDaysAgo(1); // 1 día atrás
     
     const todayStart = `${todayMexico}T00:00:00`;
     const todayEnd = `${todayMexico}T23:59:59`;
