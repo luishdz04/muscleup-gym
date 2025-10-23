@@ -68,6 +68,17 @@ export default function CategoryManager({
   const [newSubcategoryName, setNewSubcategoryName] = useState('');
   const [selectedCategoryForSubcategory, setSelectedCategoryForSubcategory] = useState<string | null>(null);
 
+  // Test temporal para MySwal
+  const testMySwal = async () => {
+    console.log('🧪 [CategoryManager] Testing MySwal...');
+    try {
+      await showSuccess('Test de notificación de éxito', '✅ Test Exitoso');
+      console.log('✅ Test MySwal exitoso');
+    } catch (err) {
+      console.error('❌ Error en test MySwal:', err);
+    }
+  };
+
   // Agregar nueva categoría
   const handleAddCategory = async () => {
     console.log('🔄 [CategoryManager] Intentando agregar categoría:', newCategoryName);
@@ -215,6 +226,19 @@ export default function CategoryManager({
       }}>
         <CategoryIcon sx={{ fontSize: 28 }} />
         Gestión de Categorías y Subcategorías
+        <Button 
+          variant="outlined" 
+          size="small" 
+          onClick={testMySwal}
+          sx={{ 
+            ml: 'auto', 
+            color: colorTokens.textOnBrand,
+            borderColor: colorTokens.textOnBrand,
+            '&:hover': { backgroundColor: 'rgba(255,255,255,0.1)' }
+          }}
+        >
+          Test MySwal
+        </Button>
       </DialogTitle>
 
       <DialogContent sx={{ p: 3 }}>
