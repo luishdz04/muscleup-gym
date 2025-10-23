@@ -47,6 +47,26 @@ import { colorTokens } from '@/theme';
 import { formatMexicoTime } from '@/utils/dateUtils';
 import { useToast } from '@/hooks/useToast';
 
+// Hook para evitar errores de hidratación con tiempo
+const useCurrentTime = () => {
+  const [currentTime, setCurrentTime] = useState<string>('');
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    const updateTime = () => {
+      setCurrentTime(formatMexicoTime(new Date()));
+    };
+    
+    updateTime();
+    const interval = setInterval(updateTime, 1000);
+    
+    return () => clearInterval(interval);
+  }, []);
+
+  return mounted ? currentTime : '';
+};
+
 // 🎨 ICONOS ORGANIZADOS POR CATEGORÍA
 import MenuIcon from '@mui/icons-material/Menu';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
@@ -589,6 +609,9 @@ export default function AdminLayoutClient({ children, user }: AdminLayoutClientP
   const [mobileBottomValue, setMobileBottomValue] = useState(0);
   const [bottomNavMenuAnchor, setBottomNavMenuAnchor] = useState<null | HTMLElement>(null);
   const [selectedBottomNavItem, setSelectedBottomNavItem] = useState<MenuItem | null>(null);
+
+  // Hook para tiempo sin errores de hidratación
+  const currentTime = useCurrentTime();
 
   // ✅ HOOK DE TOAST para notificaciones
   const toast = useToast();
@@ -1232,7 +1255,7 @@ export default function AdminLayoutClient({ children, user }: AdminLayoutClientP
                       borderRadius: '50%', 
                       bgcolor: colorTokens.success 
                     }} />
-                    {formatMexicoTime(new Date())}
+                    {currentTime}
                   </Typography>
                 </Box>
               </Box>
@@ -1428,7 +1451,7 @@ export default function AdminLayoutClient({ children, user }: AdminLayoutClientP
                   fontSize: '0.7rem',
                   fontWeight: 500
                 }}>
-                  {formatMexicoTime(new Date())}
+                  {currentTime}
                 </Typography>
               </Box>
             </Box>
