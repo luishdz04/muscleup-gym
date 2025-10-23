@@ -60,6 +60,7 @@ import { useProducts } from '@/hooks/useCatalog';
 import { Product } from '@/services/catalogService';
 import ProductFormDialog from '@/components/catalogo/ProductFormDialog';
 import { useCategories } from '@/hooks/useCategories';
+import CategoryManager from '@/components/admin/CategoryManager';
 
 const STATUS_FILTERS = [
   { value: 'active', label: 'Productos Activos' },
