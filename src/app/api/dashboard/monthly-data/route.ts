@@ -94,7 +94,7 @@ export async function GET(request: NextRequest) {
       throw new Error(`Error consultando abonos: ${abonosError.message}`);
     }
 
-    // 3. MEMBRESÍAS - Filtrar por fecha de pago, no por fecha de creación de membresía
+    // 3. MEMBRESÍAS - Mostrar TODOS los pagos del mes, sin filtrar por status
     const { data: membershipsData, error: membershipsError } = await supabase
       .from('membership_payment_details')
       .select(`
@@ -106,10 +106,10 @@ export async function GET(request: NextRequest) {
         membership_id,
         user_memberships!inner (
           id,
-          status
+          status,
+          created_at
         )
       `)
-      .eq('user_memberships.status', 'active')
       .gte('created_at', startISO)
       .lte('created_at', endISO);
 
