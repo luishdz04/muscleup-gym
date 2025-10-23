@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createAdminSupabaseClient } from '@/lib/supabase/admin';
+import { getMexicoDateRange } from '@/utils/dateUtils';
 
 export async function GET(request: NextRequest) {
   try {
@@ -27,25 +28,24 @@ export async function GET(request: NextRequest) {
 
     const supabase = createAdminSupabaseClient();
 
-    // Calcular primer y último día del mes en horario CDMX
+    // Usar dateUtils para calcular el rango del mes
+    const firstDayOfMonth = `${month}-01`;
+    const { startISO } = getMexicoDateRange(firstDayOfMonth);
+    
+    // Para el rango mensual, necesitamos el último día del mes
     const [year, monthNum] = month.split('-').map(Number);
-    const monthKey = `${year}-${monthNum.toString().padStart(2, '0')}`;
-    const firstDay = `${monthKey}-01`;
     const lastDayDate = new Date(Date.UTC(year, monthNum, 0));
     const lastDay = lastDayDate.getUTCDate();
-    const lastDayString = `${monthKey}-${lastDay.toString().padStart(2, '0')}`;
+    const lastDayString = `${month}-${lastDay.toString().padStart(2, '0')}`;
+    
+    // Calcular el final del mes usando dateUtils
+    const { endISO } = getMexicoDateRange(lastDayString);
 
     console.log('📅 Rango de fechas para el mes:', {
       mes: month,
-      primer_dia: firstDay,
-      ultimo_dia: lastDayString
+      primer_dia: month + '-01',
+      ultimo_dia: month + '-31'
     });
-
-    // Calcular fechas ISO para el rango del mes
-    const startDate = new Date(`${firstDay}T00:00:00-06:00`); // CDMX timezone
-    const endDate = new Date(`${lastDayString}T23:59:59-06:00`); // CDMX timezone
-    const startISO = startDate.toISOString();
-    const endISO = endDate.toISOString();
 
     console.log('🕐 Rango ISO:', { startISO, endISO });
 
