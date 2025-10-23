@@ -77,6 +77,7 @@ import { useNotifications } from '@/hooks/useNotifications';
 import { formatPrice } from '@/utils/formatUtils';
 import { formatDateForDisplay, formatMexicoTime, formatTimestampForDisplay } from '@/utils/dateUtils';
 import Skeleton from '@mui/material/Skeleton';
+import { showSuccess, showError, showDeleteConfirmation, showConfirmation } from '@/lib/notifications/MySwal';
 
 // ✅ INTERFACES
 interface Expense {
@@ -242,7 +243,7 @@ export default function ExpensesHistoryPage() {
       } else {
         setError(data.error || 'Error al cargar el historial');
         if (notifyOnError) {
-          toast.error(data.error || 'No se pudo cargar el historial de egresos');
+          await showError(data.error || 'No se pudo cargar el historial de egresos', '❌ Error de Carga');
         }
         return false;
       }
@@ -250,7 +251,7 @@ export default function ExpensesHistoryPage() {
       console.error('Error cargando historial:', error);
       setError('Error al cargar el historial de egresos');
       if (notifyOnError) {
-        toast.error('Error al cargar el historial de egresos');
+        await showError('Error al cargar el historial de egresos', '❌ Error de Carga');
       }
       return false;
     } finally {
@@ -301,7 +302,7 @@ export default function ExpensesHistoryPage() {
     });
 
     if (success) {
-      toast.success('Filtros aplicados correctamente');
+      await showSuccess('Filtros aplicados correctamente', '✅ Filtros Aplicados');
     }
   };
 
@@ -320,7 +321,7 @@ export default function ExpensesHistoryPage() {
     });
 
     if (success) {
-      toast.success('Filtros reiniciados');
+      await showSuccess('Filtros reiniciados', '🧹 Filtros Limpiados');
     }
   };
 
@@ -394,15 +395,15 @@ const handleDeleteExpense = async () => {
       setDeleteDialogOpen(false);
       setExpenseToDelete(null);
       await loadExpenses({ notifyOnError: true });
-      toast.success('Egreso eliminado correctamente');
+      await showSuccess('Egreso eliminado correctamente', '✅ Egreso Eliminado');
     } else {
       setError(data.error || 'Error al eliminar el egreso');
-      toast.error(data.error || 'No se pudo eliminar el egreso');
+      await showError(data.error || 'No se pudo eliminar el egreso', '❌ Error al Eliminar');
     }
   } catch (error) {
     console.error('Error eliminando egreso:', error);
     setError('Error al eliminar el egreso');
-    toast.error('Error al eliminar el egreso');
+    await showError('Error al eliminar el egreso', '❌ Error al Eliminar');
   } finally {
     setLoadingDelete(false);
   }
@@ -438,22 +439,22 @@ const handleDeleteExpense = async () => {
         
         // Mostrar información de sincronización
         if (data.sync_info?.synchronized) {
-          toast.success(`Egreso actualizado y corte ${data.sync_info.cut_number} sincronizado automáticamente`);
+          await showSuccess(`Egreso actualizado y corte ${data.sync_info.cut_number} sincronizado automáticamente`, '✅ Actualizado y Sincronizado');
           console.log('✅ Sincronización exitosa:', data.sync_info);
         } else {
-          toast.success('Egreso actualizado correctamente');
+          await showSuccess('Egreso actualizado correctamente', '✅ Egreso Actualizado');
           if (data.sync_info?.reason) {
             console.log('ℹ️ Sin sincronización:', data.sync_info.reason);
           }
         }
       } else {
         setError(data.error || 'Error al actualizar el egreso');
-        toast.error(data.error || 'No se pudo actualizar el egreso');
+        await showError(data.error || 'No se pudo actualizar el egreso', '❌ Error al Actualizar');
       }
     } catch (error) {
       console.error('❌ Error actualizando egreso:', error);
       setError('Error al actualizar el egreso');
-      toast.error('Error al actualizar el egreso');
+      await showError('Error al actualizar el egreso', '❌ Error al Actualizar');
     } finally {
       setLoadingUpdate(false);
     }
@@ -463,7 +464,7 @@ const handleDeleteExpense = async () => {
     setRefreshing(true);
     const success = await loadExpenses({ notifyOnError: true });
     if (success) {
-      toast.success('Historial actualizado');
+      await showSuccess('Historial actualizado', '✅ Historial Actualizado');
     }
     setRefreshing(false);
   };

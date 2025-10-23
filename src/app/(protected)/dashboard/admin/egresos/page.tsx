@@ -53,6 +53,7 @@ import {
   formatDateForDisplay,
   formatTimestampForDisplay
 } from '@/utils/dateUtils';
+import { showSuccess, showError } from '@/lib/notifications/MySwal';
 
 // 🎯 FUNCIÓN PARA OBTENER ICONO POR CATEGORÍA
 function getCategoryIcon(category: string) {
@@ -207,7 +208,7 @@ export default function EgresosPage() {
       console.error('💥 Error crítico en loadExpenses:', error);
       const errorMsg = `Error de conexión: ${error.message}`;
       setError(errorMsg);
-      toast.error(errorMsg);
+      await showError(errorMsg, '❌ Error de Conexión');
     } finally {
       setLoading(false);
     }
@@ -235,7 +236,7 @@ export default function EgresosPage() {
     setRefreshing(true);
     try {
       await Promise.all([loadExpenses(), loadRelatedCut()]);
-      toast.success('Datos actualizados correctamente');
+      await showSuccess('Datos actualizados correctamente', '✅ Datos Actualizados');
     } catch (error) {
       // Error ya manejado en loadExpenses
     } finally {

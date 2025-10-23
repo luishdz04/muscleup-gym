@@ -44,6 +44,7 @@ import {
   formatDateLong,
   formatMexicoTime
 } from '@/utils/dateUtils';
+import { showSuccess, showError } from '@/lib/notifications/MySwal';
 
 const formatPrice = (amount: number): string => formatCurrency(Number.isFinite(amount) ? amount : 0);
 
@@ -165,7 +166,7 @@ export default function CortesPage() {
         setLastRefresh(getUTCTimestamp());
 
         if (withFeedback) {
-          toast.success('Datos del corte actualizados');
+          await showSuccess('Datos del corte actualizados', '✅ Datos Actualizados');
         }
         return true;
       }
@@ -173,14 +174,14 @@ export default function CortesPage() {
       const errorMsg = data.error || `Error HTTP ${response.status}: ${response.statusText}`;
       setError(errorMsg);
       if (withFeedback || !withSkeleton) {
-        toast.error(errorMsg);
+        await showError(errorMsg, '❌ Error de Carga');
       }
       return false;
     } catch (error: any) {
       const message = `Error de conexión: ${error.message}`;
       setError(message);
       if (withFeedback || !withSkeleton) {
-        toast.error('No se pudo obtener el corte del día');
+        await showError('No se pudo obtener el corte del día', '❌ Error de Conexión');
       }
       return false;
     } finally {
@@ -188,16 +189,14 @@ export default function CortesPage() {
         setLoading(false);
       }
     }
-  }, [getUTCTimestamp, hydrated, selectedDate, toast]);
+  }, [getUTCTimestamp, hydrated, selectedDate]);
 
   const handleRefresh = useCallback(async () => {
     if (!hydrated) return;
     setRefreshing(true);
-    const loadingToast = toast.loading('Actualizando corte del día...');
     await loadDailyData({ withFeedback: true });
-    toast.dismiss(loadingToast);
     setRefreshing(false);
-  }, [hydrated, loadDailyData, toast]);
+  }, [hydrated, loadDailyData]);
 
   useEffect(() => {
     if (!hydrated) return;
