@@ -499,14 +499,14 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
                 label="PANEL MUP"
                 size="small"
                 sx={{
-                  backgroundColor: colorTokens.white,
+                  backgroundColor: colorTokens.brand,
                   color: colorTokens.black,
-                  fontWeight: 700,
+                  fontWeight: 900,
                   fontSize: '0.75rem',
                   height: '24px',
                   '& .MuiChip-label': {
                     px: 1.5,
-                    fontWeight: 700,
+                    fontWeight: 900,
                     fontSize: '0.75rem'
                   }
                 }}
