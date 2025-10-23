@@ -61,8 +61,7 @@ import {
   Campaign as CampaignIcon,
   Computer as ComputerIcon,
   RestartAlt as RestartAltIcon,
-  Refresh as RefreshIcon,
-  Warning as WarningIcon
+  Refresh as RefreshIcon
 } from '@mui/icons-material';
 import { DatePicker } from '@mui/x-date-pickers/DatePicker';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
@@ -147,8 +146,6 @@ export default function ExpensesHistoryPage() {
   const [selectedExpense, setSelectedExpense] = useState<ExpenseDetail | null>(null);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [loadingDetail, setLoadingDetail] = useState(false);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [expenseToDelete, setExpenseToDelete] = useState<string | null>(null);
   const [loadingDelete, setLoadingDelete] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<ExpenseDetail | null>(null);
@@ -378,31 +375,55 @@ export default function ExpensesHistoryPage() {
     }
   };
 
-const handleDeleteExpense = async () => {
-  if (!expenseToDelete) return;
-
+const handleDeleteExpense = async (expense: Expense) => {
   try {
     setLoadingDelete(true);
-    console.log('Eliminando egreso:', expenseToDelete);
-    const response = await fetch(`/api/expenses/delete/${expenseToDelete}`, {
+    
+    // Primera confirmación
+    const firstConfirm = await showDeleteConfirmation(`"${expense.description}" (${formatPrice(expense.amount)})`);
+    
+    if (!firstConfirm.isConfirmed) {
+      setLoadingDelete(false);
+      return;
+    }
+
+    // Segunda confirmación
+    const secondConfirm = await showConfirmation(
+      `¿Estás COMPLETAMENTE seguro de eliminar este egreso?\n\n` +
+      `Descripción: ${expense.description}\n` +
+      `Monto: ${formatPrice(expense.amount)}\n` +
+      `Fecha: ${formatDateForDisplay(expense.expense_date)}\n\n` +
+      `Esta acción eliminará:\n` +
+      `• El egreso y toda su información\n` +
+      `• Referencias en el sistema\n` +
+      `• Historial asociado\n\n` +
+      `⚠️ Esta acción NO se puede deshacer`,
+      '⚠️ Confirmación Final',
+      'Sí, eliminar definitivamente',
+      'Cancelar'
+    );
+
+    if (!secondConfirm.isConfirmed) {
+      setLoadingDelete(false);
+      return;
+    }
+
+    console.log('Eliminando egreso:', expense.id);
+    const response = await fetch(`/api/expenses/delete/${expense.id}`, {
       method: 'DELETE'
     });
 
     const data = await response.json();
 
     if (data.success) {
-      setExpenses(expenses.filter(expense => expense.id !== expenseToDelete));
-      setDeleteDialogOpen(false);
-      setExpenseToDelete(null);
+      setExpenses(expenses.filter(e => e.id !== expense.id));
       await loadExpenses({ notifyOnError: true });
       await showSuccess('Egreso eliminado correctamente', '✅ Egreso Eliminado');
     } else {
-      setError(data.error || 'Error al eliminar el egreso');
       await showError(data.error || 'No se pudo eliminar el egreso', '❌ Error al Eliminar');
     }
   } catch (error) {
     console.error('Error eliminando egreso:', error);
-    setError('Error al eliminar el egreso');
     await showError('Error al eliminar el egreso', '❌ Error al Eliminar');
   } finally {
     setLoadingDelete(false);
@@ -1198,10 +1219,8 @@ const handleDeleteExpense = async () => {
                                   <Tooltip title="Eliminar">
                                     <IconButton
                                       size="small"
-                                      onClick={() => {
-                                        setExpenseToDelete(expense.id);
-                                        setDeleteDialogOpen(true);
-                                      }}
+                                      onClick={() => handleDeleteExpense(expense)}
+                                      disabled={loadingDelete}
                                       sx={{ 
                                         color: colorTokens.danger,
                                         '&:hover': { 
@@ -1474,71 +1493,6 @@ const handleDeleteExpense = async () => {
               }}
             >
               Cerrar
-            </Button>
-          </DialogActions>
-        </Dialog>
-
-        {/* DIALOG DE CONFIRMACIÓN DE ELIMINACIÓN */}
-        <Dialog
-          open={deleteDialogOpen}
-          onClose={() => setDeleteDialogOpen(false)}
-          PaperProps={{
-            sx: {
-              backgroundColor: colorTokens.neutral200,
-              color: colorTokens.textPrimary,
-              borderRadius: 4
-            }
-          }}
-        >
-          <DialogTitle sx={{ 
-            display: 'flex', 
-            alignItems: 'center',
-            gap: 2,
-            borderBottom: `1px solid ${colorTokens.neutral500}`
-          }}>
-            <Avatar sx={{ bgcolor: colorTokens.danger }}>
-              <WarningIcon />
-            </Avatar>
-            <Typography component="span" variant="h6" fontWeight="bold">
-              Confirmar Eliminación
-            </Typography>
-          </DialogTitle>
-          
-          <DialogContent sx={{ p: 4 }}>
-            <Typography variant="body1" sx={{ mb: 2 }}>
-              ¿Estás seguro de que deseas eliminar este egreso?
-            </Typography>
-            <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
-              Esta acción no se puede deshacer. Se eliminarán todos los datos asociados a este egreso.
-            </Typography>
-          </DialogContent>
-          
-          <DialogActions sx={{ p: 3, borderTop: `1px solid ${colorTokens.neutral500}` }}>
-            <Button
-              onClick={() => setDeleteDialogOpen(false)}
-              sx={{ 
-                color: colorTokens.textSecondary,
-                '&:hover': {
-                  backgroundColor: `${colorTokens.textSecondary}20`
-                }
-              }}
-            >
-              Cancelar
-            </Button>
-            <Button
-              onClick={handleDeleteExpense}
-              variant="contained"
-              startIcon={loadingDelete ? <CircularProgress size={20} /> : <DeleteIcon />}
-              disabled={loadingDelete}
-              sx={{
-                backgroundColor: colorTokens.danger,
-                color: colorTokens.textPrimary,
-                '&:hover': {
-                  backgroundColor: colorTokens.dangerHover
-                }
-              }}
-            >
-              {loadingDelete ? 'Eliminando...' : 'Eliminar'}
             </Button>
           </DialogActions>
         </Dialog>
