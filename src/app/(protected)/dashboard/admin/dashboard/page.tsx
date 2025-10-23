@@ -229,10 +229,10 @@ export default function DashboardPage() {
     return () => clearInterval(interval);
   }, []);
 
-  // Load daily data
+  // Load daily data - INDEPENDIENTE DE CORTES
   const loadRealDailyData = useCallback(async (targetDate: string): Promise<DailyData | null> => {
     try {
-      const response = await fetch(`/api/cuts/daily-data?date=${targetDate}`, {
+      const response = await fetch(`/api/dashboard/daily-data?date=${targetDate}`, {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' }
       });
@@ -241,6 +241,7 @@ export default function DashboardPage() {
       const data = await response.json();
       return data?.success ? data : null;
     } catch (error) {
+      console.error('Error loading daily data:', error);
       return null;
     }
   }, []);
@@ -266,7 +267,7 @@ export default function DashboardPage() {
     return chartData;
   }, [loadRealDailyData]);
 
-  // Load monthly data
+  // Load monthly data - INDEPENDIENTE DE CORTES
   const loadMonthlyData = useCallback(async (): Promise<MonthlyData[]> => {
     const monthlyData: MonthlyData[] = [];
 
@@ -275,7 +276,7 @@ export default function DashboardPage() {
       const monthName = formatMexicoMonthName(monthKey);
 
       try {
-        const response = await fetch(`/api/cuts/monthly-data?month=${monthKey}`, {
+        const response = await fetch(`/api/dashboard/monthly-data?month=${monthKey}`, {
           method: 'GET',
           headers: { 'Content-Type': 'application/json' }
         });
@@ -288,8 +289,8 @@ export default function DashboardPage() {
               monthName: monthName,
               sales: data.pos?.total || 0,
               memberships: data.memberships?.total || 0,
-              layaways: data.layaways?.total || 0,
-              total: (data.pos?.total || 0) + (data.memberships?.total || 0) + (data.layaways?.total || 0)
+              layaways: data.abonos?.total || 0,
+              total: (data.pos?.total || 0) + (data.memberships?.total || 0) + (data.abonos?.total || 0)
             });
           }
         }
@@ -376,13 +377,13 @@ export default function DashboardPage() {
       const weeklyData = await loadWeeklyRealData();
       const monthlyData = await loadMonthlyData();
 
-      // Calculate totals
+      // Calculate totals from today's data
       const todaySales = todayData?.pos?.total || 0;
       const todayTransactions = todayData?.pos?.transactions || 0;
-      const todayMemberships = todayData?.memberships?.count || 0;
+      const todayMemberships = todayData?.memberships?.transactions || 0; // Count of membership transactions
       const todayMembershipsAmount = todayData?.memberships?.total || 0;
-      const todayExpenses = todayData?.expenses?.total || 0;
-      const todayBalance = todaySales + todayMembershipsAmount - todayExpenses;
+      const todayExpenses = todayData?.expenses?.amount || 0;
+      const todayBalance = todaySales + todayMembershipsAmount + (todayData?.abonos?.total || 0) - todayExpenses;
 
       // Get current month data
       const currentMonthData = monthlyData.find(m => m.month === selectedDate.substring(0, 7));
@@ -393,6 +394,14 @@ export default function DashboardPage() {
       const monthExpenses = 0; // TODO: Implement month expenses if needed
       const monthBalance = monthTotalIncome - monthExpenses;
       const monthTransactions = 0; // Will be calculated if needed
+
+      // Calculate cash flow (payment methods) from today's data
+      const cashFlow = {
+        efectivo: (todayData?.totals?.efectivo || 0),
+        transferencia: (todayData?.totals?.transferencia || 0),
+        debito: (todayData?.totals?.debito || 0),
+        credito: (todayData?.totals?.credito || 0)
+      };
 
       setStats({
         todaySales,
@@ -407,7 +416,7 @@ export default function DashboardPage() {
         monthBalance,
         todayExpenses,
         todayBalance,
-        cashFlow: { efectivo: 0, transferencia: 0, debito: 0, credito: 0 },
+        cashFlow,
         chartData: weeklyData,
         monthlyData,
       });
