@@ -1093,9 +1093,11 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
         {/* 📄 CONTENIDO PRINCIPAL */}
         <Main open={drawerOpen && !isMobile}>
           <Box sx={{ minHeight: { xs: '64px', sm: '80px', md: '100px' } }} />
-          <Container maxWidth="xl" disableGutters>
+          <Container maxWidth="xl" disableGutters sx={{ width: '100%', px: { xs: 0, sm: 0 } }}>
             {/* 🍞 BREADCRUMBS */}
-            {generateBreadcrumbs()}
+            <Box sx={{ px: { xs: 2, sm: 3 } }}>
+              {generateBreadcrumbs()}
+            </Box>
 
             {/* 📱 CONTENIDO DE LA PÁGINA CON ANIMACIÓN */}
             <AnimatePresence mode="wait">
@@ -1108,9 +1110,11 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
                   duration: 0.4,
                   ease: [0.4, 0.0, 0.2, 1]
                 }}
-                style={{ height: '100%' }}
+                style={{ height: '100%', width: '100%' }}
               >
-                {children}
+                <Box sx={{ px: { xs: 2, sm: 3 }, width: '100%' }}>
+                  {children}
+                </Box>
               </motion.div>
             </AnimatePresence>
           </Container>

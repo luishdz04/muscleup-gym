@@ -917,14 +917,6 @@ export default function ClienteDashboard() {
                       </Typography>
                     </Box>
                   )}
-                  <Box>
-                    <Typography variant="body2" sx={{ opacity: 0.9, mb: 0.5, fontWeight: 600 }}>
-                      Monto Pagado
-                    </Typography>
-                    <Typography variant="body1" sx={{ fontWeight: 700 }}>
-                      ${activeMembership.paid_amount.toLocaleString('es-MX')}
-                    </Typography>
-                  </Box>
                 </Stack>
               ) : (
                 <Box sx={{ textAlign: 'center', py: { xs: 2, sm: 3 } }}>

@@ -140,9 +140,9 @@ export default function EncuestasClientePage() {
     setResponses(prev => ({
       ...prev,
       [questionId]: {
-        question_id: questionId,
         ...prev[questionId],
-        ...answer
+        ...answer,
+        question_id: questionId // Colocar al final para que siempre sea correcto
       }
     }));
   };
@@ -215,6 +215,7 @@ export default function EncuestasClientePage() {
                 handleResponseChange(question.id, { answer_option: value?.toString() || '0' });
               }}
               sx={{
+                fontSize: { xs: '2rem', sm: '2.5rem' },
                 '& .MuiRating-iconFilled': {
                   color: colorTokens.brand
                 }
@@ -236,7 +237,12 @@ export default function EncuestasClientePage() {
                   value={option}
                   control={<Radio sx={{ color: colorTokens.brand, '&.Mui-checked': { color: colorTokens.brand } }} />}
                   label={option}
-                  sx={{ color: colorTokens.textPrimary }}
+                  sx={{
+                    color: colorTokens.textPrimary,
+                    '& .MuiFormControlLabel-label': {
+                      fontSize: { xs: '0.9rem', sm: '1rem' }
+                    }
+                  }}
                 />
               ))}
             </RadioGroup>
@@ -255,13 +261,24 @@ export default function EncuestasClientePage() {
                 value="Sí"
                 control={<Radio sx={{ color: colorTokens.brand, '&.Mui-checked': { color: colorTokens.brand } }} />}
                 label="Sí"
-                sx={{ color: colorTokens.textPrimary, mr: 4 }}
+                sx={{
+                  color: colorTokens.textPrimary,
+                  mr: { xs: 2, sm: 4 },
+                  '& .MuiFormControlLabel-label': {
+                    fontSize: { xs: '0.9rem', sm: '1rem' }
+                  }
+                }}
               />
               <FormControlLabel
                 value="No"
                 control={<Radio sx={{ color: colorTokens.brand, '&.Mui-checked': { color: colorTokens.brand } }} />}
                 label="No"
-                sx={{ color: colorTokens.textPrimary }}
+                sx={{
+                  color: colorTokens.textPrimary,
+                  '& .MuiFormControlLabel-label': {
+                    fontSize: { xs: '0.9rem', sm: '1rem' }
+                  }
+                }}
               />
             </RadioGroup>
           </FormControl>
@@ -276,7 +293,12 @@ export default function EncuestasClientePage() {
             value={response?.answer_text || ''}
             onChange={(e) => handleResponseChange(question.id, { answer_text: e.target.value })}
             placeholder="Escribe tu respuesta aquí..."
-            sx={{ mt: 2 }}
+            sx={{
+              mt: 2,
+              '& .MuiInputBase-input': {
+                fontSize: { xs: '0.9rem', sm: '1rem' }
+              }
+            }}
           />
         );
 
@@ -307,31 +329,63 @@ export default function EncuestasClientePage() {
 
     return (
       <Box sx={{ pb: { xs: 10, lg: 4 } }}>
-        <Box sx={{ mb: 3 }}>
+        <Box sx={{ mb: { xs: 2, sm: 3 } }}>
           <Button
             startIcon={<ArrowBackIcon />}
             onClick={() => setSelectedSurvey(null)}
-            sx={{ color: colorTokens.textSecondary, mb: 2 }}
+            sx={{
+              color: colorTokens.textSecondary,
+              mb: 2,
+              fontSize: { xs: '0.875rem', sm: '1rem' }
+            }}
           >
             Volver a encuestas
           </Button>
 
-          <Typography variant="h4" sx={{ fontWeight: 800, color: colorTokens.textPrimary, mb: 1 }}>
+          <Typography
+            variant="h4"
+            sx={{
+              fontWeight: 800,
+              color: colorTokens.textPrimary,
+              mb: 1,
+              fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' }
+            }}
+          >
             {selectedSurvey.title}
           </Typography>
 
           {selectedSurvey.description && (
-            <Typography variant="body1" sx={{ color: colorTokens.textSecondary, mb: 3 }}>
+            <Typography
+              variant="body1"
+              sx={{
+                color: colorTokens.textSecondary,
+                mb: 3,
+                fontSize: { xs: '0.875rem', sm: '1rem' }
+              }}
+            >
               {selectedSurvey.description}
             </Typography>
           )}
 
           <Box sx={{ mb: 3 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-              <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1, gap: 1 }}>
+              <Typography
+                variant="body2"
+                sx={{
+                  color: colorTokens.textSecondary,
+                  fontSize: { xs: '0.75rem', sm: '0.875rem' }
+                }}
+              >
                 Progreso: {Object.keys(responses).length} de {selectedSurvey.questions.length} preguntas
               </Typography>
-              <Typography variant="body2" sx={{ color: colorTokens.brand, fontWeight: 700 }}>
+              <Typography
+                variant="body2"
+                sx={{
+                  color: colorTokens.brand,
+                  fontWeight: 700,
+                  fontSize: { xs: '0.75rem', sm: '0.875rem' }
+                }}
+              >
                 {Math.round(progress)}%
               </Typography>
             </Box>
@@ -339,7 +393,7 @@ export default function EncuestasClientePage() {
               variant="determinate"
               value={progress}
               sx={{
-                height: 8,
+                height: { xs: 6, sm: 8 },
                 borderRadius: 4,
                 bgcolor: alpha(colorTokens.brand, 0.1),
                 '& .MuiLinearProgress-bar': {
@@ -351,23 +405,23 @@ export default function EncuestasClientePage() {
           </Box>
         </Box>
 
-        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+        <Box sx={{ display: 'flex', flexDirection: 'column', gap: { xs: 2, sm: 3 } }}>
           {selectedSurvey.questions.map((question, index) => (
             <Paper
               key={question.id}
               sx={{
-                p: 3,
+                p: { xs: 2, sm: 3 },
                 background: `linear-gradient(135deg, ${alpha(colorTokens.surfaceLevel2, 0.9)}, ${alpha(colorTokens.surfaceLevel3, 0.85)})`,
                 backdropFilter: 'blur(20px)',
                 border: `1px solid ${alpha(colorTokens.brand, 0.1)}`,
                 borderRadius: 3
               }}
             >
-              <Box sx={{ display: 'flex', gap: 2 }}>
+              <Box sx={{ display: 'flex', gap: { xs: 1.5, sm: 2 }, flexDirection: { xs: 'column', sm: 'row' } }}>
                 <Box
                   sx={{
-                    minWidth: 40,
-                    height: 40,
+                    minWidth: { xs: 36, sm: 40 },
+                    height: { xs: 36, sm: 40 },
                     borderRadius: 2,
                     bgcolor: alpha(colorTokens.brand, 0.1),
                     border: `1px solid ${alpha(colorTokens.brand, 0.2)}`,
@@ -375,15 +429,25 @@ export default function EncuestasClientePage() {
                     alignItems: 'center',
                     justifyContent: 'center',
                     fontWeight: 700,
-                    color: colorTokens.brand
+                    color: colorTokens.brand,
+                    fontSize: { xs: '0.9rem', sm: '1rem' },
+                    alignSelf: { xs: 'flex-start', sm: 'stretch' }
                   }}
                 >
                   {index + 1}
                 </Box>
 
                 <Box sx={{ flex: 1 }}>
-                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                    <Typography variant="h6" sx={{ fontWeight: 600, color: colorTokens.textPrimary }}>
+                  <Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1, mb: 1, flexWrap: 'wrap' }}>
+                    <Typography
+                      variant="h6"
+                      sx={{
+                        fontWeight: 600,
+                        color: colorTokens.textPrimary,
+                        fontSize: { xs: '1rem', sm: '1.125rem', md: '1.25rem' },
+                        flex: 1
+                      }}
+                    >
                       {question.question_text}
                     </Typography>
                     {question.is_required && (
@@ -394,7 +458,8 @@ export default function EncuestasClientePage() {
                           bgcolor: alpha(colorTokens.danger, 0.1),
                           color: colorTokens.danger,
                           fontWeight: 600,
-                          fontSize: '0.7rem'
+                          fontSize: { xs: '0.65rem', sm: '0.7rem' },
+                          height: { xs: 20, sm: 24 }
                         }}
                       />
                     )}
@@ -407,13 +472,21 @@ export default function EncuestasClientePage() {
           ))}
         </Box>
 
-        <Box sx={{ mt: 4, display: 'flex', justifyContent: 'flex-end', gap: 2 }}>
+        <Box sx={{
+          mt: { xs: 3, sm: 4 },
+          display: 'flex',
+          justifyContent: { xs: 'stretch', sm: 'flex-end' },
+          gap: 2,
+          flexDirection: { xs: 'column', sm: 'row' }
+        }}>
           <Button
             variant="outlined"
             onClick={() => setSelectedSurvey(null)}
             sx={{
               borderColor: colorTokens.textSecondary,
-              color: colorTokens.textSecondary
+              color: colorTokens.textSecondary,
+              fontSize: { xs: '0.875rem', sm: '1rem' },
+              py: { xs: 1.5, sm: 1 }
             }}
           >
             Cancelar
@@ -427,7 +500,9 @@ export default function EncuestasClientePage() {
               bgcolor: colorTokens.brand,
               color: colorTokens.black,
               fontWeight: 700,
-              px: 4,
+              px: { xs: 3, sm: 4 },
+              py: { xs: 1.5, sm: 1 },
+              fontSize: { xs: '0.875rem', sm: '1rem' },
               '&:hover': {
                 bgcolor: alpha(colorTokens.brand, 0.9)
               }
@@ -438,26 +513,40 @@ export default function EncuestasClientePage() {
         </Box>
 
         {/* Success Dialog */}
-        <Dialog open={successDialog} onClose={() => setSuccessDialog(false)}>
-          <DialogTitle sx={{ textAlign: 'center', pt: 4 }}>
-            <CheckCircleIcon sx={{ fontSize: 64, color: colorTokens.success, mb: 2 }} />
-            <Typography variant="h5" sx={{ fontWeight: 700 }}>
+        <Dialog
+          open={successDialog}
+          onClose={() => setSuccessDialog(false)}
+          fullWidth
+          maxWidth="xs"
+          slotProps={{
+            paper: {
+              sx: {
+                mx: { xs: 2, sm: 3 }
+              }
+            }
+          }}
+        >
+          <DialogTitle sx={{ textAlign: 'center', pt: { xs: 3, sm: 4 }, px: { xs: 2, sm: 3 } }}>
+            <CheckCircleIcon sx={{ fontSize: { xs: 48, sm: 64 }, color: colorTokens.success, mb: 2 }} />
+            <Typography variant="h5" sx={{ fontWeight: 700, fontSize: { xs: '1.25rem', sm: '1.5rem' } }}>
               ¡Gracias por tu participación!
             </Typography>
           </DialogTitle>
-          <DialogContent sx={{ textAlign: 'center', pb: 2 }}>
-            <Typography variant="body1" sx={{ color: colorTokens.textSecondary }}>
+          <DialogContent sx={{ textAlign: 'center', pb: 2, px: { xs: 2, sm: 3 } }}>
+            <Typography variant="body1" sx={{ color: colorTokens.textSecondary, fontSize: { xs: '0.875rem', sm: '1rem' } }}>
               Tus respuestas han sido enviadas exitosamente.
             </Typography>
           </DialogContent>
-          <DialogActions sx={{ justifyContent: 'center', pb: 3 }}>
+          <DialogActions sx={{ justifyContent: 'center', pb: { xs: 2, sm: 3 }, px: { xs: 2, sm: 3 } }}>
             <Button
               variant="contained"
               onClick={() => setSuccessDialog(false)}
               sx={{
                 bgcolor: colorTokens.brand,
                 color: colorTokens.black,
-                fontWeight: 700
+                fontWeight: 700,
+                px: { xs: 3, sm: 4 },
+                fontSize: { xs: '0.875rem', sm: '1rem' }
               }}
             >
               Cerrar
@@ -487,15 +576,15 @@ export default function EncuestasClientePage() {
 
       {surveys.length === 0 ? (
         <Paper sx={{
-          p: 6,
+          p: { xs: 4, sm: 6 },
           textAlign: 'center',
           background: `linear-gradient(135deg, ${alpha(colorTokens.surfaceLevel2, 0.9)}, ${alpha(colorTokens.surfaceLevel3, 0.85)})`,
           backdropFilter: 'blur(20px)',
           border: `1px solid ${alpha(colorTokens.brand, 0.1)}`,
           borderRadius: 3
         }}>
-          <SurveyIcon sx={{ fontSize: 64, color: colorTokens.textSecondary, mb: 2 }} />
-          <Typography variant="h6" sx={{ color: colorTokens.textSecondary }}>
+          <SurveyIcon sx={{ fontSize: { xs: 48, sm: 64 }, color: colorTokens.textSecondary, mb: 2 }} />
+          <Typography variant="h6" sx={{ color: colorTokens.textSecondary, fontSize: { xs: '1rem', sm: '1.25rem' } }}>
             No hay encuestas disponibles en este momento
           </Typography>
         </Paper>
@@ -505,7 +594,7 @@ export default function EncuestasClientePage() {
             const isCompleted = completedSurveys.has(survey.id);
 
             return (
-              <Grid key={survey.id} size={{ xs: 12, md: 6 }}>
+              <Grid key={survey.id} size={{ xs: 12 }}>
                 <Card
                   sx={{
                     height: '100%',
@@ -520,9 +609,9 @@ export default function EncuestasClientePage() {
                     } : {}
                   }}
                 >
-                  <CardContent sx={{ p: 3 }}>
+                  <CardContent sx={{ p: { xs: 2, sm: 3 } }}>
                     <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
-                      <SurveyIcon sx={{ fontSize: 32, color: colorTokens.brand }} />
+                      <SurveyIcon sx={{ fontSize: { xs: 28, sm: 32 }, color: colorTokens.brand }} />
                       {isCompleted && (
                         <Chip
                           icon={<CheckCircleIcon />}
@@ -531,32 +620,48 @@ export default function EncuestasClientePage() {
                           sx={{
                             bgcolor: alpha(colorTokens.success, 0.1),
                             color: colorTokens.success,
-                            fontWeight: 600
+                            fontWeight: 600,
+                            fontSize: { xs: '0.65rem', sm: '0.75rem' }
                           }}
                         />
                       )}
                     </Box>
 
-                    <Typography variant="h5" sx={{ fontWeight: 700, color: colorTokens.textPrimary, mb: 1 }}>
+                    <Typography
+                      variant="h5"
+                      sx={{
+                        fontWeight: 700,
+                        color: colorTokens.textPrimary,
+                        mb: 1,
+                        fontSize: { xs: '1.125rem', sm: '1.25rem', md: '1.5rem' }
+                      }}
+                    >
                       {survey.title}
                     </Typography>
 
                     {survey.description && (
-                      <Typography variant="body2" sx={{ color: colorTokens.textSecondary, mb: 2 }}>
+                      <Typography
+                        variant="body2"
+                        sx={{
+                          color: colorTokens.textSecondary,
+                          mb: 2,
+                          fontSize: { xs: '0.8rem', sm: '0.875rem' }
+                        }}
+                      >
                         {survey.description.length > 100
                           ? `${survey.description.substring(0, 100)}...`
                           : survey.description}
                       </Typography>
                     )}
 
-                    <Box sx={{ display: 'flex', gap: 1, mb: 3, flexWrap: 'wrap' }}>
+                    <Box sx={{ display: 'flex', gap: 1, mb: { xs: 2, sm: 3 }, flexWrap: 'wrap' }}>
                       <Chip
                         label={`Disponible hasta: ${formatDateForDisplay(survey.end_date)}`}
                         size="small"
                         sx={{
                           bgcolor: alpha(colorTokens.info, 0.1),
                           color: colorTokens.info,
-                          fontSize: '0.75rem'
+                          fontSize: { xs: '0.65rem', sm: '0.75rem' }
                         }}
                       />
                     </Box>
@@ -570,6 +675,8 @@ export default function EncuestasClientePage() {
                         bgcolor: isCompleted ? colorTokens.textSecondary : colorTokens.brand,
                         color: isCompleted ? colorTokens.textPrimary : colorTokens.black,
                         fontWeight: 700,
+                        fontSize: { xs: '0.875rem', sm: '1rem' },
+                        py: { xs: 1.5, sm: 1 },
                         '&:hover': {
                           bgcolor: isCompleted ? colorTokens.textSecondary : alpha(colorTokens.brand, 0.9)
                         }
