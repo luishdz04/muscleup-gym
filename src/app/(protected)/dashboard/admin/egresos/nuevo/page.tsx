@@ -69,6 +69,7 @@ import {
   formatDateForDisplay,
   getMexicoTimestampWithOffset
 } from '@/utils/dateUtils';
+import { showSuccess, showError, showConfirmation } from '@/lib/notifications/MySwal';
 
 // 🔍 DETECTOR DE RANGO (IGUAL QUE CORTES)
 function getMexicoDateRangeDisplay(dateString: string): string {
@@ -279,12 +280,12 @@ export default function NuevoEgresoPage() {
       
       // Validaciones
       if (!expenseData.expense_type || !expenseData.description || !expenseData.amount) {
-        setError('Por favor complete todos los campos requeridos');
+        await showError('Por favor complete todos los campos requeridos', '⚠️ Campos Requeridos');
         return;
       }
       
       if (expenseData.amount <= 0) {
-        setError('El monto debe ser mayor a 0');
+        await showError('El monto debe ser mayor a 0', '⚠️ Monto Inválido');
         return;
       }
       
@@ -306,16 +307,32 @@ export default function NuevoEgresoPage() {
       const result = await response.json();
       
       if (result.success) {
-        setSuccess(`Egreso creado exitosamente: ${result.message}`);
-        setTimeout(() => {
+        const actionResult = await showConfirmation(
+          `Egreso creado exitosamente: ${result.message}\n\n¿Qué deseas hacer?`,
+          '🎉 Egreso Creado',
+          'Ver lista de egresos',
+          'Crear otro egreso'
+        );
+        
+        if (actionResult.isConfirmed) {
           router.push(`/dashboard/admin/egresos`);
-        }, 2000);
+        } else {
+          // Limpiar formulario para crear otro egreso
+          setExpenseData({
+            expense_date: '',
+            expense_type: '',
+            description: '',
+            amount: 0,
+            receipt_number: '',
+            notes: ''
+          });
+        }
       } else {
-        setError(result.error || 'Error al crear el egreso');
+        await showError(result.error || 'Error al crear el egreso', '❌ Error al Crear');
       }
     } catch (error) {
       console.error('Error creando egreso:', error);
-      setError('Error al crear el egreso');
+      await showError('Error al crear el egreso', '❌ Error al Crear');
     } finally {
       setCreating(false);
     }
