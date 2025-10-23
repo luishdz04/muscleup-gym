@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase/admin';
+import { createAdminSupabaseClient } from '@/lib/supabase/admin';
 
 export async function GET(request: NextRequest) {
   try {
@@ -17,6 +17,7 @@ export async function GET(request: NextRequest) {
     console.log("API: Buscando usuario con ID:", userId);
     
     // Usar el cliente admin que ignora RLS
+    const supabaseAdmin = createAdminSupabaseClient();
     const { data: userProfile, error } = await supabaseAdmin
       .from('Users')
       .select('*')

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase/admin';
+import { createAdminSupabaseClient } from '@/lib/supabase/admin';
 
 // GET /api/admin/users/[id] - Obtener un usuario específico y sus datos relacionados
 export async function GET(
@@ -11,6 +11,7 @@ export async function GET(
     const id = params.id;
     
     // Obtener datos del usuario
+    const supabaseAdmin = createAdminSupabaseClient();
     const { data: user, error } = await supabaseAdmin
       .from('Users')
       .select('*')
@@ -95,6 +96,7 @@ export async function PUT(
     }
     
     // Verificar si el usuario existe
+    const supabaseAdmin = createAdminSupabaseClient();
     const { data: existingUser, error: checkError } = await supabaseAdmin
       .from('Users')
       .select('id, email, rol')
@@ -424,6 +426,7 @@ export async function DELETE(
     console.log(`🚀 Iniciando eliminación completa del usuario: ${userId}`);
     
     // 1. VERIFICAR SI EL USUARIO EXISTS
+    const supabaseAdmin = createAdminSupabaseClient();
     const { data: existingUser, error: checkError } = await supabaseAdmin
       .from('Users')
       .select('id, email, firstName, lastName, rol')
