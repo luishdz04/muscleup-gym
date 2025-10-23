@@ -327,7 +327,7 @@ export default function DashboardPage() {
   }, []);
 
   // Load gym activity stats
-  const loadGymActivityStats = useCallback(async (membershipStats?: { active_count: number; new_today_count: number }) => {
+  const loadGymActivityStats = useCallback(async () => {
     try {
       // Fetch today's gym visits from access logs
       const accessResponse = await fetch('/api/access-control/today-stats', {
@@ -336,40 +336,19 @@ export default function DashboardPage() {
       });
 
       let todayVisits = 0;
-      let activeMembershipsToday = 0;
       let expiringIn7Days = 0;
-      let newMembershipsToday = 0;
 
       if (accessResponse.ok) {
         const accessData = await accessResponse.json();
         todayVisits = accessData.todayVisits || 0;
       }
 
-      // Usar datos de membresías de la API diaria si están disponibles
-      if (membershipStats) {
-        activeMembershipsToday = membershipStats.active_count || 0;
-        newMembershipsToday = membershipStats.new_today_count || 0;
-      } else {
-        // Fallback a API separada si no hay datos
-        const membershipResponse = await fetch('/api/user-memberships/stats', {
-          method: 'GET',
-          headers: { 'Content-Type': 'application/json' }
-        });
-
-        if (membershipResponse.ok) {
-          const membershipData = await membershipResponse.json();
-          activeMembershipsToday = membershipData.activeToday || 0;
-          expiringIn7Days = membershipData.expiringIn7Days || 0;
-          newMembershipsToday = membershipData.newToday || 0;
-        }
-      }
-
-      setGymActivityStats({
+      // Solo actualizar visitas y membresías por vencer, mantener los otros valores
+      setGymActivityStats(prev => ({
+        ...prev,
         todayVisits,
-        activeMembershipsToday,
         expiringIn7Days,
-        newMembershipsToday,
-      });
+      }));
     } catch (error) {
       console.error('Error loading gym activity stats:', error);
       // Keep default values on error
@@ -394,6 +373,13 @@ export default function DashboardPage() {
       // Usar datos de membresías de la API diaria
       const activeMembershipsToday = todayData?.memberships?.active_count || 0;
       const newMembershipsToday = todayData?.memberships?.new_today_count || 0;
+
+      // Actualizar estadísticas de actividad del gimnasio directamente
+      setGymActivityStats(prev => ({
+        ...prev,
+        activeMembershipsToday,
+        newMembershipsToday,
+      }));
 
       // Get current month data
       const currentMonthData = monthlyData.find(m => m.month === selectedDate.substring(0, 7));
@@ -450,7 +436,7 @@ export default function DashboardPage() {
       const loadAllData = async () => {
         const todayData = await loadDashboardData();
         loadUserStats(); // Load user statistics
-        loadGymActivityStats(todayData?.memberships); // Load gym activity statistics
+        loadGymActivityStats(); // Load gym activity statistics
       };
       loadAllData();
     }
@@ -462,7 +448,7 @@ export default function DashboardPage() {
     const todayData = await loadDashboardData();
     await Promise.all([
       loadUserStats(),
-      loadGymActivityStats(todayData?.memberships)
+      loadGymActivityStats()
     ]);
     setRefreshing(false);
   }, [loadDashboardData, loadUserStats, loadGymActivityStats]);
