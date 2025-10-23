@@ -99,6 +99,7 @@ import {
 import ProductStockDialog from '@/components/catalogo/ProductStockDialog';
 import WarehouseTransferDialog from '@/components/catalogo/WarehouseTransferDialog';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
+import { showSuccess, showError, showConfirmation } from '@/lib/notifications/MySwal';
 
 // Types and Interfaces
 type StockLevelFilter = '' | 'sin_stock' | 'stock_bajo' | 'stock_normal' | 'sobre_stock';
@@ -389,13 +390,13 @@ export default function InventarioPage() {
       const warehouseName = warehouses?.find(w => w.id === selectedWarehouse)?.name || 'Desconocido';
       
       if (!data || data.length === 0) {
-        notify.warning(`Almacén "${warehouseName}" no tiene productos registrados`);
+        await showError(`Almacén "${warehouseName}" no tiene productos registrados`, '⚠️ Sin Productos');
       } else {
-        notify.success(`Stock actualizado: ${data.length} productos en ${warehouseName}`);
+        await showSuccess(`Stock actualizado: ${data.length} productos en ${warehouseName}`, '✅ Stock Actualizado');
       }
       
     } catch (error: any) {
-      notify.error('Error cargando stock del almacén: ' + (error.message || 'Error desconocido'));
+      await showError('Error cargando stock del almacén: ' + (error.message || 'Error desconocido'), '❌ Error de Carga');
     } finally {
       setLoadingWarehouseStocks(false);
     }
@@ -409,10 +410,10 @@ export default function InventarioPage() {
         reloadMovements()
       ]);
       
-      notify.success('Datos cargados correctamente');
+      await showSuccess('Datos cargados correctamente', '✅ Datos Cargados');
       
     } catch (error: any) {
-      notify.error('Error cargando datos: ' + error.message);
+      await showError('Error cargando datos: ' + error.message, '❌ Error de Carga');
     }
   }, [reloadWarehouses, reloadProducts, reloadMovements]);
 
@@ -655,14 +656,14 @@ export default function InventarioPage() {
       setSelectedWarehouse(value);
       setPage(0);
     },
-    clearFilters: () => {
+    clearFilters: async () => {
       setSearchTerm('');
       setSelectedCategory('');
       setSelectedStockLevel('');
       setSelectedStatus('active');
       setSelectedWarehouse('');
       setPage(0);
-      notify.info('Filtros limpiados');
+      await showSuccess('Filtros limpiados', '🧹 Filtros Limpiados');
     },
     toggleFilters: () => {
       setShowFilters(prev => !prev);
@@ -672,7 +673,7 @@ export default function InventarioPage() {
   const handleCreateWarehouse = useCallback(async () => {
     try {
       if (!newWarehouse.code || !newWarehouse.name) {
-        notify.error('Código y nombre son requeridos');
+        await showError('Código y nombre son requeridos', '⚠️ Campos Requeridos');
         return;
       }
 
@@ -693,7 +694,7 @@ export default function InventarioPage() {
 
       await createWarehouse(warehouseData);
       
-      notify.success(`Almacén ${newWarehouse.name} creado exitosamente`);
+      await showSuccess(`Almacén ${newWarehouse.name} creado exitosamente`, '✅ Almacén Creado');
       setCreateWarehouseOpen(false);
       resetNewWarehouse();
       
@@ -702,7 +703,7 @@ export default function InventarioPage() {
       }, 1000);
       
     } catch (error: any) {
-      notify.error('Error creando almacén: ' + error.message);
+      await showError('Error creando almacén: ' + error.message, '❌ Error al Crear');
     }
   }, [newWarehouse, createWarehouse, reloadWarehouses]);
 
@@ -752,30 +753,30 @@ export default function InventarioPage() {
     setTransferDialogOpen(false);
   }, []);
 
-  const handleStockSave = useCallback(() => {
-    Promise.all([
+  const handleStockSave = useCallback(async () => {
+    await Promise.all([
       reloadProducts(),
       reloadMovements()
-    ]).then(() => {
-      if (selectedWarehouse) {
-        loadWarehouseStocks();
-      }
-      notify.success('Stock actualizado correctamente');
-    });
+    ]);
+    
+    if (selectedWarehouse) {
+      loadWarehouseStocks();
+    }
+    await showSuccess('Stock actualizado correctamente', '✅ Stock Actualizado');
     
     closeStockDialog();
   }, [reloadProducts, reloadMovements, selectedWarehouse, loadWarehouseStocks, closeStockDialog]);
 
-  const handleTransferSave = useCallback(() => {
-    Promise.all([
+  const handleTransferSave = useCallback(async () => {
+    await Promise.all([
       reloadProducts(),
       reloadMovements()
-    ]).then(() => {
-      if (selectedWarehouse) {
-        loadWarehouseStocks();
-      }
-      notify.success('Traspaso procesado correctamente');
-    });
+    ]);
+    
+    if (selectedWarehouse) {
+      loadWarehouseStocks();
+    }
+    await showSuccess('Traspaso procesado correctamente', '✅ Traspaso Completado');
     
     closeTransferDialog();
   }, [reloadProducts, reloadMovements, selectedWarehouse, loadWarehouseStocks, closeTransferDialog]);
@@ -789,9 +790,9 @@ export default function InventarioPage() {
     setPage(0);
   }, []);
 
-  const reload = useCallback(() => {
-    loadInitialData();
-    notify.info('Recargando datos del sistema...');
+  const reload = useCallback(async () => {
+    await loadInitialData();
+    await showSuccess('Recargando datos del sistema...', '🔄 Recargando');
   }, [loadInitialData]);
 
   // SSR Safety
@@ -1822,9 +1823,9 @@ export default function InventarioPage() {
                                     <Tooltip title="Ver Historial">
                                       <IconButton
                                         size="small"
-                                        onClick={() => {
+                                        onClick={async () => {
                                           setCurrentTab('movements');
-                                          notify.info(`Historial de ${product.name}`);
+                                          await showSuccess(`Historial de ${product.name}`, '📊 Historial');
                                         }}
                                         sx={{ 
                                           color: colorTokens.textSecondary,

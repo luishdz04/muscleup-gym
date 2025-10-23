@@ -51,7 +51,7 @@ import { useEntityCRUD } from '@/hooks/useEntityCRUD';
 import { useNotifications } from '@/hooks/useNotifications';
 import { formatTimestampForDisplay } from '@/utils/dateUtils';
 import WarehouseFormDialog from '@/components/catalogo/WarehouseFormDialog';
-import Swal from 'sweetalert2';
+import { showSuccess, showError, showDeleteConfirmation, showConfirmation } from '@/lib/notifications/MySwal';
 
 type WarehouseType = 'store' | 'central' | 'warehouse' | 'temporary';
 
@@ -190,7 +190,7 @@ export default function AlmacenesPage() {
         // Update
         console.log('🔄 Actualizando almacén ID:', selectedWarehouse.id);
         await updateItem(selectedWarehouse.id, dataWithAudit);
-        toast.success('Almacén actualizado correctamente');
+        await showSuccess('Almacén actualizado correctamente', '✅ Almacén Actualizado');
       } else {
         // Create
         console.log('➕ Creando nuevo almacén');
@@ -198,7 +198,7 @@ export default function AlmacenesPage() {
           ...dataWithAudit,
           is_active: true
         });
-        toast.success('Almacén creado correctamente');
+        await showSuccess('Almacén creado correctamente', '✅ Almacén Creado');
       }
       
       // Recargar datos
@@ -213,52 +213,40 @@ export default function AlmacenesPage() {
       
     } catch (error: any) {
       console.error('❌ Error al guardar almacén:', error);
-      toast.error(`Error al guardar: ${error.message}`);
+      await showError(`Error al guardar: ${error.message}`, '❌ Error al Guardar');
       throw error;
     }
-  }, [selectedWarehouse, addAuditFieldsFor, updateItem, createItem, reloadWarehouses, toast, handleCloseDialog]);
+  }, [selectedWarehouse, addAuditFieldsFor, updateItem, createItem, reloadWarehouses, handleCloseDialog]);
 
   const handleDelete = useCallback(async (warehouse: Warehouse) => {
-    const result = await Swal.fire({
-      title: '¿Eliminar almacén?',
-      html: `
-        <p style="color: ${colorTokens.textPrimary};">¿Estás seguro de eliminar el almacén:</p>
-        <p style="color: ${colorTokens.brand}; font-weight: 700; margin: 12px 0;">
-          ${warehouse.name} (${warehouse.code})
-        </p>
-        <p style="color: ${colorTokens.danger}; margin-top: 16px; font-size: 13px;">
-          ⚠️ Esta acción no se puede deshacer
-        </p>
-      `,
-      icon: 'warning',
-      iconColor: colorTokens.warning,
-      background: colorTokens.neutral200,
-      color: colorTokens.textPrimary,
-      showCancelButton: true,
-      confirmButtonColor: colorTokens.danger,
-      cancelButtonColor: colorTokens.neutral600,
-      confirmButtonText: '<span style="font-weight: 600;">Sí, eliminar</span>',
-      cancelButtonText: '<span style="font-weight: 600;">Cancelar</span>',
-      customClass: {
-        popup: 'swal-dark-popup',
-        title: 'swal-dark-title',
-        htmlContainer: 'swal-dark-content',
-        confirmButton: 'swal-dark-confirm',
-        cancelButton: 'swal-dark-cancel'
-      },
-      buttonsStyling: true
-    });
-
+    // Primer diálogo: Confirmación de eliminación
+    const result = await showDeleteConfirmation(`"${warehouse.name} (${warehouse.code})"`);
+    
     if (result.isConfirmed) {
-      try {
-        await deleteItem(warehouse.id);
-        toast.success('Almacén eliminado correctamente');
-        await reloadWarehouses();
-      } catch (error: any) {
-        toast.error(`Error al eliminar: ${error.message}`);
+      // Segundo diálogo: Confirmación final (doble confirmación)
+      const finalResult = await showConfirmation(
+        `¿Estás COMPLETAMENTE seguro de eliminar el almacén "${warehouse.name}"?\n\n` +
+        `Esta acción eliminará:\n` +
+        `• El almacén y toda su información\n` +
+        `• Referencias en el sistema\n` +
+        `• Historial asociado\n\n` +
+        `⚠️ Esta acción NO se puede deshacer`,
+        '⚠️ Confirmación Final',
+        'Sí, eliminar definitivamente',
+        'Cancelar'
+      );
+      
+      if (finalResult.isConfirmed) {
+        try {
+          await deleteItem(warehouse.id);
+          await showSuccess(`Almacén "${warehouse.name}" eliminado exitosamente`, '✅ Eliminado');
+          await reloadWarehouses();
+        } catch (error: any) {
+          await showError(`Error al eliminar: ${error.message}`, '❌ Error');
+        }
       }
     }
-  }, [deleteItem, reloadWarehouses, toast]);
+  }, [deleteItem, reloadWarehouses]);
 
   const handleToggleActive = useCallback(async (warehouse: Warehouse) => {
     try {
@@ -268,13 +256,13 @@ export default function AlmacenesPage() {
       
       await updateItem(warehouse.id, dataWithAudit);
       
-      toast.success(`Almacén ${warehouse.is_active ? 'desactivado' : 'activado'} correctamente`);
+      await showSuccess(`Almacén ${warehouse.is_active ? 'desactivado' : 'activado'} correctamente`, '✅ Estado Actualizado');
       await reloadWarehouses();
       
     } catch (error: any) {
-      toast.error(`Error al actualizar: ${error.message}`);
+      await showError(`Error al actualizar: ${error.message}`, '❌ Error');
     }
-  }, [updateItem, addAuditFieldsFor, reloadWarehouses, toast]);
+  }, [updateItem, addAuditFieldsFor, reloadWarehouses]);
 
   if (!hydrated) {
     return (
