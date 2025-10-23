@@ -70,7 +70,7 @@ import {
 import { useHydrated } from '@/hooks/useHydrated';
 import { useUserTracking } from '@/hooks/useUserTracking';
 import { useFingerprintManagement } from '@/hooks/useFingerprintManagement';
-import { 
+import {
   formatTimestampForDisplay,
   getCurrentTimestamp,
   getTodayInMexico
@@ -83,6 +83,7 @@ import { createBrowserSupabaseClient } from '@/lib/supabase/client';
 import { User, Address, EmergencyContact, MembershipInfo } from '@/types/user';
 import PhotoCapture from '@/components/registro/PhotoCapture';
 import FingerprintRegistration from './FingerprintRegistration';
+import { showSaveConfirmation, handleSaveDialog } from '@/lib/notifications/MySwal';
 
 interface UserFormDialogProps {
   open: boolean;
@@ -795,49 +796,45 @@ const UserFormDialogOptimized: React.FC<UserFormDialogProps> = ({
     }
   }, [formData.rol, addressData, emergencyData, membershipData, supabase]);
 
-  const handleSubmit = useCallback(async () => {
+  // Función interna para ejecutar el guardado sin confirmación
+  const doSave = useCallback(async () => {
     if (loading) return;
-    
+
     try {
       setLoading(true);
-      
-      if (!validateStep(activeStep)) {
-        setLoading(false);
-        return;
-      }
-      
+
       const userId = formData.id || user?.id || crypto.randomUUID();
       const uploadedUrls = await uploadFiles(userId);
-      
-      let userData = { 
-        ...formData, 
+
+      let userData = {
+        ...formData,
         id: userId,
         birthDate: birthDate ? birthDate.format('YYYY-MM-DD') : null
       };
-      
+
       if (uploadedUrls.profilePictureUrl) {
         userData.profilePictureUrl = uploadedUrls.profilePictureUrl;
       } else if (!hasExistingProfilePicture) {
         userData.profilePictureUrl = '';
       }
-      
+
       if (uploadedUrls.signatureUrl) {
         userData.signatureUrl = uploadedUrls.signatureUrl;
       } else if (!hasExistingSignature) {
         userData.signatureUrl = '';
       }
-      
+
       const userDataWithAudit = await addAuditFieldsFor('Users', userData, !!user?.id);
       await onSave(userDataWithAudit);
       await saveRelatedData(userId);
-      
+
       // ✅ PROCESAR HUELLA PENDIENTE
       if (hasPendingFingerprint) {
         console.log('🖐️ Procesando huella pendiente...');
         const fullName = `${formData.firstName} ${formData.lastName}`.trim();
         await processPendingFingerprint(fullName);
       }
-      
+
       if (formData.rol === 'cliente' && hasChanges) {
         try {
           const response = await fetch('/api/generate-contract', {
@@ -845,7 +842,7 @@ const UserFormDialogOptimized: React.FC<UserFormDialogProps> = ({
             headers: {
               'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ 
+            body: JSON.stringify({
               userId,
               isRegeneration: true
             }),
@@ -861,45 +858,99 @@ const UserFormDialogOptimized: React.FC<UserFormDialogProps> = ({
           console.warn('Error regenerando contrato:', error);
         }
       }
-      
+
       toast.success(`Usuario ${user ? 'actualizado' : 'creado'} exitosamente`);
       onClose();
-      
+
     } catch (error: any) {
       console.error('Error guardando usuario:', error);
       toast.error('Error al guardar usuario: ' + error.message);
+      throw error; // Re-throw para que el llamador pueda manejarlo
     } finally {
       setLoading(false);
     }
   }, [
     loading,
-    validateStep,
-    activeStep,
     formData,
     user?.id,
     uploadFiles,
     birthDate,
+    hasExistingProfilePicture,
+    hasExistingSignature,
     addAuditFieldsFor,
     onSave,
     saveRelatedData,
+    hasPendingFingerprint,
+    processPendingFingerprint,
     hasChanges,
     toast,
-    onClose,
-    hasExistingProfilePicture,
-    hasExistingSignature,
-    hasPendingFingerprint,
-    processPendingFingerprint
+    onClose
   ]);
 
-  const handleClose = useCallback(() => {
+  const handleSubmit = useCallback(async () => {
+    if (loading) return;
+
+    // Primero validar el step actual
+    if (!validateStep(activeStep)) {
+      return;
+    }
+
+    // Cuando el usuario hace clic en "Actualizar/Crear", simplemente guardar
+    await doSave();
+  }, [
+    loading,
+    validateStep,
+    activeStep,
+    doSave
+  ]);
+
+  const handleClose = useCallback(async () => {
     if (hasChanges) {
-      if (window.confirm('¿Estás seguro? Se perderán los cambios no guardados.')) {
+      const result = await showSaveConfirmation(
+        '¿Hay cambios sin guardar?',
+        'Guardar y salir',
+        'Salir sin guardar',
+        'Continuar editando',
+        'Si sales ahora, perderás todos los cambios realizados.'
+      );
+
+      // Si cancela o cierra con ESC, continúa editando
+      if (result.dismiss || (!result.isConfirmed && !result.isDenied)) {
+        return;
+      }
+
+      // Si elige "Guardar y salir"
+      if (result.isConfirmed) {
+        // Validar antes de guardar
+        if (!validateStep(activeStep)) {
+          return;
+        }
+
+        try {
+          await doSave();
+        } catch (error) {
+          // El error ya se maneja en doSave
+          console.error('Error al guardar antes de cerrar:', error);
+        }
+      }
+
+      // Si elige "Salir sin guardar", cierra sin guardar
+      if (result.isDenied) {
+        toast.success('Cambios descartados');
         onClose();
       }
     } else {
+      // No hay cambios, cerrar directamente
       onClose();
     }
-  }, [hasChanges, onClose]);
+  }, [
+    hasChanges,
+    onClose,
+    validateStep,
+    activeStep,
+    doSave,
+    toast
+  ]);
 
   // ✅ CLEANUP EFFECT
   useEffect(() => {

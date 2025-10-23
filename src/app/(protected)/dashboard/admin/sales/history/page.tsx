@@ -781,10 +781,12 @@ const SalesHistoryPage = memo(() => {
 
     // Confirmación con SweetAlert
     const result = await MySwal.fire({
+      background: colorTokens.neutral200,
+      color: colorTokens.neutral1200,
       icon: 'question',
       title: `¿Confirmar ${actionName}?`,
       html: `
-        <div style="text-align: center;">
+        <div style="text-align: center; color: ${colorTokens.neutral1000};">
           <p><strong>Venta #${sale.sale_number}</strong></p>
           <p>Monto: <strong>${formatPrice(sale.total_amount)}</strong></p>
           <div style="background: ${colorTokens.warning}20; border: 1px solid ${colorTokens.warning}40; border-radius: 8px; padding: 12px; margin: 16px 0;">
@@ -798,6 +800,7 @@ const SalesHistoryPage = memo(() => {
       cancelButtonText: 'Cancelar',
       confirmButtonColor: actionType === 'cancel' ? colorTokens.warning : colorTokens.info,
       cancelButtonColor: colorTokens.neutral600,
+      iconColor: colorTokens.info,
       focusCancel: true,
     });
 
@@ -894,10 +897,12 @@ const SalesHistoryPage = memo(() => {
 
     // Segunda confirmación con SweetAlert personalizado
     const secondConfirm = await MySwal.fire({
+      background: colorTokens.neutral200,
+      color: colorTokens.neutral1200,
       icon: 'warning',
       title: '🔴 SEGUNDA CONFIRMACIÓN',
       html: `
-        <div style="text-align: center;">
+        <div style="text-align: center; color: ${colorTokens.neutral1000};">
           <p><strong>Venta #${sale.sale_number}</strong></p>
           <p>Monto: <strong>${formatPrice(sale.total_amount)}</strong></p>
           <div style="background: ${colorTokens.danger}20; border: 1px solid ${colorTokens.danger}40; border-radius: 8px; padding: 12px; margin: 16px 0;">
@@ -911,6 +916,7 @@ const SalesHistoryPage = memo(() => {
       cancelButtonText: 'Cancelar',
       confirmButtonColor: colorTokens.danger,
       cancelButtonColor: colorTokens.neutral600,
+      iconColor: colorTokens.danger,
       focusCancel: true,
     });
 

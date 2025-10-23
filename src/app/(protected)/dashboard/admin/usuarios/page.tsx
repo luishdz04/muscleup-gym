@@ -476,7 +476,30 @@ const UsersPage = memo(() => {
 
       const confirmed = await alert.deleteConfirm(message);
 
-      if (!confirmed) {
+      if (!confirmed.isConfirmed) {
+        return;
+      }
+
+      // ✅ SEGUNDA CONFIRMACIÓN para mayor seguridad
+      const secondMessage = deviceUserId
+        ? `🔴 SEGUNDA CONFIRMACIÓN\n\n` +
+          `${user.firstName} ${user.lastName}\n` +
+          `ID del dispositivo: ${deviceUserId}\n\n` +
+          `Esta acción es PERMANENTE e IRREVERSIBLE.\n` +
+          `¿Realmente deseas continuar?`
+        : `🔴 SEGUNDA CONFIRMACIÓN\n\n` +
+          `${user.firstName} ${user.lastName}\n\n` +
+          `Esta acción es PERMANENTE e IRREVERSIBLE.\n` +
+          `¿Realmente deseas continuar?`;
+
+      const secondConfirm = await alert.confirm(
+        secondMessage,
+        '🔴 CONFIRMACIÓN FINAL',
+        'Sí, eliminar definitivamente',
+        'Cancelar'
+      );
+
+      if (!secondConfirm.isConfirmed) {
         return;
       }
 
@@ -548,10 +571,9 @@ const UsersPage = memo(() => {
             };
           });
 
-          toast.success(
-            `✅ Usuario ${user.firstName} eliminado completamente\n` +
-            `• Datos eliminados de BD\n` +
-            `• Usuario eliminado del F22 (ID: ${deviceUserId})`
+          await alert.success(
+            `Usuario ${user.firstName} eliminado completamente. Datos eliminados de BD y del F22 (ID: ${deviceUserId})`,
+            '✅ Eliminación Exitosa'
           );
 
         } catch (f22Error: any) {
@@ -562,12 +584,15 @@ const UsersPage = memo(() => {
           );
         }
       } else {
-        toast.success(`Usuario ${user.firstName} eliminado exitosamente`);
+        await alert.success(
+          `Usuario ${user.firstName} eliminado exitosamente`,
+          '✅ Eliminación Exitosa'
+        );
       }
 
     } catch (error: any) {
       console.error('💥 [DELETE-USER] Error crítico:', error);
-      toast.error('Error al eliminar usuario: ' + error.message);
+      await alert.error('Error al eliminar usuario: ' + error.message);
     }
   }, [deleteItem, alert, toast]);
 
@@ -1088,167 +1113,7 @@ const UsersPage = memo(() => {
         verifiedCount={clientsWithFingerprint}
       />
 
-      {/* DISTRIBUCIÓN DE CLIENTES */}
-      <Paper sx={{
-        p: { xs: 2, sm: 2.5, md: 3 },
-        mb: { xs: 2, sm: 2.5, md: 3 },
-        background: `linear-gradient(135deg, ${colorTokens.neutral200}, ${colorTokens.neutral300})`,
-        border: `1px solid ${colorTokens.neutral400}`,
-        borderRadius: 3,
-        backdropFilter: 'blur(10px)'
-      }}>
-        <Typography variant="h6" sx={{
-          color: colorTokens.neutral1200,
-          mb: { xs: 2, sm: 2.5, md: 3 },
-          fontWeight: 600,
-          display: 'flex',
-          alignItems: 'center',
-          gap: 1,
-          fontSize: { xs: '1rem', sm: '1.15rem', md: '1.25rem' }
-        }}>
-          Distribución de Clientes
-        </Typography>
-
-        <Grid container spacing={{ xs: 2, sm: 2.5, md: 3 }}>
-          <Grid size={{ xs: 12, md: 4 }}>
-            <Box sx={{
-              p: { xs: 1.5, sm: 2, md: 2.5 },
-              borderRadius: 2,
-              bgcolor: `${colorTokens.brand}10`,
-              border: `1px solid ${colorTokens.brand}30`,
-              textAlign: 'center',
-              transition: 'all 0.3s ease',
-              '&:hover': {
-                transform: 'translateY(-2px)',
-                boxShadow: `0 4px 20px ${colorTokens.brand}20`
-              }
-            }}>
-              <Typography variant="h4" sx={{
-                color: colorTokens.brand,
-                fontWeight: 700,
-                fontSize: { xs: '1.75rem', sm: '2rem', md: '2.125rem' }
-              }}>
-                {clientsWithContracts}
-              </Typography>
-              <Typography variant="body2" sx={{
-                color: colorTokens.neutral1200,
-                fontWeight: 600,
-                fontSize: { xs: '0.8rem', sm: '0.875rem' }
-              }}>
-                Contrato firmado
-              </Typography>
-              <Typography variant="caption" sx={{
-                color: colorTokens.neutral1000,
-                fontSize: { xs: '0.7rem', sm: '0.75rem' }
-              }}>
-                {userStats.totalUsers > 0 ? Math.round((clientsWithContracts / userStats.totalUsers) * 100) : 0}% del total
-              </Typography>
-            </Box>
-          </Grid>
-
-          <Grid size={{ xs: 12, md: 4 }}>
-            <Box sx={{
-              p: { xs: 1.5, sm: 2, md: 2.5 },
-              borderRadius: 2,
-              bgcolor: `${colorTokens.info}10`,
-              border: `1px solid ${colorTokens.info}30`,
-              transition: 'all 0.3s ease',
-              '&:hover': {
-                transform: 'translateY(-2px)',
-                boxShadow: `0 4px 20px ${colorTokens.info}20`
-              }
-            }}>
-              <Typography variant="h4" sx={{
-                color: colorTokens.info,
-                fontWeight: 700,
-                textAlign: 'center',
-                fontSize: { xs: '1.75rem', sm: '2rem', md: '2.125rem' }
-              }}>
-                {genderStats.total}
-              </Typography>
-              <Typography variant="body2" sx={{
-                color: colorTokens.neutral1200,
-                fontWeight: 600,
-                textAlign: 'center',
-                fontSize: { xs: '0.8rem', sm: '0.875rem' }
-              }}>
-                Distribución por género
-              </Typography>
-              <Box sx={{
-                mt: { xs: 1, sm: 1.5 },
-                display: 'flex',
-                flexDirection: 'column',
-                gap: { xs: 0.5, sm: 0.75 },
-                color: colorTokens.neutral1000
-              }}>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.75, sm: 1 } }}>
-                  <MaleIcon sx={{ fontSize: { xs: 16, sm: 18 }, color: colorTokens.info }} />
-                  <Typography variant="caption" sx={{
-                    fontWeight: 600,
-                    fontSize: { xs: '0.7rem', sm: '0.75rem' }
-                  }}>
-                    Hombres: {genderStats.masculino} ({genderStats.masculinoPct}%)
-                  </Typography>
-                </Box>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.75, sm: 1 } }}>
-                  <FemaleIcon sx={{ fontSize: { xs: 16, sm: 18 }, color: colorTokens.brand }} />
-                  <Typography variant="caption" sx={{
-                    fontWeight: 600,
-                    fontSize: { xs: '0.7rem', sm: '0.75rem' }
-                  }}>
-                    Mujeres: {genderStats.femenino} ({genderStats.femeninoPct}%)
-                  </Typography>
-                </Box>
-                <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.75, sm: 1 } }}>
-                  <TransgenderIcon sx={{ fontSize: { xs: 16, sm: 18 }, color: colorTokens.warning }} />
-                  <Typography variant="caption" sx={{
-                    fontWeight: 600,
-                    fontSize: { xs: '0.7rem', sm: '0.75rem' }
-                  }}>
-                    Otro/No especificado: {genderStats.otro} ({genderStats.otroPct}%)
-                  </Typography>
-                </Box>
-              </Box>
-            </Box>
-          </Grid>
-
-          <Grid size={{ xs: 12, md: 4 }}>
-            <Box sx={{
-              p: { xs: 1.5, sm: 2, md: 2.5 },
-              borderRadius: 2,
-              bgcolor: `${colorTokens.success}10`,
-              border: `1px solid ${colorTokens.success}30`,
-              textAlign: 'center',
-              transition: 'all 0.3s ease',
-              '&:hover': {
-                transform: 'translateY(-2px)',
-                boxShadow: `0 4px 20px ${colorTokens.success}20`
-              }
-            }}>
-              <Typography variant="h4" sx={{
-                color: colorTokens.success,
-                fontWeight: 700,
-                fontSize: { xs: '1.75rem', sm: '2rem', md: '2.125rem' }
-              }}>
-                {clientsWithPhotos}
-              </Typography>
-              <Typography variant="body2" sx={{
-                color: colorTokens.neutral1200,
-                fontWeight: 600,
-                fontSize: { xs: '0.8rem', sm: '0.875rem' }
-              }}>
-                Foto de perfil cargada
-              </Typography>
-              <Typography variant="caption" sx={{
-                color: colorTokens.neutral1000,
-                fontSize: { xs: '0.7rem', sm: '0.75rem' }
-              }}>
-                {userStats.totalUsers > 0 ? Math.round((clientsWithPhotos / userStats.totalUsers) * 100) : 0}% del total
-              </Typography>
-            </Box>
-          </Grid>
-        </Grid>
-      </Paper>
+      {/* SECTION REMOVED - Distribución de Clientes cards (Contratos firmados, Género, Fotos) */}
 
       {/* ✅ TABLA DE USUARIOS - PROPS CORREGIDAS */}
       <UserTable

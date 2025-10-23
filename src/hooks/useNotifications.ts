@@ -10,7 +10,9 @@ import {
   showSuccess,
   showError,
   showDeleteConfirmation,
-  showConfirmation
+  showConfirmation,
+  showSaveConfirmation,
+  handleSaveDialog
 } from '@/lib/notifications/MySwal';
 
 // ✅ TIPOS
@@ -157,6 +159,8 @@ export const useNotifications = () => {
     error: showError,
     confirm: showConfirmation,
     deleteConfirm: showDeleteConfirmation,
+    saveConfirm: showSaveConfirmation,
+    handleSave: handleSaveDialog,
   }), []);
 
   // ✅ RETORNAR TODO

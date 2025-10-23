@@ -76,6 +76,9 @@ import { useNotifications } from '@/hooks/useNotifications';
 import { formatCurrency } from '@/utils/formHelpers';
 import { formatDateLong, formatMexicoTime } from '@/utils/dateUtils';
 
+// SWEETALERT2 para confirmaciones
+import MySwal, { showDeleteConfirmation } from '@/lib/notifications/MySwal';
+
 const formatPrice = (amount: number): string => formatCurrency(Number.isFinite(amount) ? amount : 0);
 
 // ✅ INTERFACES
@@ -316,8 +319,6 @@ export default function CutsHistoryPage() {
   const [selectedCut, setSelectedCut] = useState<CutDetail | null>(null);
   const [detailDialogOpen, setDetailDialogOpen] = useState(false);
   const [loadingDetail, setLoadingDetail] = useState(false);
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
-  const [cutToDelete, setCutToDelete] = useState<string | null>(null);
   const [loadingDelete, setLoadingDelete] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editingCut, setEditingCut] = useState<CutDetail | null>(null);
@@ -325,7 +326,6 @@ export default function CutsHistoryPage() {
   const [loadingEditData, setLoadingEditData] = useState(false);
   const [editingLoadingId, setEditingLoadingId] = useState<string | null>(null);
   const [selectedCuts, setSelectedCuts] = useState<string[]>([]);
-  const [bulkDeleteDialogOpen, setBulkDeleteDialogOpen] = useState(false);
   const [loadingBulkDelete, setLoadingBulkDelete] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [editTabValue, setEditTabValue] = useState(0);
@@ -601,31 +601,100 @@ export default function CutsHistoryPage() {
     }
   };
 
-  const handleDeleteCut = async () => {
-    if (!cutToDelete) return;
-    
+  const handleDeleteCut = async (cutId: string) => {
+    // Buscar el corte para mostrar detalles en la confirmación
+    const cut = cuts.find(c => c.id === cutId);
+    if (!cut) return;
+
+    // Crear descripción para SweetAlert
+    const itemDescription = `
+      Corte #${cut.cut_number}
+      Fecha: ${formatDateLong(cut.cut_date)}
+      Total: ${formatPrice(cut.grand_total)}
+      Transacciones: ${cut.total_transactions}
+    `;
+
+    // Primera confirmación con SweetAlert
+    const result = await showDeleteConfirmation(itemDescription);
+
+    if (!result.isConfirmed) return;
+
+    // Segunda confirmación con más detalles
+    const secondConfirm = await MySwal.fire({
+      background: colorTokens.neutral200,
+      color: colorTokens.neutral1200,
+      icon: 'warning',
+      title: '🔴 SEGUNDA CONFIRMACIÓN',
+      html: `
+        <div style="text-align: center; color: ${colorTokens.neutral1000};">
+          <p><strong>Corte #${cut.cut_number}</strong></p>
+          <p>Fecha: <strong>${formatDateLong(cut.cut_date)}</strong></p>
+          <p>Total: <strong>${formatPrice(cut.grand_total)}</strong></p>
+          <div style="background: ${colorTokens.danger}20; border: 1px solid ${colorTokens.danger}40; border-radius: 8px; padding: 12px; margin: 16px 0;">
+            <p style="color: ${colorTokens.danger}; margin: 0;">⚠️ Esta acción NO se puede deshacer</p>
+          </div>
+          <p style="margin-top: 20px;">¿Realmente deseas eliminar este corte de caja?</p>
+        </div>
+      `,
+      showCancelButton: true,
+      confirmButtonText: 'Sí, eliminar definitivamente',
+      cancelButtonText: 'Cancelar',
+      confirmButtonColor: colorTokens.danger,
+      cancelButtonColor: colorTokens.neutral600,
+      focusCancel: true,
+    });
+
+    if (!secondConfirm.isConfirmed) return;
+
     try {
       setLoadingDelete(true);
 
-      
-      const response = await fetch(`/api/cuts/${cutToDelete}`, {
+      const response = await fetch(`/api/cuts/${cutId}`, {
         method: 'DELETE'
       });
-      
+
       const data = await response.json();
-      
+
       if (data.success) {
-        setCuts(cuts.filter(cut => cut.id !== cutToDelete));
-        setDeleteDialogOpen(false);
-        setCutToDelete(null);
-        setSelectedCuts(prev => prev.filter(id => id !== cutToDelete));
+        setCuts(cuts.filter(cut => cut.id !== cutId));
+        setSelectedCuts(prev => prev.filter(id => id !== cutId));
+
+        // Mostrar notificación de éxito con SweetAlert
+        await MySwal.fire({
+          background: colorTokens.neutral200,
+          color: colorTokens.neutral1200,
+          icon: 'success',
+          title: '✅ Éxito',
+          text: 'Corte eliminado exitosamente',
+          timer: 2000,
+          showConfirmButton: false,
+          iconColor: colorTokens.success
+        });
+
         loadCuts(); // Recargar para actualizar estadísticas
       } else {
-        setError(data.error || 'Error al eliminar el corte');
+        // Mostrar error con SweetAlert
+        await MySwal.fire({
+          background: colorTokens.neutral200,
+          color: colorTokens.neutral1200,
+          icon: 'error',
+          title: 'Error',
+          text: data.error || 'Error al eliminar el corte',
+          confirmButtonColor: colorTokens.brand,
+          iconColor: colorTokens.danger
+        });
       }
     } catch (error) {
       console.error('Error eliminando corte:', error);
-      setError('Error al eliminar el corte');
+      await MySwal.fire({
+        background: colorTokens.neutral200,
+        color: colorTokens.neutral1200,
+        icon: 'error',
+        title: 'Error',
+        text: 'Error al eliminar el corte',
+        confirmButtonColor: colorTokens.brand,
+        iconColor: colorTokens.danger
+      });
     } finally {
       setLoadingDelete(false);
     }
@@ -689,6 +758,58 @@ export default function CutsHistoryPage() {
   const handleBulkDelete = async () => {
     if (selectedCuts.length === 0) return;
 
+    // Primera confirmación con SweetAlert
+    const result = await MySwal.fire({
+      background: colorTokens.neutral200,
+      color: colorTokens.neutral1200,
+      icon: 'warning',
+      title: '⚠️ Eliminación Masiva',
+      html: `
+        <div style="text-align: center; color: ${colorTokens.neutral1000};">
+          <p>Estás a punto de eliminar <strong>${selectedCuts.length}</strong> corte(s)</p>
+          <div style="background: ${colorTokens.warning}20; border: 1px solid ${colorTokens.warning}40; border-radius: 8px; padding: 12px; margin: 16px 0;">
+            <p style="color: ${colorTokens.warning}; margin: 0;">⚠️ Esta operación es permanente</p>
+          </div>
+          <p>¿Deseas continuar?</p>
+        </div>
+      `,
+      showCancelButton: true,
+      confirmButtonText: 'Sí, eliminar todos',
+      cancelButtonText: 'Cancelar',
+      confirmButtonColor: colorTokens.danger,
+      cancelButtonColor: colorTokens.neutral600,
+      iconColor: colorTokens.warning,
+      focusCancel: true
+    });
+
+    if (!result.isConfirmed) return;
+
+    // Segunda confirmación
+    const secondConfirm = await MySwal.fire({
+      background: colorTokens.neutral200,
+      color: colorTokens.neutral1200,
+      icon: 'warning',
+      title: '🔴 CONFIRMACIÓN FINAL',
+      html: `
+        <div style="text-align: center; color: ${colorTokens.neutral1000};">
+          <p><strong>${selectedCuts.length} cortes</strong> serán eliminados permanentemente</p>
+          <div style="background: ${colorTokens.danger}20; border: 1px solid ${colorTokens.danger}40; border-radius: 8px; padding: 12px; margin: 16px 0;">
+            <p style="color: ${colorTokens.danger}; margin: 0;">⚠️ Esta acción NO se puede deshacer</p>
+          </div>
+          <p style="margin-top: 20px;">¿Realmente deseas eliminar todos estos cortes?</p>
+        </div>
+      `,
+      showCancelButton: true,
+      confirmButtonText: 'Sí, eliminar definitivamente',
+      cancelButtonText: 'Cancelar',
+      confirmButtonColor: colorTokens.danger,
+      cancelButtonColor: colorTokens.neutral600,
+      iconColor: colorTokens.danger,
+      focusCancel: true
+    });
+
+    if (!secondConfirm.isConfirmed) return;
+
     try {
       setLoadingBulkDelete(true);
 
@@ -703,16 +824,43 @@ export default function CutsHistoryPage() {
       const data = await response.json();
 
       if (data.success) {
-        toast.success(`Se eliminaron ${selectedCuts.length} cortes`);
-        setBulkDeleteDialogOpen(false);
+        // Mostrar éxito con SweetAlert
+        await MySwal.fire({
+          background: colorTokens.neutral200,
+          color: colorTokens.neutral1200,
+          icon: 'success',
+          title: '✅ Éxito',
+          text: `Se eliminaron ${selectedCuts.length} cortes exitosamente`,
+          timer: 2000,
+          showConfirmButton: false,
+          iconColor: colorTokens.success
+        });
+
         setSelectedCuts([]);
         loadCuts();
       } else {
-        setError(data.error || 'Error al eliminar cortes seleccionados');
+        // Mostrar error con SweetAlert
+        await MySwal.fire({
+          background: colorTokens.neutral200,
+          color: colorTokens.neutral1200,
+          icon: 'error',
+          title: 'Error',
+          text: data.error || 'Error al eliminar cortes seleccionados',
+          confirmButtonColor: colorTokens.brand,
+          iconColor: colorTokens.danger
+        });
       }
     } catch (error) {
       console.error('Error eliminando cortes seleccionados:', error);
-      setError('Error al eliminar cortes seleccionados');
+      await MySwal.fire({
+        background: colorTokens.neutral200,
+        color: colorTokens.neutral1200,
+        icon: 'error',
+        title: 'Error',
+        text: 'Error al eliminar cortes seleccionados',
+        confirmButtonColor: colorTokens.brand,
+        iconColor: colorTokens.danger
+      });
     } finally {
       setLoadingBulkDelete(false);
     }
@@ -853,7 +1001,7 @@ export default function CutsHistoryPage() {
               variant="contained"
               startIcon={<DeleteIcon />}
               disabled={selectedCuts.length === 0}
-              onClick={() => setBulkDeleteDialogOpen(true)}
+              onClick={handleBulkDelete}
               sx={{
                 backgroundColor: colorTokens.danger,
                 color: colorTokens.neutral0,
@@ -1535,14 +1683,11 @@ export default function CutsHistoryPage() {
                               <Tooltip title="Eliminar">
                                 <IconButton
                                   size="small"
-                                  onClick={() => {
-                                    setCutToDelete(cut.id);
-                                    setDeleteDialogOpen(true);
-                                  }}
-                                  sx={{ 
+                                  onClick={() => handleDeleteCut(cut.id)}
+                                  sx={{
                                     color: colorTokens.danger,
-                                    '&:hover': { 
-                                      backgroundColor: `${colorTokens.danger}20` 
+                                    '&:hover': {
+                                      backgroundColor: `${colorTokens.danger}20`
                                     }
                                   }}
                                 >
@@ -1898,70 +2043,6 @@ export default function CutsHistoryPage() {
           </DialogActions>
         </Dialog>
 
-        {/* DIALOG DE CONFIRMACIÓN DE ELIMINACIÓN */}
-        <Dialog
-          open={deleteDialogOpen}
-          onClose={() => setDeleteDialogOpen(false)}
-          PaperProps={{
-            sx: {
-              backgroundColor: colorTokens.surfaceLevel2,
-              color: colorTokens.textPrimary,
-              borderRadius: 4
-            }
-          }}
-        >
-          <DialogTitle sx={{ 
-            display: 'flex', 
-            alignItems: 'center',
-            gap: 2,
-            borderBottom: `1px solid ${colorTokens.neutral500}`
-          }}>
-            <Avatar sx={{ bgcolor: colorTokens.danger }}>
-              <WarningIcon />
-            </Avatar>
-            <Typography variant="h6" fontWeight="bold">
-              Confirmar Eliminación
-            </Typography>
-          </DialogTitle>
-          
-          <DialogContent sx={{ p: 4 }}>
-            <Typography variant="body1" sx={{ mb: 2 }}>
-              ¿Estás seguro de que deseas eliminar este corte?
-            </Typography>
-            <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
-              Esta acción no se puede deshacer. Se eliminarán todos los datos asociados a este corte.
-            </Typography>
-          </DialogContent>
-          
-          <DialogActions sx={{ p: 3, borderTop: `1px solid ${colorTokens.neutral500}` }}>
-            <Button
-              onClick={() => setDeleteDialogOpen(false)}
-              sx={{ 
-                color: colorTokens.textSecondary,
-                '&:hover': {
-                  backgroundColor: `${colorTokens.textSecondary}20`
-                }
-              }}
-            >
-              Cancelar
-            </Button>
-            <Button
-              onClick={handleDeleteCut}
-              variant="contained"
-              startIcon={loadingDelete ? <CircularProgress size={20} /> : <DeleteIcon />}
-              disabled={loadingDelete}
-              sx={{
-                backgroundColor: colorTokens.danger,
-                color: colorTokens.textPrimary,
-                '&:hover': {
-                  backgroundColor: colorTokens.dangerHover
-                }
-              }}
-            >
-              {loadingDelete ? 'Eliminando...' : 'Eliminar'}
-            </Button>
-          </DialogActions>
-        </Dialog>
 
         {/* DIALOG DE EDICIÓN */}
         <Dialog
@@ -2599,120 +2680,6 @@ export default function CutsHistoryPage() {
               }}
             >
               {loadingUpdate ? 'Guardando...' : 'Guardar Cambios'}
-            </Button>
-          </DialogActions>
-        </Dialog>
-
-        {/* DIALOG DE ELIMINACIÓN MASIVA */}
-        <Dialog
-          open={bulkDeleteDialogOpen}
-          onClose={() => setBulkDeleteDialogOpen(false)}
-          maxWidth="sm"
-          fullWidth
-          PaperProps={{
-            sx: {
-              backgroundColor: colorTokens.surfaceLevel2,
-              color: colorTokens.textPrimary,
-              borderRadius: 4
-            }
-          }}
-        >
-          <DialogTitle sx={{ 
-            display: 'flex', 
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            borderBottom: `1px solid ${colorTokens.neutral500}`
-          }}>
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-              <Avatar sx={{ bgcolor: colorTokens.danger }}>
-                <WarningIcon />
-              </Avatar>
-              <Typography variant="h6" fontWeight="bold">
-                Eliminar Cortes Seleccionados
-              </Typography>
-            </Box>
-            <IconButton onClick={() => setBulkDeleteDialogOpen(false)}>
-              <CloseIcon sx={{ color: colorTokens.textSecondary }} />
-            </IconButton>
-          </DialogTitle>
-          
-          <DialogContent sx={{ p: 4 }}>
-            <Alert severity="warning" sx={{ mb: 3 }}>
-              <Typography variant="body1" fontWeight="bold" gutterBottom>
-                ⚠️ Acción Irreversible
-              </Typography>
-              <Typography variant="body2">
-                Estás a punto de eliminar <strong>{selectedCuts.length}</strong> corte(s) de forma permanente.
-                Esta acción no se puede deshacer.
-              </Typography>
-            </Alert>
-            
-            <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
-              Los siguientes cortes serán eliminados:
-            </Typography>
-            
-            <Box sx={{ 
-              mt: 2, 
-              p: 2, 
-              bgcolor: colorTokens.neutral400, 
-              borderRadius: 2,
-              maxHeight: 200,
-              overflowY: 'auto'
-            }}>
-              {cuts
-                .filter(cut => selectedCuts.includes(cut.id))
-                .map(cut => (
-                  <Box 
-                    key={cut.id} 
-                    sx={{ 
-                      display: 'flex', 
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      py: 1,
-                      borderBottom: `1px solid ${colorTokens.neutral500}`,
-                      '&:last-child': {
-                        borderBottom: 'none'
-                      }
-                    }}
-                  >
-                    <Typography variant="body2" sx={{ fontFamily: 'monospace', fontWeight: 'bold' }}>
-                      {cut.cut_number}
-                    </Typography>
-                    <Typography variant="caption" sx={{ color: colorTokens.textSecondary }}>
-                      {formatDateLocal(cut.cut_date)}
-                    </Typography>
-                  </Box>
-                ))
-              }
-            </Box>
-          </DialogContent>
-          
-          <DialogActions sx={{ p: 3, borderTop: `1px solid ${colorTokens.neutral500}` }}>
-            <Button
-              onClick={() => setBulkDeleteDialogOpen(false)}
-              sx={{ 
-                color: colorTokens.textSecondary,
-                '&:hover': {
-                  backgroundColor: `${colorTokens.textSecondary}20`
-                }
-              }}
-            >
-              Cancelar
-            </Button>
-            <Button
-              onClick={handleBulkDelete}
-              variant="contained"
-              startIcon={loadingBulkDelete ? <CircularProgress size={20} /> : <DeleteIcon />}
-              disabled={loadingBulkDelete}
-              sx={{
-                backgroundColor: colorTokens.danger,
-                color: colorTokens.neutral0,
-                '&:hover': {
-                  backgroundColor: colorTokens.dangerHover
-                }
-              }}
-            >
-              {loadingBulkDelete ? 'Eliminando...' : `Eliminar ${selectedCuts.length} Corte(s)`}
             </Button>
           </DialogActions>
         </Dialog>

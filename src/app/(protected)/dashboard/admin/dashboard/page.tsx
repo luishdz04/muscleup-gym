@@ -31,6 +31,10 @@ import {
   CreditCard as PaymentIcon,
   CalendarToday as CalendarIcon,
   Insights as InsightsIcon,
+  FitnessCenter as FitnessCenterIcon,
+  CardMembership as CardMembershipIcon,
+  Warning as WarningIcon,
+  DirectionsRun as DirectionsRunIcon,
 } from '@mui/icons-material';
 import { motion, AnimatePresence } from 'framer-motion';
 import { createBrowserSupabaseClient } from '@/lib/supabase/client';
@@ -53,7 +57,6 @@ import {
   RevenueBarChart,
   PaymentMethodsPieChart,
   MembershipStatusChart,
-  GenderDistributionChart,
   MonthComparisonChart,
 } from '@/components/dashboard/charts';
 
@@ -118,6 +121,13 @@ interface UserStats {
   memberships: MembershipStats;
   gender: GenderStats;
   timestamp: string;
+}
+
+interface GymActivityStats {
+  todayVisits: number;
+  activeMembershipsToday: number;
+  expiringIn7Days: number;
+  newMembershipsToday: number;
 }
 
 interface DashboardStats {
@@ -191,6 +201,14 @@ export default function DashboardPage() {
     timestamp: ''
   });
   const [userStatsLoading, setUserStatsLoading] = useState(true);
+
+  // Estado para estadísticas de actividad del gimnasio
+  const [gymActivityStats, setGymActivityStats] = useState<GymActivityStats>({
+    todayVisits: 0,
+    activeMembershipsToday: 0,
+    expiringIn7Days: 0,
+    newMembershipsToday: 0,
+  });
 
   const selectedDate = getTodayInMexico();
 
@@ -307,6 +325,50 @@ export default function DashboardPage() {
     }
   }, []);
 
+  // Load gym activity stats
+  const loadGymActivityStats = useCallback(async () => {
+    try {
+      // Fetch today's gym visits from access logs
+      const accessResponse = await fetch('/api/access-control/today-stats', {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      // Fetch membership stats
+      const membershipResponse = await fetch('/api/user-memberships/stats', {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json' }
+      });
+
+      let todayVisits = 0;
+      let activeMembershipsToday = 0;
+      let expiringIn7Days = 0;
+      let newMembershipsToday = 0;
+
+      if (accessResponse.ok) {
+        const accessData = await accessResponse.json();
+        todayVisits = accessData.todayVisits || 0;
+      }
+
+      if (membershipResponse.ok) {
+        const membershipData = await membershipResponse.json();
+        activeMembershipsToday = membershipData.activeToday || 0;
+        expiringIn7Days = membershipData.expiringIn7Days || 0;
+        newMembershipsToday = membershipData.newToday || 0;
+      }
+
+      setGymActivityStats({
+        todayVisits,
+        activeMembershipsToday,
+        expiringIn7Days,
+        newMembershipsToday,
+      });
+    } catch (error) {
+      console.error('Error loading gym activity stats:', error);
+      // Keep default values on error
+    }
+  }, []);
+
   const loadDashboardData = useCallback(async () => {
     try {
       setError(null);
@@ -368,14 +430,20 @@ export default function DashboardPage() {
     if (hydrated) {
       loadDashboardData();
       loadUserStats(); // Load user statistics
+      loadGymActivityStats(); // Load gym activity statistics
     }
-  }, [hydrated, loadDashboardData, loadUserStats]);
+  }, [hydrated, loadDashboardData, loadUserStats, loadGymActivityStats]);
 
   // Manual refresh
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
-    await loadDashboardData();
-  }, [loadDashboardData]);
+    await Promise.all([
+      loadDashboardData(),
+      loadUserStats(),
+      loadGymActivityStats()
+    ]);
+    setRefreshing(false);
+  }, [loadDashboardData, loadUserStats, loadGymActivityStats]);
 
   // Loading state
   if (!hydrated || loading) {
@@ -570,6 +638,53 @@ export default function DashboardPage() {
         </Grid>
       </Grid>
 
+      {/* GYM ACTIVITY METRICS - NEW RELEVANT CARDS */}
+      <Grid container spacing={{ xs: 2, sm: 2.5, md: 3 }} sx={{ mb: { xs: 2, sm: 3, md: 4 } }}>
+        <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
+          <DashboardMetricsCard
+            title="Visitas de Hoy"
+            value={gymActivityStats.todayVisits}
+            subtitle="Entradas al gimnasio"
+            icon={<DirectionsRunIcon />}
+            color={colorTokens.info}
+            loading={loading}
+          />
+        </Grid>
+
+        <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
+          <DashboardMetricsCard
+            title="Membresías Activas"
+            value={gymActivityStats.activeMembershipsToday}
+            subtitle="Vigentes hoy"
+            icon={<CardMembershipIcon />}
+            color={colorTokens.success}
+            loading={loading}
+          />
+        </Grid>
+
+        <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
+          <DashboardMetricsCard
+            title="Por Vencer"
+            value={gymActivityStats.expiringIn7Days}
+            subtitle="Próximos 7 días"
+            icon={<WarningIcon />}
+            color={colorTokens.warning}
+            loading={loading}
+          />
+        </Grid>
+
+        <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
+          <DashboardMetricsCard
+            title="Nuevas Membresías Hoy"
+            value={gymActivityStats.newMembershipsToday}
+            subtitle="Registradas hoy"
+            icon={<FitnessCenterIcon />}
+            color={colorTokens.brand}
+            loading={loading}
+          />
+        </Grid>
+      </Grid>
+
       {/* MONTH COMPARISON SECTION */}
       <Grid container spacing={{ xs: 2, sm: 2.5, md: 3 }}>
         <Grid size={{ xs: 12 }}>
@@ -626,22 +741,12 @@ export default function DashboardPage() {
           />
         </Grid>
 
-        {/* NEW: Membership Status Chart */}
-        <Grid size={{ xs: 12, lg: 6 }}>
+        {/* NEW: Membership Status Chart - Keep this one as it's more relevant */}
+        <Grid size={{ xs: 12 }}>
           <MembershipStatusChart
             data={userStats.memberships}
             loading={userStatsLoading}
             title="Estado de Membresías"
-            height={420}
-          />
-        </Grid>
-
-        {/* NEW: Gender Distribution Chart */}
-        <Grid size={{ xs: 12, lg: 6 }}>
-          <GenderDistributionChart
-            data={userStats.gender}
-            loading={userStatsLoading}
-            title="Distribución por Género"
             height={420}
           />
         </Grid>

@@ -263,10 +263,12 @@ export default function HistorialMembresiaPage() {
 
       // Segunda confirmación con SweetAlert nativo
       const secondConfirm = await MySwal.fire({
+        background: colorTokens.neutral200,
+        color: colorTokens.neutral1200,
         icon: 'warning',
         title: '🔴 SEGUNDA CONFIRMACIÓN',
         html: `
-          <div style="text-align: center;">
+          <div style="text-align: center; color: ${colorTokens.neutral1000};">
             <p>Esta es una acción <strong>IRREVERSIBLE</strong>.</p>
             <p>La membresía será eliminada <strong>PERMANENTEMENTE</strong>.</p>
             <p style="margin-top: 20px;">¿Realmente deseas continuar?</p>
@@ -277,6 +279,7 @@ export default function HistorialMembresiaPage() {
         cancelButtonText: 'Cancelar',
         confirmButtonColor: colorTokens.danger,
         cancelButtonColor: colorTokens.neutral600,
+        iconColor: colorTokens.danger,
         focusCancel: true,
       });
 

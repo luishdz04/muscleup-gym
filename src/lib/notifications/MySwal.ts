@@ -92,4 +92,75 @@ export const showConfirmation = (
   });
 };
 
+// Función para confirmación de guardado con 3 opciones
+export const showSaveConfirmation = (
+  title = '¿Deseas guardar los cambios?',
+  confirmText = 'Guardar',
+  denyText = 'No guardar',
+  cancelText = 'Cancelar',
+  message?: string
+) => {
+  return MySwal.fire({
+    ...darkProSwalConfig,
+    icon: 'question',
+    title,
+    text: message,
+    showDenyButton: true,
+    showCancelButton: true,
+    confirmButtonText: confirmText,
+    denyButtonText: denyText,
+    cancelButtonText: cancelText,
+    confirmButtonColor: colorTokens.success,   // Verde para guardar
+    denyButtonColor: colorTokens.warning,      // Amarillo para no guardar
+    cancelButtonColor: colorTokens.neutral600, // Gris para cancelar
+    iconColor: colorTokens.info,
+    focusCancel: true,
+  });
+};
+
+// Función para confirmación de guardado con callback automático
+export const handleSaveDialog = async (
+  onSave: () => void | Promise<void>,
+  onDontSave: () => void | Promise<void>,
+  onCancel?: () => void | Promise<void>,
+  options?: {
+    title?: string;
+    message?: string;
+    confirmText?: string;
+    denyText?: string;
+    cancelText?: string;
+  }
+) => {
+  const result = await showSaveConfirmation(
+    options?.title,
+    options?.confirmText,
+    options?.denyText,
+    options?.cancelText,
+    options?.message
+  );
+
+  if (result.isConfirmed) {
+    // Usuario eligió "Guardar"
+    await onSave();
+    await showSuccess('Cambios guardados exitosamente', '✅ Guardado');
+  } else if (result.isDenied) {
+    // Usuario eligió "No guardar"
+    await onDontSave();
+    await MySwal.fire({
+      ...darkProSwalConfig,
+      icon: 'info',
+      title: 'Cambios no guardados',
+      text: 'Los cambios han sido descartados',
+      timer: 2000,
+      showConfirmButton: false,
+      iconColor: colorTokens.info,
+    });
+  } else if (result.isDismissed && onCancel) {
+    // Usuario eligió "Cancelar" o cerró el dialog
+    await onCancel();
+  }
+
+  return result;
+};
+
 export default MySwal;
