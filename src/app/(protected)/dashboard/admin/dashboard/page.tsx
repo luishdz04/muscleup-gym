@@ -327,16 +327,10 @@ export default function DashboardPage() {
   }, []);
 
   // Load gym activity stats
-  const loadGymActivityStats = useCallback(async () => {
+  const loadGymActivityStats = useCallback(async (membershipStats?: { active_count: number; new_today_count: number }) => {
     try {
       // Fetch today's gym visits from access logs
       const accessResponse = await fetch('/api/access-control/today-stats', {
-        method: 'GET',
-        headers: { 'Content-Type': 'application/json' }
-      });
-
-      // Fetch membership stats
-      const membershipResponse = await fetch('/api/user-memberships/stats', {
         method: 'GET',
         headers: { 'Content-Type': 'application/json' }
       });
@@ -351,11 +345,23 @@ export default function DashboardPage() {
         todayVisits = accessData.todayVisits || 0;
       }
 
-      if (membershipResponse.ok) {
-        const membershipData = await membershipResponse.json();
-        activeMembershipsToday = membershipData.activeToday || 0;
-        expiringIn7Days = membershipData.expiringIn7Days || 0;
-        newMembershipsToday = membershipData.newToday || 0;
+      // Usar datos de membresías de la API diaria si están disponibles
+      if (membershipStats) {
+        activeMembershipsToday = membershipStats.active_count || 0;
+        newMembershipsToday = membershipStats.new_today_count || 0;
+      } else {
+        // Fallback a API separada si no hay datos
+        const membershipResponse = await fetch('/api/user-memberships/stats', {
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' }
+        });
+
+        if (membershipResponse.ok) {
+          const membershipData = await membershipResponse.json();
+          activeMembershipsToday = membershipData.activeToday || 0;
+          expiringIn7Days = membershipData.expiringIn7Days || 0;
+          newMembershipsToday = membershipData.newToday || 0;
+        }
       }
 
       setGymActivityStats({
@@ -384,6 +390,10 @@ export default function DashboardPage() {
       const todayMembershipsAmount = todayData?.memberships?.total || 0;
       const todayExpenses = todayData?.expenses?.amount || 0;
       const todayBalance = todaySales + todayMembershipsAmount + (todayData?.abonos?.total || 0) - todayExpenses;
+      
+      // Usar datos de membresías de la API diaria
+      const activeMembershipsToday = todayData?.memberships?.active_count || 0;
+      const newMembershipsToday = todayData?.memberships?.new_today_count || 0;
 
       // Get current month data
       const currentMonthData = monthlyData.find(m => m.month === selectedDate.substring(0, 7));
@@ -437,19 +447,22 @@ export default function DashboardPage() {
   // Initial load
   useEffect(() => {
     if (hydrated) {
-      loadDashboardData();
-      loadUserStats(); // Load user statistics
-      loadGymActivityStats(); // Load gym activity statistics
+      const loadAllData = async () => {
+        const todayData = await loadDashboardData();
+        loadUserStats(); // Load user statistics
+        loadGymActivityStats(todayData?.memberships); // Load gym activity statistics
+      };
+      loadAllData();
     }
   }, [hydrated, loadDashboardData, loadUserStats, loadGymActivityStats]);
 
   // Manual refresh
   const handleRefresh = useCallback(async () => {
     setRefreshing(true);
+    const todayData = await loadDashboardData();
     await Promise.all([
-      loadDashboardData(),
       loadUserStats(),
-      loadGymActivityStats()
+      loadGymActivityStats(todayData?.memberships)
     ]);
     setRefreshing(false);
   }, [loadDashboardData, loadUserStats, loadGymActivityStats]);

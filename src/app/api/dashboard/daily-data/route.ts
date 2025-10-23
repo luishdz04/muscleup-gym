@@ -72,7 +72,7 @@ export async function GET(request: NextRequest) {
       throw new Error(`Error consultando abonos: ${abonosError.message}`);
     }
 
-    // 3. MEMBRESÍAS - Filtrar por fecha de pago, no por fecha de creación de membresía
+    // 3. MEMBRESÍAS - Mostrar TODOS los pagos del día, sin filtrar por status
     const { data: membershipsData, error: membershipsError } = await supabase
       .from('membership_payment_details')
       .select(`
@@ -84,10 +84,10 @@ export async function GET(request: NextRequest) {
         membership_id,
         user_memberships!inner (
           id,
-          status
+          status,
+          created_at
         )
       `)
-      .eq('user_memberships.status', 'active')
       .gte('created_at', startISO)
       .lte('created_at', endISO);
 
@@ -194,13 +194,33 @@ export async function GET(request: NextRequest) {
       credito: 0,
       total: 0,
       transactions: 0,
-      commissions: 0
+      commissions: 0,
+      active_count: 0,
+      new_today_count: 0
     };
 
     if (membershipsData) {
       const uniqueMemberships = new Set();
+      const activeMemberships = new Set();
+      const newMembershipsToday = new Set();
+      
       membershipsData.forEach(payment => {
         uniqueMemberships.add(payment.membership_id);
+        
+        // Contar membresías activas
+        if (payment.user_memberships.status === 'active') {
+          activeMemberships.add(payment.membership_id);
+        }
+        
+        // Contar nuevas membresías creadas hoy
+        const membershipCreatedAt = new Date(payment.user_memberships.created_at);
+        const todayStart = new Date(startISO);
+        const todayEnd = new Date(endISO);
+        
+        if (membershipCreatedAt >= todayStart && membershipCreatedAt <= todayEnd) {
+          newMembershipsToday.add(payment.membership_id);
+        }
+        
         const amount = parseFloat(payment.amount.toString());
         const commission = parseFloat(payment.commission_amount?.toString() || '0');
         
@@ -221,7 +241,10 @@ export async function GET(request: NextRequest) {
             break;
         }
       });
+      
       memberships.transactions = uniqueMemberships.size;
+      memberships.active_count = activeMemberships.size;
+      memberships.new_today_count = newMembershipsToday.size;
     }
     memberships.total = memberships.efectivo + memberships.transferencia + memberships.debito + memberships.credito;
 
