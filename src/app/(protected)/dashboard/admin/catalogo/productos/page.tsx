@@ -633,7 +633,7 @@ export default function ProductosPage() {
                 count={total}
                 page={page - 1}
                 onPageChange={(_, newPage) => changePage(newPage + 1)}
-                rowsPerPage={filters.limit || 20}
+                rowsPerPage={filters.limit || 25}
                 onRowsPerPageChange={(e) => {
                   updateFilters({ limit: parseInt(e.target.value, 10) });
                 }}
