@@ -812,15 +812,6 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
 
               <Divider sx={{ my: 1, borderColor: alpha(colorTokens.white, 0.1) }} />
 
-              <MenuItem onClick={() => router.push('/dashboard/cliente')}>
-                <ListItemIcon>
-                  <PersonIcon fontSize="small" sx={{ color: colorTokens.brand }} />
-                </ListItemIcon>
-                Mi Perfil
-              </MenuItem>
-
-              <Divider sx={{ my: 1, borderColor: alpha(colorTokens.textPrimary, 0.1) }} />
-
               <MenuItem
                 onClick={handleLogout}
                 sx={{
