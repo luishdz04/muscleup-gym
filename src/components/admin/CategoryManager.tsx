@@ -70,6 +70,8 @@ export default function CategoryManager({
 
   // Agregar nueva categoría
   const handleAddCategory = async () => {
+    console.log('🔄 [CategoryManager] Intentando agregar categoría:', newCategoryName);
+    
     if (!newCategoryName.trim()) {
       await showError('El nombre de la categoría es obligatorio', '⚠️ Campo Requerido');
       return;
@@ -80,10 +82,15 @@ export default function CategoryManager({
       return;
     }
 
+    console.log('🔄 [CategoryManager] Llamando addCategory...');
     const success = await addCategory(newCategoryName.trim());
+    console.log('🔄 [CategoryManager] Resultado addCategory:', success);
+    
     if (success) {
       await showSuccess(`Categoría "${newCategoryName}" agregada exitosamente`, '✅ Categoría Agregada');
       setNewCategoryName('');
+    } else {
+      await showError('Error al agregar la categoría', '❌ Error');
     }
   };
 
@@ -133,6 +140,11 @@ export default function CategoryManager({
 
   // Agregar subcategoría
   const handleAddSubcategory = async () => {
+    console.log('🔄 [CategoryManager] Intentando agregar subcategoría:', { 
+      name: newSubcategoryName, 
+      categoryId: selectedCategoryForSubcategory 
+    });
+    
     if (!newSubcategoryName.trim() || !selectedCategoryForSubcategory) {
       await showError('Completa todos los campos requeridos', '⚠️ Campos Requeridos');
       return;
@@ -144,11 +156,16 @@ export default function CategoryManager({
       return;
     }
 
+    console.log('🔄 [CategoryManager] Llamando addSubcategory...');
     const success = await addSubcategory(selectedCategoryForSubcategory, newSubcategoryName.trim());
+    console.log('🔄 [CategoryManager] Resultado addSubcategory:', success);
+    
     if (success) {
       await showSuccess(`Subcategoría "${newSubcategoryName}" agregada exitosamente`, '✅ Subcategoría Agregada');
       setNewSubcategoryName('');
       setSelectedCategoryForSubcategory(null);
+    } else {
+      await showError('Error al agregar la subcategoría', '❌ Error');
     }
   };
 

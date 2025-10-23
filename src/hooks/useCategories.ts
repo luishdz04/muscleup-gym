@@ -68,6 +68,8 @@ export function useCategories(): UseCategoriesReturn {
   // Agregar nueva categoría
   const addCategory = useCallback(async (name: string): Promise<boolean> => {
     try {
+      console.log('🔄 [useCategories] Agregando categoría:', name);
+      
       const { data, error } = await supabase
         .from('categories')
         .insert({
@@ -78,8 +80,11 @@ export function useCategories(): UseCategoriesReturn {
         .single();
 
       if (error) {
+        console.error('❌ [useCategories] Error insertando categoría:', error);
         throw error;
       }
+
+      console.log('✅ [useCategories] Categoría insertada:', data);
 
       const newCategory: Category = {
         id: data.id,
@@ -90,13 +95,14 @@ export function useCategories(): UseCategoriesReturn {
       };
       
       setCategories(prev => [...prev, newCategory]);
+      console.log('✅ [useCategories] Estado actualizado, categorías:', [...categories, newCategory].length);
       return true;
     } catch (err: any) {
-      console.error('Error adding category:', err);
+      console.error('❌ [useCategories] Error adding category:', err);
       setError(err?.message || 'Error al agregar categoría');
       return false;
     }
-  }, [supabase]);
+  }, [supabase, categories]);
 
   // Actualizar categoría
   const updateCategory = useCallback(async (id: string, name: string): Promise<boolean> => {
@@ -149,14 +155,18 @@ export function useCategories(): UseCategoriesReturn {
   // Agregar subcategoría
   const addSubcategory = useCallback(async (categoryId: string, subcategoryName: string): Promise<boolean> => {
     try {
+      console.log('🔄 [useCategories] Agregando subcategoría:', { categoryId, subcategoryName });
+      
       // Obtener la categoría actual
       const currentCategory = categories.find(cat => cat.id === categoryId);
       if (!currentCategory) {
+        console.error('❌ [useCategories] Categoría no encontrada:', categoryId);
         throw new Error('Categoría no encontrada');
       }
 
       // Agregar la nueva subcategoría
       const newSubcategories = [...currentCategory.subcategories, subcategoryName];
+      console.log('🔄 [useCategories] Nuevas subcategorías:', newSubcategories);
 
       const { data, error } = await supabase
         .from('categories')
@@ -166,8 +176,11 @@ export function useCategories(): UseCategoriesReturn {
         .single();
 
       if (error) {
+        console.error('❌ [useCategories] Error actualizando subcategorías:', error);
         throw error;
       }
+
+      console.log('✅ [useCategories] Subcategorías actualizadas:', data);
 
       setCategories(prev => 
         prev.map(cat => 
@@ -176,9 +189,10 @@ export function useCategories(): UseCategoriesReturn {
             : cat
         )
       );
+      console.log('✅ [useCategories] Estado actualizado para subcategorías');
       return true;
     } catch (err: any) {
-      console.error('Error adding subcategory:', err);
+      console.error('❌ [useCategories] Error adding subcategory:', err);
       setError(err?.message || 'Error al agregar subcategoría');
       return false;
     }

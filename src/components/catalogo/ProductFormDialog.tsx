@@ -539,7 +539,7 @@ export default function ProductFormDialog({
                   <Grid size={{ xs: 12, md: 8 }}>
                     <Autocomplete
                       freeSolo
-                      options={PRODUCT_CATEGORIES}
+                      options={categories.map(cat => cat.name)}
                       value={formData.category}
                       onChange={(_, newValue) => handleChange('category', newValue || '')}
                       renderInput={(params) => (
