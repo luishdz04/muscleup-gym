@@ -51,6 +51,12 @@ import { useHydrated } from '@/hooks/useHydrated';
 import { useUserTracking } from '@/hooks/useUserTracking';
 import { notify } from '@/utils/notifications';
 import { 
+  showSuccess, 
+  showError, 
+  showDeleteConfirmation, 
+  showConfirmation 
+} from '@/lib/notifications/MySwal';
+import { 
   getCurrentTimestamp,
   formatTimestampForDisplay, 
   formatDateForDisplay,
@@ -181,7 +187,7 @@ const useCoupons = () => {
       
     } catch (err: any) {
       setError(`Error al cargar cupones: ${err.message}`);
-      notify.error('Error al cargar cupones');
+      await showError('Error al cargar cupones', '❌ Error');
     } finally {
       setLoading(false);
     }
@@ -219,7 +225,7 @@ const useCoupons = () => {
           .eq('id', selectedCoupon.id);
 
         if (error) throw error;
-        notify.success('Cupón actualizado exitosamente');
+        await showSuccess('Cupón actualizado exitosamente', '✅ Actualizado');
       } else {
         // ✅ CREAR - Tabla coupons con auditoría parcial (solo created_by)
         const dataWithAudit = await addAuditFieldsFor('coupons', couponData, false);
@@ -229,7 +235,7 @@ const useCoupons = () => {
           .insert([dataWithAudit]);
 
         if (error) throw error;
-        notify.success('Cupón creado exitosamente');
+        await showSuccess('Cupón creado exitosamente', '🎉 Creado');
       }
 
       await loadCoupons();
@@ -237,9 +243,9 @@ const useCoupons = () => {
       
     } catch (err: any) {
       if (err.code === '23505') {
-        notify.error('Ya existe un cupón con ese código');
+        await showError('Ya existe un cupón con ese código', '⚠️ Código Duplicado');
       } else {
-        notify.error(`Error al guardar cupón: ${err.message}`);
+        await showError(`Error al guardar cupón: ${err.message}`, '❌ Error');
       }
       return false;
     }
@@ -260,31 +266,52 @@ const useCoupons = () => {
 
       if (error) throw error;
 
-      notify.success(`Cupón ${!coupon.is_active ? 'activado' : 'desactivado'} exitosamente`);
+      await showSuccess(
+        `Cupón ${!coupon.is_active ? 'activado' : 'desactivado'} exitosamente`, 
+        `✅ ${!coupon.is_active ? 'Activado' : 'Desactivado'}`
+      );
       await loadCoupons();
       
     } catch (err: any) {
-      notify.error(`Error al cambiar estado: ${err.message}`);
+      await showError(`Error al cambiar estado: ${err.message}`, '❌ Error');
     }
   }, [supabase, loadCoupons, addAuditFieldsFor]);
 
   // ✅ ELIMINAR CUPÓN (sin auditoría - eliminación completa)
   const deleteCoupon = useCallback(async (coupon: Coupon) => {
-    if (!confirm(`¿Está seguro de eliminar el cupón "${coupon.code}"?`)) return;
-
-    try {
-      const { error } = await supabase
-        .from('coupons')
-        .delete()
-        .eq('id', coupon.id);
-
-      if (error) throw error;
-
-      notify.success('Cupón eliminado exitosamente');
-      await loadCoupons();
+    // Primer diálogo: Confirmación de eliminación
+    const result = await showDeleteConfirmation(`"${coupon.code}"`);
+    
+    if (result.isConfirmed) {
+      // Segundo diálogo: Confirmación final (doble confirmación)
+      const finalResult = await showConfirmation(
+        `¿Estás COMPLETAMENTE seguro de eliminar el cupón "${coupon.code}"?\n\n` +
+        `Esta acción eliminará:\n` +
+        `• El cupón de descuento\n` +
+        `• Todas las referencias asociadas\n` +
+        `• El historial de uso\n\n` +
+        `⚠️ Esta acción NO se puede deshacer`,
+        '⚠️ Confirmación Final',
+        'Sí, eliminar definitivamente',
+        'Cancelar'
+      );
       
-    } catch (err: any) {
-      notify.error(`Error al eliminar cupón: ${err.message}`);
+      if (finalResult.isConfirmed) {
+        try {
+          const { error } = await supabase
+            .from('coupons')
+            .delete()
+            .eq('id', coupon.id);
+
+          if (error) throw error;
+
+          await showSuccess(`Cupón "${coupon.code}" eliminado exitosamente`, '✅ Eliminado');
+          await loadCoupons();
+          
+        } catch (err: any) {
+          await showError(`Error al eliminar cupón: ${err.message}`, '❌ Error');
+        }
+      }
     }
   }, [supabase, loadCoupons]);
 
@@ -449,9 +476,9 @@ export default function CuponesPage() {
   const handleCopyCode = useCallback(async (code: string) => {
     try {
       await navigator.clipboard.writeText(code);
-      notify.success(`Código "${code}" copiado al portapapeles`);
+      await showSuccess(`Código "${code}" copiado al portapapeles`, '📋 Copiado');
     } catch (err) {
-      notify.error('Error al copiar código');
+      await showError('Error al copiar código', '❌ Error');
     }
   }, []);
 

@@ -58,6 +58,11 @@ import confetti from 'canvas-confetti';
 // ✅ IMPORTACIONES ENTERPRISE v6.0
 import { colorTokens } from '@/theme';
 import { notify } from '@/utils/notifications';
+import { 
+  showSuccess, 
+  showError, 
+  showConfirmation 
+} from '@/lib/notifications/MySwal';
 import { useHydrated } from '@/hooks/useHydrated';
 import { useUserTracking } from '@/hooks/useUserTracking';
 import {
@@ -627,10 +632,10 @@ function RegistrarMembresiaPage() {
     { label: 'Pago', description: 'Método de pago', icon: <PaymentIcon /> }
   ], []);
 
-  const validateUser = useCallback((user: any): boolean => {
+  const validateUser = useCallback(async (user: any): Promise<boolean> => {
     if (!user) return false;
     if (!user.email) {
-      notify.error('El usuario no tiene email');
+      await showError('El usuario no tiene email', '⚠️ Email Requerido');
       return false;
     }
     return true;
@@ -640,14 +645,14 @@ function RegistrarMembresiaPage() {
     router.push('/dashboard/admin/membresias');
   }, [router]);
 
-  const handleUserSelect = useCallback((event: React.SyntheticEvent, newValue: any) => {
+  const handleUserSelect = useCallback(async (event: React.SyntheticEvent, newValue: any) => {
     if (!newValue) {
       setSelectedUser(null);
       dispatch({ type: 'SET_USER', payload: { id: '' } });
       return;
     }
 
-    if (!validateUser(newValue)) return;
+    if (!(await validateUser(newValue))) return;
 
     const normalizedUser = {
       ...newValue,
@@ -663,9 +668,9 @@ function RegistrarMembresiaPage() {
     }
   }, [dispatch, loadUserHistory, setSelectedUser, validateUser]);
 
-  const handlePlanSelect = useCallback((plan: any) => {
+  const handlePlanSelect = useCallback(async (plan: any) => {
     if (!plan || !plan.id) {
-      notify.error('Plan inválido');
+      await showError('Plan inválido', '⚠️ Plan Inválido');
       return;
     }
     setSelectedPlan(plan);
@@ -785,55 +790,55 @@ function RegistrarMembresiaPage() {
       if (success) {
         // 🎉 Trigger confetti celebration
         triggerConfetti();
-        notify.success('¡Venta procesada exitosamente! 🎉');
+        await showSuccess('¡Venta procesada exitosamente! 🎉', '🎉 ¡Éxito!');
         setTimeout(() => {
           router.push('/dashboard/admin/membresias');
         }, 3000);
       }
     } catch (error) {
       console.error('Error procesando venta:', error);
-      notify.error('Error al procesar la venta');
+      await showError('Error al procesar la venta', '❌ Error');
     }
   }, [handleSubmit, router]);
 
-  const isFormValid = useCallback(() => {
+  const isFormValid = useCallback(async () => {
     if (!selectedUser) {
-      notify.error('Seleccione un cliente válido');
+      await showError('Seleccione un cliente válido', '⚠️ Cliente Requerido');
       return false;
     }
     if (!selectedPlan) {
-      notify.error('Seleccione un plan');
+      await showError('Seleccione un plan', '⚠️ Plan Requerido');
       return false;
     }
     if (!formData.paymentType) {
-      notify.error('Seleccione el tipo de duración');
+      await showError('Seleccione el tipo de duración', '⚠️ Duración Requerida');
       return false;
     }
     
     if (formData.isMixedPayment) {
       if (formData.paymentDetails.length === 0) {
-        notify.error('Agregue al menos un método de pago');
+        await showError('Agregue al menos un método de pago', '⚠️ Pago Requerido');
         return false;
       }
       
       for (let i = 0; i < formData.paymentDetails.length; i++) {
         const detail = formData.paymentDetails[i];
         if (!detail.method) {
-          notify.error(`Método de pago #${i+1} no seleccionado`);
+          await showError(`Método de pago #${i+1} no seleccionado`, '⚠️ Método Requerido');
           return false;
         }
         if (detail.amount <= 0) {
-          notify.error(`Método de pago #${i+1} debe tener monto mayor a cero`);
+          await showError(`Método de pago #${i+1} debe tener monto mayor a cero`, '⚠️ Monto Inválido');
           return false;
         }
       }
     } else {
       if (formData.paymentDetails.length === 0) {
-        notify.error('Seleccione un método de pago');
+        await showError('Seleccione un método de pago', '⚠️ Método Requerido');
         return false;
       }
       if (!formData.paymentDetails[0].method) {
-        notify.error('Seleccione un método de pago');
+        await showError('Seleccione un método de pago', '⚠️ Método Requerido');
         return false;
       }
     }
@@ -1645,12 +1650,12 @@ function RegistrarMembresiaPage() {
                                 
                                 <Button
                                   variant="contained"
-                                  onClick={() => {
+                                  onClick={async () => {
                                     const trimmedCode = formData.couponCode.trim();
                                     if (trimmedCode) {
                                       validateCoupon(trimmedCode);
                                     } else {
-                                      notify.error('Ingrese un código de cupón');
+                                      await showError('Ingrese un código de cupón', '⚠️ Código Requerido');
                                     }
                                   }}
                                   disabled={!formData.couponCode.trim() || loading}
@@ -1670,10 +1675,10 @@ function RegistrarMembresiaPage() {
                                 {(formData.couponCode || appliedCoupon) && (
                                   <Button
                                     variant="outlined"
-                                    onClick={() => {
+                                    onClick={async () => {
                                       dispatch({ type: 'CLEAR_COUPON' });
                                       setAppliedCoupon(null);
-                                      notify.success('Cupón eliminado');
+                                      await showSuccess('Cupón eliminado', '✅ Eliminado');
                                     }}
                                     sx={{
                                       color: colorTokens.danger,
@@ -1703,10 +1708,10 @@ function RegistrarMembresiaPage() {
                                       <Box sx={{ flex: 1 }} />
                                       <IconButton
                                         size="small"
-                                        onClick={() => {
+                                        onClick={async () => {
                                           dispatch({ type: 'CLEAR_COUPON' });
                                           setAppliedCoupon(null);
-                                          notify.success('Cupón eliminado');
+                                          await showSuccess('Cupón eliminado', '✅ Eliminado');
                                         }}
                                         sx={{ color: colorTokens.danger }}
                                       >
