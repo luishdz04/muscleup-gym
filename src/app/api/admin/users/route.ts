@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseAdmin } from '@/lib/supabase/admin';
+import { createAdminSupabaseClient } from '@/lib/supabase/admin';
 
 // GET /api/admin/users - Obtener todos los usuarios con datos relacionados
 export async function GET(request: NextRequest) {
   try {
     console.log('📊 [API-USERS] Obteniendo usuarios con datos relacionados...');
 
+    const supabaseAdmin = createAdminSupabaseClient();
     const { data: users, error } = await supabaseAdmin
       .from('Users')
       .select(`
@@ -49,6 +50,8 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+    
+    const supabaseAdmin = createAdminSupabaseClient();
     
     // Verificar si el email ya existe
     const { data: existingUser, error: checkError } = await supabaseAdmin

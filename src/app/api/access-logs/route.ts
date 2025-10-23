@@ -277,7 +277,7 @@ export async function GET(request: NextRequest) {
 
     // Capacidad actual (últimos 30 minutos en México)
     const thirtyMinutesAgo = getMexicoTimestampWithOffset(-30 * 60 * 1000); // -30 minutos
-    const thirtyMinutesAgoISO = thirtyMinutesAgo.toISOString();
+    const thirtyMinutesAgoISO = thirtyMinutesAgo; // Ya es un string ISO
 
     const { count: currentCapacity } = await supabase
       .from('access_logs')
