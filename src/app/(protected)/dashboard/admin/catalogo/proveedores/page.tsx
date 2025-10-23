@@ -108,7 +108,7 @@ export default function ProveedoresPage() {
     reload
   } = useSuppliers({
     status: 'active',
-    limit: 20
+    limit: 25
   });
 
   const {

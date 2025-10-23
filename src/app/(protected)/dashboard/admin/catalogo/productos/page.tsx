@@ -89,7 +89,7 @@ export default function ProductosPage() {
     reload
   } = useProducts({
     status: 'active',
-    limit: 20
+    limit: 25
   });
 
   // ESTADOS LOCALES
