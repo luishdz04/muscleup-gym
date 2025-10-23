@@ -332,10 +332,10 @@ export default function CategoryManager({
                 <List sx={{ bgcolor: 'background.paper', borderRadius: 2 }}>
                   {categories.map((category, index) => (
                     <React.Fragment key={category.id}>
-                      <ListItem sx={{ py: 2 }}>
-                        <Box sx={{ width: '100%' }}>
+                      <ListItem sx={{ py: 2, flexDirection: 'column', alignItems: 'stretch' }}>
+                        <Box sx={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
                           {editingCategory === category.id ? (
-                            <Box display="flex" alignItems="center" gap={2}>
+                            <Box display="flex" alignItems="center" gap={2} sx={{ flexGrow: 1 }}>
                               <TextField
                                 size="small"
                                 value={editingCategoryName}
@@ -345,13 +345,18 @@ export default function CategoryManager({
                               />
                               <Button
                                 size="small"
+                                variant="contained"
                                 onClick={() => handleEditCategory(category.id, editingCategoryName)}
-                                sx={{ color: colorTokens.brand }}
+                                sx={{ 
+                                  backgroundColor: colorTokens.brand,
+                                  '&:hover': { backgroundColor: colorTokens.brandHover }
+                                }}
                               >
                                 Guardar
                               </Button>
                               <Button
                                 size="small"
+                                variant="outlined"
                                 onClick={() => {
                                   setEditingCategory(null);
                                   setEditingCategoryName('');
@@ -361,9 +366,9 @@ export default function CategoryManager({
                               </Button>
                             </Box>
                           ) : (
-                            <Box display="flex" alignItems="center" gap={1}>
-                              <CategoryIcon sx={{ color: colorTokens.brand, fontSize: 20 }} />
-                              <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                            <Box display="flex" alignItems="center" gap={2} sx={{ flexGrow: 1 }}>
+                              <CategoryIcon sx={{ color: colorTokens.brand, fontSize: 24 }} />
+                              <Typography variant="h6" sx={{ fontWeight: 600, color: colorTokens.textPrimary }}>
                                 {category.name}
                               </Typography>
                               <Chip 
@@ -372,14 +377,46 @@ export default function CategoryManager({
                                 sx={{ 
                                   backgroundColor: `${colorTokens.brand}20`,
                                   color: colorTokens.brand,
-                                  fontWeight: 500
+                                  fontWeight: 500,
+                                  border: `1px solid ${colorTokens.brand}40`
                                 }}
                               />
                             </Box>
                           )}
                           
-                          {category.subcategories.length > 0 && (
-                            <Box display="flex" flexWrap="wrap" gap={0.5} mt={1}>
+                          <Box display="flex" gap={1}>
+                            <IconButton
+                              size="small"
+                              onClick={() => {
+                                setEditingCategory(category.id);
+                                setEditingCategoryName(category.name);
+                              }}
+                              sx={{ 
+                                color: colorTokens.brand,
+                                '&:hover': { backgroundColor: `${colorTokens.brand}10` }
+                              }}
+                            >
+                              <EditIcon />
+                            </IconButton>
+                            <IconButton
+                              size="small"
+                              onClick={() => handleDeleteCategory(category.id)}
+                              sx={{ 
+                                color: colorTokens.error,
+                                '&:hover': { backgroundColor: `${colorTokens.error}10` }
+                              }}
+                            >
+                              <DeleteIcon />
+                            </IconButton>
+                          </Box>
+                        </Box>
+                        
+                        {category.subcategories.length > 0 && (
+                          <Box sx={{ mt: 2, ml: 4 }}>
+                            <Typography variant="body2" sx={{ color: colorTokens.textSecondary, mb: 1, fontWeight: 500 }}>
+                              Subcategorías:
+                            </Typography>
+                            <Box display="flex" flexWrap="wrap" gap={1}>
                               {category.subcategories.map((subcategory) => (
                                 <Chip
                                   key={subcategory}
@@ -388,39 +425,23 @@ export default function CategoryManager({
                                   variant="outlined"
                                   onDelete={() => handleDeleteSubcategory(category.id, subcategory)}
                                   sx={{
-                                    borderColor: `${colorTokens.brand}40`,
+                                    borderColor: `${colorTokens.brand}60`,
                                     color: colorTokens.textSecondary,
+                                    backgroundColor: `${colorTokens.brand}05`,
                                     '& .MuiChip-deleteIcon': {
-                                      color: colorTokens.error
+                                      color: colorTokens.error,
+                                      '&:hover': { color: colorTokens.error }
+                                    },
+                                    '&:hover': {
+                                      backgroundColor: `${colorTokens.brand}10`,
+                                      borderColor: colorTokens.brand
                                     }
                                   }}
                                 />
                               ))}
                             </Box>
-                          )}
-                        </Box>
-                        <ListItemSecondaryAction>
-                          <Box display="flex" gap={1}>
-                            <IconButton
-                              size="small"
-                              onClick={() => {
-                                setEditingCategory(category.id);
-                                setEditingCategoryName(category.name);
-                              }}
-                              disabled={editingCategory === category.id}
-                              sx={{ color: colorTokens.brand }}
-                            >
-                              <EditIcon />
-                            </IconButton>
-                            <IconButton
-                              size="small"
-                              onClick={() => handleDeleteCategory(category)}
-                              sx={{ color: colorTokens.error }}
-                            >
-                              <DeleteIcon />
-                            </IconButton>
                           </Box>
-                        </ListItemSecondaryAction>
+                        )}
                       </ListItem>
                       {index < categories.length - 1 && <Divider />}
                     </React.Fragment>
