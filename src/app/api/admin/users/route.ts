@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createAdminSupabaseClient } from '@/lib/supabase/admin';
+import { createAdminSupabaseClient } from '@/lib/supabase/admin'; // ✅ CORREGIDO
 
 // GET /api/admin/users - Obtener todos los usuarios con datos relacionados
 export async function GET(request: NextRequest) {
