@@ -469,7 +469,7 @@ export default function CutsHistoryPage() {
     }
   };
 
-  const syncExpensesWithReal = () => {
+  const syncExpensesWithReal = async () => {
     if (editingCut && realExpensesAmount !== null) {
       setEditingCut({
         ...editingCut,
