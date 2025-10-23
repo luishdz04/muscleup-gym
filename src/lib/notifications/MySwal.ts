@@ -15,13 +15,14 @@ const darkProSwalConfig = {
   cancelButtonColor: colorTokens.neutral600, // Botón gris
   denyButtonColor: colorTokens.danger,     // Botón rojo
   
-  // ✅ Z-INDEX ALTO PARA APARECER SOBRE TODOS LOS MODALES
-  zIndex: 9999,
+  // ✅ Z-INDEX SUPERIOR A MATERIAL-UI MODALS (1300)
+  zIndex: 1500,
   
   customClass: {
     popup: 'swal-dark-popup',
     confirmButton: 'swal-dark-confirm-button',
     cancelButton: 'swal-dark-cancel-button',
+    container: 'swal-high-zindex', // ✅ CLASE PERSONALIZADA PARA Z-INDEX
   }
 };
 

@@ -159,6 +159,23 @@
   border-color: #22C55E !important;
 }
 
+/* ============================================================================
+   SWEETALERT2 Z-INDEX FIX PARA MODALES MATERIAL-UI
+   ============================================================================ */
+.swal2-container.swal-high-zindex {
+  z-index: 1500 !important;
+}
+
+/* Asegurar que SweetAlert2 aparezca sobre todos los modales Material-UI */
+.swal2-container {
+  z-index: 1500 !important;
+}
+
+/* Fix específico para cuando SweetAlert2 está dentro de un modal */
+.MuiDialog-root .swal2-container {
+  z-index: 1500 !important;
+}
+
 .swal2-icon.swal2-info {
   border-color: #38BDF8 !important;
 }
