@@ -75,9 +75,7 @@ import { useUserTracking } from '@/hooks/useUserTracking';
 import { useNotifications } from '@/hooks/useNotifications';
 import { formatCurrency } from '@/utils/formHelpers';
 import { formatDateLong, formatMexicoTime } from '@/utils/dateUtils';
-
-// SWEETALERT2 para confirmaciones
-import MySwal, { showDeleteConfirmation } from '@/lib/notifications/MySwal';
+import { showSuccess, showError, showDeleteConfirmation } from '@/lib/notifications/MySwal';
 
 const formatPrice = (amount: number): string => formatCurrency(Number.isFinite(amount) ? amount : 0);
 
@@ -477,7 +475,7 @@ export default function CutsHistoryPage() {
         ...editingCut,
         expenses_amount: realExpensesAmount
       });
-      toast.success('Gastos sincronizados con los registros reales');
+      await showSuccess('Gastos sincronizados con los registros reales', '✅ Gastos Sincronizados');
     }
   };
 
@@ -722,7 +720,7 @@ export default function CutsHistoryPage() {
       if (data.success) {
         setEditDialogOpen(false);
         setEditingCut(null);
-        toast.success('Corte actualizado correctamente');
+        await showSuccess('Corte actualizado correctamente', '✅ Corte Actualizado');
         loadCuts(); // Recargar datos
       } else {
         setError(data.error || 'Error al actualizar el corte');
