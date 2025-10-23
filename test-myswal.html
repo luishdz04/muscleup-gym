@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test MySwal</title>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+<body>
+    <h1>Test MySwal</h1>
+    <button onclick="testSuccess()">Test Success</button>
+    <button onclick="testError()">Test Error</button>
+    <button onclick="testConfirmation()">Test Confirmation</button>
+    <button onclick="testDeleteConfirmation()">Test Delete Confirmation</button>
+
+    <script>
+        // Simular la configuración de MySwal
+        const darkProSwalConfig = {
+            background: '#1a1a1a',
+            color: '#ffffff',
+            confirmButtonColor: '#ffd700',
+            cancelButtonColor: '#666666',
+            denyButtonColor: '#ff4444',
+        };
+
+        function testSuccess() {
+            Swal.fire({
+                ...darkProSwalConfig,
+                icon: 'success',
+                title: '¡Éxito!',
+                text: 'Plan actualizado exitosamente',
+                timer: 3000,
+                timerProgressBar: true,
+                showConfirmButton: false,
+                iconColor: '#22c55e',
+            });
+        }
+
+        function testError() {
+            Swal.fire({
+                ...darkProSwalConfig,
+                icon: 'error',
+                title: 'Error',
+                text: 'Error al actualizar el plan',
+                confirmButtonText: 'Entendido',
+                iconColor: '#ff4444',
+            });
+        }
+
+        function testConfirmation() {
+            Swal.fire({
+                ...darkProSwalConfig,
+                icon: 'question',
+                title: '¿Estás seguro?',
+                text: '¿Deseas ir a la lista de planes?',
+                showCancelButton: true,
+                confirmButtonText: 'Sí, ir a lista',
+                cancelButtonText: 'Cancelar',
+                iconColor: '#3b82f6',
+                focusCancel: true,
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    Swal.fire({
+                        ...darkProSwalConfig,
+                        icon: 'success',
+                        title: 'Redirigiendo...',
+                        text: 'Redirigiendo a la lista de planes',
+                        timer: 2000,
+                        showConfirmButton: false,
+                    });
+                }
+            });
+        }
+
+        function testDeleteConfirmation() {
+            Swal.fire({
+                ...darkProSwalConfig,
+                icon: 'warning',
+                title: '⚠️ Eliminar definitivamente',
+                html: `
+                    <div style="text-align: left; color: #ffffff;">
+                        <p style="margin-bottom: 16px;">¿Estás completamente seguro de eliminar:</p>
+                        <p style="font-weight: 600; color: #ffd700; margin-bottom: 16px;">"Plan de Prueba"</p>
+                        <div style="background: #ff444420; border: 1px solid #ff444440; border-radius: 8px; padding: 12px; margin: 16px 0;">
+                            <p style="color: #ff4444; font-weight: 600; margin: 0;">⚠️ Esta acción NO se puede deshacer</p>
+                        </div>
+                    </div>
+                `,
+                showCancelButton: true,
+                confirmButtonText: 'Sí, eliminar',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#ff4444',
+                iconColor: '#ffa500',
+                focusCancel: true,
+            });
+        }
+    </script>
+</body>
+</html>

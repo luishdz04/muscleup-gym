@@ -22,6 +22,7 @@ import WarningIcon from '@mui/icons-material/Warning';
 import { colorTokens } from '@/theme';
 import { usePlanForm } from '@/hooks/usePlanForm';
 import { useNotifications } from '@/hooks/useNotifications';
+import { showSuccess, showError, showSaveConfirmation, showConfirmation } from '@/lib/notifications/MySwal';
 import { BasicInfoSection } from '@/components/PlanForm/BasicInfoSection';
 import { PricingSection } from '@/components/PlanForm/PricingSection';
 import { FeaturesSection } from '@/components/PlanForm/FeaturesSection';
@@ -73,16 +74,22 @@ export default function EditarPlanPage() {
       return;
     }
 
-    const result = await alert.confirm(
-      'Cambios sin guardar',
-      `Tienes cambios sin guardar en "${formData.name}". ¿Qué deseas hacer?`
+    const result = await showSaveConfirmation(
+      '¿Qué deseas hacer con los cambios?',
+      'Guardar y salir',
+      'Descartar cambios',
+      'Cancelar',
+      `Tienes cambios sin guardar en el plan "${formData.name}".\n\n` +
+      `• GUARDAR Y SALIR = Guarda los cambios y regresa a la lista\n` +
+      `• DESCARTAR CAMBIOS = Sale sin guardar (se perderán los cambios)\n` +
+      `• CANCELAR = Regresa a seguir editando`
     );
 
     if (result.isConfirmed) {
-      toast.success('Guardando cambios antes de salir...');
+      await showSuccess('Guardando cambios y regresando a la lista...', '💾 Guardando');
       await handleSave(true);
     } else if (result.isDenied) {
-      toast.success('Saliendo sin guardar cambios');
+      await showSuccess('Descartando cambios y regresando a la lista', '⚠️ Cambios descartados');
       router.push('/dashboard/admin/planes');
     }
   };
@@ -96,22 +103,21 @@ export default function EditarPlanPage() {
     
     if (result.success) {
       try {
-        // Modal con texto claro sobre qué hace cada botón
-        const actionResult = await alert.confirm(
-          '¡Plan Actualizado Exitosamente!',
-          `El plan "${formData.name}" se ha actualizado correctamente.\n\n` +
-          `• ACEPTAR = Ir a lista de planes\n` +
-          `• CANCELAR = Seguir editando\n\n` +
-          `¿Deseas ir a la lista de planes?`
+        // Modal con texto claro sobre qué hace cada botón usando MySwal
+        const actionResult = await showConfirmation(
+          `Plan "${formData.name}" actualizado correctamente.\n\n¿Qué deseas hacer?`,
+          '✅ Plan Actualizado',
+          'Ver lista de planes',
+          'Seguir editando'
         );
 
         if (actionResult.isConfirmed || exitAfterSave) {
-          // ACEPTAR = Ir a lista de planes
-          toast.success('Redirigiendo a lista de planes...');
+          // SÍ = Ir a lista de planes
+          await showSuccess('Redirigiendo a la lista...', '📋 Redirigiendo');
           router.push('/dashboard/admin/planes');
         } else {
-          // CANCELAR = Seguir editando
-          toast.success('¡Continúa editando el plan!');
+          // NO = Seguir editando
+          await showSuccess('¡Perfecto! Puedes continuar editando', '✏️ Editando');
         }
       } catch (modalError) {
         console.error('Error en modal de confirmación:', modalError);
@@ -127,12 +133,12 @@ export default function EditarPlanPage() {
       
     } else {
       try {
-        await alert.error(
-          'Error al Actualizar Plan',
-          result.error || 'Ocurrió un problema inesperado. Por favor, intenta nuevamente.'
+        await showError(
+          result.error || 'Ocurrió un problema inesperado. Por favor, intenta nuevamente.',
+          'Error al Actualizar Plan'
         );
       } catch (errorModalError) {
-        toast.error(`Error: ${result.error || 'No se pudo actualizar el plan'}`);
+        await showError(`Error: ${result.error || 'No se pudo actualizar el plan'}`, 'Error');
       }
     }
   };

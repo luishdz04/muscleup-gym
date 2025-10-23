@@ -23,6 +23,7 @@ import { getCurrentTimestamp } from '@/utils/dateUtils';
 
 import { usePlanForm } from '@/hooks/usePlanForm';
 import { useNotifications } from '@/hooks/useNotifications';
+import { showSuccess, showError, showSaveConfirmation, showConfirmation } from '@/lib/notifications/MySwal';
 import { BasicInfoSection } from '@/components/PlanForm/BasicInfoSection';
 import { PricingSection } from '@/components/PlanForm/PricingSection';
 import { FeaturesSection } from '@/components/PlanForm/FeaturesSection';
@@ -68,19 +69,25 @@ export default function CrearPlanPage() {
       return;
     }
 
-    const result = await alert.confirm(
-      'Cambios sin guardar',
-      'Tienes cambios sin guardar. ¿Qué deseas hacer?'
+    const result = await showSaveConfirmation(
+      '¿Qué deseas hacer con el plan?',
+      'Guardar y ver lista',
+      'Descartar plan',
+      'Cancelar',
+      `Tienes un plan sin guardar.\n\n` +
+      `• GUARDAR Y VER LISTA = Guarda el plan y regresa a la lista\n` +
+      `• DESCARTAR PLAN = Sale sin guardar (se perderá el plan)\n` +
+      `• CANCELAR = Regresa a seguir creando el plan`
     );
 
     if (result.isConfirmed) {
-      notify.success('Guardando plan antes de salir...');
+      await showSuccess('Guardando plan y regresando a la lista...', '💾 Guardando');
       await handleSave(true);
     } else if (result.isDenied) {
-      notify.success('Saliendo sin guardar cambios');
+      await showSuccess('Descartando plan y regresando a la lista', '⚠️ Plan descartado');
       router.push('/dashboard/admin/planes');
     }
-  }, [hasFormChanges, alert, router]);
+  }, [hasFormChanges, router]);
 
   // ✅ MANEJADOR DE GUARDADO MEMOIZADO Y SIMPLIFICADO
   const handleSave = useCallback(async (exitAfterSave = false) => {
@@ -100,33 +107,30 @@ export default function CrearPlanPage() {
       if (result.success) {
         console.log('✅ Plan guardado exitosamente');
         
-        // ✅ USAR SISTEMA NOTIFY CENTRALIZADO
-        notify.success(`Plan "${formData.name}" creado exitosamente!`);
-        
         try {
-          const actionResult = await alert.confirm(
-            'Plan Creado Exitosamente',
-            `El plan "${formData.name}" se ha guardado correctamente.\n\n` +
-            `• ACEPTAR = Ir a lista de planes\n` +
-            `• CANCELAR = Crear otro plan\n\n` +
-            `¿Deseas ir a la lista de planes?`
+          // Modal con texto claro sobre qué hace cada botón usando MySwal
+          const actionResult = await showConfirmation(
+            `Plan "${formData.name}" creado exitosamente.\n\n¿Qué deseas hacer?`,
+            '🎉 Plan Creado',
+            'Ver lista de planes',
+            'Crear otro plan'
           );
 
           console.log('🔍 ActionResult:', actionResult);
 
           if (actionResult.isConfirmed || exitAfterSave) {
             console.log('✅ Usuario eligió: Ir a lista de planes');
-            notify.success('Redirigiendo a lista de planes...');
+            await showSuccess('Redirigiendo a la lista...', '📋 Redirigiendo');
             router.push('/dashboard/admin/planes');
           } else {
             console.log('🆕 Usuario eligió: Crear otro plan');
-            notify.success('Formulario listo para crear otro plan!');
+            await showSuccess('¡Perfecto! Listo para crear otro plan', '🆕 Nuevo plan');
             resetForm();
             setExpandedAccordion('basic');
           }
         } catch (modalError) {
           console.error('⚠️ Error en modal de confirmación:', modalError);
-          notify.success(`Plan "${formData.name}" creado exitosamente!`);
+          await showSuccess(`Plan "${formData.name}" creado exitosamente!`, 'Éxito');
           
           const shouldRedirect = window.confirm(
             `Plan "${formData.name}" creado exitosamente!\n\n¿Ir a la lista de planes? (OK = Sí, Cancelar = Crear otro)`
@@ -143,33 +147,31 @@ export default function CrearPlanPage() {
       } else {
         console.error('❌ Error al guardar:', result.error);
         
-        // ✅ USAR SISTEMA NOTIFY CENTRALIZADO
-        notify.error(`Error: ${result.error || 'No se pudo guardar el plan'}`);
-        
         try {
-          await alert.error(
-            'Error al Crear Plan',
-            result.error || 'Ocurrió un problema inesperado. Por favor, intenta nuevamente.'
+          await showError(
+            result.error || 'Ocurrió un problema inesperado. Por favor, intenta nuevamente.',
+            'Error al Crear Plan'
           );
         } catch (errorModalError) {
           console.error('⚠️ Error en modal de error:', errorModalError);
+          await showError(`Error: ${result.error || 'No se pudo guardar el plan'}`, 'Error');
         }
       }
       
     } catch (unexpectedError) {
       console.error('💥 Error inesperado en handleSave:', unexpectedError);
-      notify.error('Error inesperado. Revisa la consola para más detalles.');
       
       try {
-        await alert.error(
-          'Error Inesperado',
-          'Ocurrió un problema inesperado. Por favor, intenta nuevamente.'
+        await showError(
+          'Ocurrió un problema inesperado. Por favor, intenta nuevamente.',
+          'Error Inesperado'
         );
       } catch (errorModalError) {
         console.error('⚠️ Error en modal de error inesperado:', errorModalError);
+        await showError('Error inesperado. Revisa la consola para más detalles.', 'Error');
       }
     }
-  }, [validateForm, savePlan, formData.name, alert, router, resetForm]);
+  }, [validateForm, savePlan, formData.name, router, resetForm]);
 
   // ✅ TOGGLE ACORDEÓN MEMOIZADO
   const toggleAccordion = useCallback((section: string) => {

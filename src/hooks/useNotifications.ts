@@ -138,10 +138,9 @@ export const useNotifications = () => {
   useEffect(() => {
     fetchUnreadCount();
     
-    // Refrescar cada 30 segundos
-    const interval = setInterval(fetchUnreadCount, 30000);
-    
-    return () => clearInterval(interval);
+    // ✅ POLLING DESHABILITADO - Se usa Supabase Realtime en su lugar
+    // const interval = setInterval(fetchUnreadCount, 30000);
+    // return () => clearInterval(interval);
   }, [fetchUnreadCount]);
 
   // ✅ MEMOIZAR FUNCIONES TOAST

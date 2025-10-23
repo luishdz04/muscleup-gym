@@ -38,6 +38,7 @@ import {
   formatTimestampForDisplay,
   formatDateForDisplay 
 } from '@/utils/dateUtils';
+import { showSuccess, showError, showDeleteConfirmation, showConfirmation } from '@/lib/notifications/MySwal';
 
 // Icons
 import EditIcon from '@mui/icons-material/Edit';
@@ -152,6 +153,7 @@ const usePlansManagement = () => {
   const hydrated = useHydrated();
   const { addAuditFields } = useUserTracking();
   const [plans, setPlans] = useState<MembershipPlan[]>([]);
+  const [planActiveUsers, setPlanActiveUsers] = useState<Record<string, number>>({});
   const [loading, setLoading] = useState(true);
   const [initialLoad, setInitialLoad] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -199,6 +201,38 @@ const usePlansManagement = () => {
     }
   }, [hydrated]);
 
+  const loadActiveUsersByPlan = useCallback(async () => {
+    if (!hydrated) return;
+
+    try {
+      const supabase = createBrowserSupabaseClient();
+      
+      // Obtener conteo de usuarios activos por plan
+      const { data, error } = await supabase
+        .from('user_memberships')
+        .select('plan_id')
+        .eq('status', 'active')
+        .not('end_date', 'is', null)
+        .gte('end_date', new Date().toISOString().split('T')[0]); // Solo membresías no vencidas
+
+      if (error) throw error;
+
+      // Contar usuarios por plan
+      const userCounts: Record<string, number> = {};
+      data?.forEach(membership => {
+        if (membership.plan_id) {
+          userCounts[membership.plan_id] = (userCounts[membership.plan_id] || 0) + 1;
+        }
+      });
+
+      setPlanActiveUsers(userCounts);
+      
+    } catch (err: any) {
+      console.error('Error cargando usuarios activos por plan:', err);
+      // No mostrar error al usuario, solo log
+    }
+  }, [hydrated]);
+
   const togglePlanStatus = useCallback(async (planId: string, currentStatus: boolean) => {
     try {
       const supabase = createBrowserSupabaseClient();
@@ -229,10 +263,10 @@ const usePlansManagement = () => {
       );
       
       const planName = plans.find(p => p.id === planId)?.name || 'Plan';
-      notify.success(`Plan "${planName}" ${!currentStatus ? 'activado' : 'desactivado'}`);
+      await showSuccess(`Plan "${planName}" ${!currentStatus ? 'activado' : 'desactivado'}`, '✅ Estado Actualizado');
       
     } catch (err: any) {
-      notify.error(`Error actualizando estado: ${err.message}`);
+      await showError(`Error actualizando estado: ${err.message}`, '❌ Error');
     }
   }, [plans, addAuditFields]);
 
@@ -260,11 +294,13 @@ const usePlansManagement = () => {
   useEffect(() => {
     if (hydrated) {
       loadPlans();
+      loadActiveUsersByPlan();
     }
-  }, [hydrated, loadPlans]);
+  }, [hydrated, loadPlans, loadActiveUsersByPlan]);
 
   return {
     plans,
+    planActiveUsers,
     loading,
     initialLoad,
     hydrated,
@@ -369,7 +405,7 @@ const StatsCard = memo<{
 export default function PlanesPage() {
   const router = useRouter();
   const { alert } = useNotifications();
-  const { plans, loading, initialLoad, hydrated, loadPlans, togglePlanStatus, deletePlan, hasPlans } = usePlansManagement();
+  const { plans, planActiveUsers, loading, initialLoad, hydrated, loadPlans, togglePlanStatus, deletePlan, hasPlans } = usePlansManagement();
   const { formatPrice, getBestPrice, getBestPriceLabel, getPlanColor } = usePriceUtils();
 
   // ✅ Estados memoizados para estadísticas
@@ -382,30 +418,49 @@ export default function PlanesPage() {
 
   // ✅ Funciones de manejo memoizadas
   const handleDeleteClick = useCallback(async (plan: MembershipPlan) => {
-    const result = await alert.deleteConfirm(`"${plan.name}"`);
+    // Primer diálogo: Confirmación de eliminación
+    const result = await showDeleteConfirmation(`"${plan.name}"`);
     
     if (result.isConfirmed) {
-      const deleteResult = await deletePlan(plan.id);
-      if (deleteResult.success) {
-        notify.success(`Plan "${plan.name}" eliminado exitosamente`);
-      } else {
-        notify.error(deleteResult.error || 'Error eliminando plan');
+      // Segundo diálogo: Confirmación final (doble confirmación)
+      const finalResult = await showConfirmation(
+        `¿Estás COMPLETAMENTE seguro de eliminar el plan "${plan.name}"?\n\n` +
+        `Esta acción eliminará:\n` +
+        `• El plan de membresía\n` +
+        `• Todas las restricciones asociadas\n` +
+        `• Referencias en el sistema\n\n` +
+        `⚠️ Esta acción NO se puede deshacer`,
+        '⚠️ Confirmación Final',
+        'Sí, eliminar definitivamente',
+        'Cancelar'
+      );
+      
+      if (finalResult.isConfirmed) {
+        const deleteResult = await deletePlan(plan.id);
+        if (deleteResult.success) {
+          await showSuccess(`Plan "${plan.name}" eliminado exitosamente`, '✅ Eliminado');
+        } else {
+          await showError(deleteResult.error || 'Error eliminando plan', '❌ Error');
+        }
       }
     }
-  }, [deletePlan, alert]);
+  }, [deletePlan]);
 
   const viewPlanDetails = useCallback((plan: MembershipPlan) => {
     router.push(`/dashboard/admin/planes/${plan.id}`);
   }, [router]);
 
-  const getPlanPopularity = useCallback((plan: MembershipPlan) => {
-    let score = 0;
-    if (plan.gym_access) score += 20;
-    if (plan.classes_included) score += 30;
-    if (plan.guest_passes > 0) score += 15;
-    if (!plan.access_restrictions?.access_control_enabled) score += 25;
-    if (plan.features && plan.features.length > 3) score += 10;
-    return Math.min(score, 100);
+  const getPlanPopularity = useCallback((plan: MembershipPlan, activeUsers: number = 0) => {
+    // Si no hay usuarios activos, mostrar 0%
+    if (activeUsers === 0) return 0;
+    
+    // Calcular porcentaje basado en usuarios activos
+    // Escala: 1-5 usuarios = 20%, 6-10 = 40%, 11-20 = 60%, 21-50 = 80%, 50+ = 100%
+    if (activeUsers <= 5) return Math.min(20, activeUsers * 4);
+    if (activeUsers <= 10) return Math.min(40, 20 + (activeUsers - 5) * 4);
+    if (activeUsers <= 20) return Math.min(60, 40 + (activeUsers - 10) * 2);
+    if (activeUsers <= 50) return Math.min(80, 60 + (activeUsers - 20) * 0.67);
+    return 100;
   }, []);
 
   const formatTimeAgo = useCallback((dateString: string) => {
@@ -781,7 +836,8 @@ export default function PlanesPage() {
             <AnimatePresence>
               {plans.map((plan, index) => {
                 const planColor = getPlanColor(plan);
-                const popularity = getPlanPopularity(plan);
+                const activeUsers = planActiveUsers[plan.id] || 0;
+                const popularity = getPlanPopularity(plan, activeUsers);
                 const bestPrice = getBestPrice(plan);
                 const bestPriceLabel = getBestPriceLabel(plan);
                 
@@ -864,7 +920,7 @@ export default function PlanesPage() {
                               color: colorTokens.neutral900,
                               fontSize: { xs: '0.65rem', sm: '0.75rem' }
                             }}>
-                              Popularidad:
+                              Usuarios activos:
                             </Typography>
                             <LinearProgress
                               variant="determinate"
@@ -887,7 +943,7 @@ export default function PlanesPage() {
                               minWidth: { xs: 30, sm: 35 },
                               fontSize: { xs: '0.65rem', sm: '0.75rem' }
                             }}>
-                              {popularity}%
+                              {activeUsers}
                             </Typography>
                           </Box>
                         </Box>
