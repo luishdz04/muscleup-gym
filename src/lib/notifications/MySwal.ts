@@ -15,9 +15,6 @@ const darkProSwalConfig = {
   cancelButtonColor: colorTokens.neutral600, // Botón gris
   denyButtonColor: colorTokens.danger,     // Botón rojo
   
-  // ✅ Z-INDEX SUPERIOR A MATERIAL-UI MODALS (1300)
-  zIndex: 1500,
-  
   customClass: {
     popup: 'swal-dark-popup',
     confirmButton: 'swal-dark-confirm-button',

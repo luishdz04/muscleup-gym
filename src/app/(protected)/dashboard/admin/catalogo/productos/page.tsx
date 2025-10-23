@@ -488,7 +488,7 @@ export default function ProductosPage() {
                 fullWidth
                 variant="outlined"
                 startIcon={<FilterIcon />}
-                onClick={() => {
+                onClick={async () => {
                   updateFilters({ 
                     search: '', 
                     category: '', 
