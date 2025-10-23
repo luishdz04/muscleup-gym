@@ -165,43 +165,8 @@ export default function PagosPage() {
 
       {/* Resumen - Stats Cards */}
       <Grid container spacing={{ xs: 2, sm: 3 }} sx={{ mb: 4 }}>
-        {/* Total pagado este año */}
-        <Grid size={{ xs: 12, sm: 6, md: 4 }}>
-          <Paper sx={{
-            p: 3,
-            background: `linear-gradient(135deg, ${alpha(colorTokens.surfaceLevel2, 0.9)}, ${alpha(colorTokens.surfaceLevel3, 0.85)})`,
-            backdropFilter: 'blur(20px)',
-            border: `1px solid ${alpha(colorTokens.brand, 0.1)}`,
-            borderRadius: 2,
-            transition: 'all 0.3s ease',
-            '&:hover': {
-              transform: 'translateY(-4px)',
-              boxShadow: `0 8px 24px ${alpha(colorTokens.black, 0.4)}`
-            }
-          }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <Box>
-                <Typography variant="body2" sx={{ color: colorTokens.textSecondary, mb: 1 }}>
-                  Total pagado este año
-                </Typography>
-                <Typography variant="h4" sx={{ fontWeight: 800, color: colorTokens.textPrimary }}>
-                  {formatCurrency(data.stats.totalPaidThisYear)}
-                </Typography>
-              </Box>
-              <Box sx={{
-                p: 1.5,
-                borderRadius: 2,
-                bgcolor: alpha(colorTokens.success, 0.1),
-                border: `1px solid ${alpha(colorTokens.success, 0.2)}`
-              }}>
-                <MoneyIcon sx={{ fontSize: 32, color: colorTokens.success }} />
-              </Box>
-            </Box>
-          </Paper>
-        </Grid>
-
         {/* Pagos realizados */}
-        <Grid size={{ xs: 12, sm: 6, md: 4 }}>
+        <Grid size={{ xs: 12, sm: 6, md: 6 }}>
           <Paper sx={{
             p: 3,
             background: `linear-gradient(135deg, ${alpha(colorTokens.surfaceLevel2, 0.9)}, ${alpha(colorTokens.surfaceLevel3, 0.85)})`,
@@ -236,7 +201,7 @@ export default function PagosPage() {
         </Grid>
 
         {/* Próximo pago */}
-        <Grid size={{ xs: 12, sm: 12, md: 4 }}>
+        <Grid size={{ xs: 12, sm: 6, md: 6 }}>
           <Paper sx={{
             p: 3,
             background: `linear-gradient(135deg, ${alpha(colorTokens.surfaceLevel2, 0.9)}, ${alpha(colorTokens.surfaceLevel3, 0.85)})`,
@@ -306,16 +271,12 @@ export default function PagosPage() {
                 <TableCell>Fecha</TableCell>
                 <TableCell>Plan / Concepto</TableCell>
                 <TableCell>Periodo</TableCell>
-                <TableCell align="right">Monto</TableCell>
-                <TableCell>Método de Pago</TableCell>
-                <TableCell>Referencia</TableCell>
-                <TableCell align="center">Comisión</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {data.payments.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} align="center" sx={{ py: 8 }}>
+                  <TableCell colSpan={3} align="center" sx={{ py: 8 }}>
                     <Typography variant="body1" sx={{ color: colorTokens.textSecondary }}>
                       No se encontraron pagos registrados
                     </Typography>
@@ -360,32 +321,6 @@ export default function PagosPage() {
                       ) : (
                         <Typography sx={{ color: colorTokens.textSecondary }}>-</Typography>
                       )}
-                    </TableCell>
-                    <TableCell align="right">
-                      <Typography sx={{ fontWeight: 700, color: colorTokens.brand }}>
-                        {formatCurrency(payment.amount)}
-                      </Typography>
-                    </TableCell>
-                    <TableCell>
-                      <Chip
-                        label={payment.payment_method.replace('_', ' ')}
-                        size="small"
-                        sx={{
-                          bgcolor: alpha(getPaymentMethodColor(payment.payment_method), 0.1),
-                          color: getPaymentMethodColor(payment.payment_method),
-                          border: `1px solid ${alpha(getPaymentMethodColor(payment.payment_method), 0.2)}`,
-                          fontWeight: 600,
-                          textTransform: 'capitalize'
-                        }}
-                      />
-                    </TableCell>
-                    <TableCell sx={{ color: colorTokens.textSecondary, fontFamily: 'monospace', fontSize: '0.875rem' }}>
-                      {payment.payment_reference || '-'}
-                    </TableCell>
-                    <TableCell align="center" sx={{ color: colorTokens.textSecondary }}>
-                      {payment.commission_amount > 0
-                        ? formatCurrency(payment.commission_amount)
-                        : '-'}
                     </TableCell>
                   </TableRow>
                 ))
