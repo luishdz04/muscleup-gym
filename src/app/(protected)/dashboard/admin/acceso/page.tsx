@@ -1002,7 +1002,7 @@ export default function HistorialAsistenciasPage() {
               <Box>
                 {analytics.peakHours.map((peak, index) => (
                   <Card
-                    key={peak.hour}
+                    key={`peak-hour-${peak.hour}-${index}`}
                     sx={{
                       mb: 2,
                       background: `linear-gradient(135deg, ${colorTokens.danger}${15 - index * 3}, ${colorTokens.danger}05)`,
