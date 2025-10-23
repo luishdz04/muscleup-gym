@@ -54,6 +54,7 @@ import { useRouter } from 'next/navigation';
 import { colorTokens } from '@/theme';
 import { useHydrated } from '@/hooks/useHydrated';
 import { notify } from '@/utils/notifications';
+import { showSuccess, showError, showDeleteConfirmation, showConfirmation } from '@/lib/notifications/MySwal';
 import { formatTimestampForDisplay } from '@/utils/dateUtils';
 import { useProducts } from '@/hooks/useCatalog';
 import { Product } from '@/services/catalogService';
@@ -132,10 +133,10 @@ export default function ProductosPage() {
     setProductDialogOpen(false);
   };
 
-  const handleProductSave = () => {
+  const handleProductSave = async () => {
     reload();
     closeProductDialog();
-    notify.success('Producto guardado exitosamente');
+    await showSuccess('Producto guardado exitosamente', '✅ Producto Guardado');
   };
 
   const handleMenuOpen = (event: React.MouseEvent<HTMLElement>, product: Product) => {
@@ -149,9 +150,30 @@ export default function ProductosPage() {
   };
 
   const handleDelete = async (productId: string) => {
-    if (!confirm('¿Estás seguro de que deseas eliminar este producto?')) return;
-    
-    await deleteProduct(productId);
+    const result = await showDeleteConfirmation('este producto');
+    if (result.isConfirmed) {
+      const finalResult = await showConfirmation(
+        `¿Estás COMPLETAMENTE seguro de eliminar este producto?\n\n` +
+        `Esta acción eliminará:\n` +
+        `• El producto del catálogo\n` +
+        `• Todas las referencias asociadas\n` +
+        `• El historial de ventas\n\n` +
+        `⚠️ Esta acción NO se puede deshacer`,
+        '⚠️ Confirmación Final',
+        'Sí, eliminar definitivamente',
+        'Cancelar'
+      );
+      
+      if (finalResult.isConfirmed) {
+        try {
+          await deleteProduct(productId);
+          await showSuccess('Producto eliminado exitosamente', '✅ Producto Eliminado');
+          reload();
+        } catch (error: any) {
+          await showError(`Error al eliminar producto: ${error.message}`, '❌ Error');
+        }
+      }
+    }
     handleMenuClose();
   };
 
@@ -474,7 +496,7 @@ export default function ProductosPage() {
                     category: '', 
                     page: 1 
                   });
-                  notify.info('Filtros limpiados');
+                  await showSuccess('Filtros limpiados', '🧹 Filtros Limpiados');
                 }}
                 sx={{
                   color: colorTokens.textSecondary,
@@ -643,7 +665,7 @@ export default function ProductosPage() {
       <Fab
         sx={{
           position: 'fixed',
-          bottom: 24,
+          bottom: 80, // Cambiar de 24 a 80 para evitar superposición con scroll to top
           right: 24,
           background: `linear-gradient(135deg, ${colorTokens.brand}, ${colorTokens.brandHover})`,
           color: colorTokens.textOnBrand,

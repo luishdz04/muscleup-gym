@@ -65,6 +65,7 @@ import { useRouter } from 'next/navigation';
 import { colorTokens } from '@/theme';
 import { useHydrated } from '@/hooks/useHydrated';
 import { notify } from '@/utils/notifications';
+import { showSuccess, showError, showDeleteConfirmation, showConfirmation } from '@/lib/notifications/MySwal';
 import { formatTimestampForDisplay } from '@/utils/dateUtils';
 import { useSuppliers, useSupplierStats } from '@/hooks/useCatalog';
 import { Supplier } from '@/services/catalogService';
@@ -153,11 +154,11 @@ export default function ProveedoresPage() {
     setSupplierDialogOpen(false);
   };
 
-  const handleSupplierSave = () => {
+  const handleSupplierSave = async () => {
     reload();
     reloadStats();
     closeSupplierDialog();
-    notify.success('Proveedor guardado exitosamente');
+    await showSuccess('Proveedor guardado exitosamente', '✅ Proveedor Guardado');
   };
 
   const handleMenuOpen = (event: React.MouseEvent<HTMLElement>, supplier: Supplier) => {
@@ -171,9 +172,31 @@ export default function ProveedoresPage() {
   };
 
   const handleDelete = async (supplierId: string) => {
-    if (!confirm('¿Estás seguro de que deseas eliminar este proveedor?')) return;
-    
-    await deleteSupplier(supplierId);
+    const result = await showDeleteConfirmation('este proveedor');
+    if (result.isConfirmed) {
+      const finalResult = await showConfirmation(
+        `¿Estás COMPLETAMENTE seguro de eliminar este proveedor?\n\n` +
+        `Esta acción eliminará:\n` +
+        `• El proveedor del catálogo\n` +
+        `• Todas las referencias asociadas\n` +
+        `• El historial de compras\n\n` +
+        `⚠️ Esta acción NO se puede deshacer`,
+        '⚠️ Confirmación Final',
+        'Sí, eliminar definitivamente',
+        'Cancelar'
+      );
+      
+      if (finalResult.isConfirmed) {
+        try {
+          await deleteSupplier(supplierId);
+          await showSuccess('Proveedor eliminado exitosamente', '✅ Proveedor Eliminado');
+          reload();
+          reloadStats();
+        } catch (error: any) {
+          await showError(`Error al eliminar proveedor: ${error.message}`, '❌ Error');
+        }
+      }
+    }
     handleMenuClose();
   };
 
@@ -562,7 +585,7 @@ export default function ProveedoresPage() {
                     rating: undefined,
                     page: 1 
                   });
-                  notify.info('Filtros limpiados');
+                  await showSuccess('Filtros limpiados', '🧹 Filtros Limpiados');
                 }}
                 sx={{
                   color: colorTokens.textSecondary,
@@ -833,7 +856,7 @@ export default function ProveedoresPage() {
       <Fab
         sx={{
           position: 'fixed',
-          bottom: 24,
+          bottom: 80, // Cambiar de 24 a 80 para evitar superposición con scroll to top
           right: 24,
           background: `linear-gradient(135deg, ${colorTokens.brand}, ${colorTokens.brandHover})`,
           color: colorTokens.textOnBrand,

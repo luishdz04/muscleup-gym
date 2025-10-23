@@ -214,7 +214,7 @@ export default function CategoryManager({
         p: 3
       }}>
         <CategoryIcon sx={{ fontSize: 28 }} />
-        <Typography variant="h6" sx={{ fontSize: '1.25rem' }}>
+        <Typography variant="subtitle1" sx={{ fontSize: '1.25rem', fontWeight: 600 }}>
           Gestión de Categorías y Subcategorías
         </Typography>
       </DialogTitle>
