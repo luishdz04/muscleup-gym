@@ -22,7 +22,11 @@ import {
   Grid,
   Chip,
   CircularProgress,
-  Alert
+  Alert,
+  FormControl,
+  InputLabel,
+  Select,
+  MenuItem
 } from '@mui/material';
 import {
   Add as AddIcon,
@@ -260,28 +264,39 @@ export default function CategoryManager({
                   </Typography>
                   <Grid container spacing={2} alignItems="center">
                     <Grid item xs={12} md={4}>
-                      <TextField
-                        fullWidth
-                        select
-                        label="Categoría"
-                        value={selectedCategoryForSubcategory || ''}
-                        onChange={(e) => setSelectedCategoryForSubcategory(e.target.value)}
-                        SelectProps={{ native: true }}
-                        sx={{
-                          '& .MuiOutlinedInput-root': {
-                            '& fieldset': { borderColor: `${colorTokens.brand}30` },
-                            '&:hover fieldset': { borderColor: colorTokens.brand },
-                            '&.Mui-focused fieldset': { borderColor: colorTokens.brand }
-                          }
-                        }}
-                      >
-                        <option value="">Seleccionar categoría</option>
-                        {categories.map(category => (
-                          <option key={category.id} value={category.id}>
-                            {category.name}
-                          </option>
-                        ))}
-                      </TextField>
+                      <FormControl fullWidth>
+                        <InputLabel sx={{ color: colorTokens.textSecondary }}>
+                          Categoría
+                        </InputLabel>
+                        <Select
+                          value={selectedCategoryForSubcategory || ''}
+                          onChange={(e) => setSelectedCategoryForSubcategory(e.target.value)}
+                          label="Categoría"
+                          sx={{
+                            '& .MuiOutlinedInput-notchedOutline': { 
+                              borderColor: `${colorTokens.brand}30` 
+                            },
+                            '&:hover .MuiOutlinedInput-notchedOutline': { 
+                              borderColor: colorTokens.brand 
+                            },
+                            '&.Mui-focused .MuiOutlinedInput-notchedOutline': { 
+                              borderColor: colorTokens.brand 
+                            },
+                            '& .MuiSelect-select': {
+                              color: colorTokens.textPrimary
+                            }
+                          }}
+                        >
+                          <MenuItem value="">
+                            <em>Seleccionar categoría</em>
+                          </MenuItem>
+                          {categories.map(category => (
+                            <MenuItem key={category.id} value={category.id}>
+                              {category.name}
+                            </MenuItem>
+                          ))}
+                        </Select>
+                      </FormControl>
                     </Grid>
                     <Grid item xs={12} md={4}>
                       <TextField
