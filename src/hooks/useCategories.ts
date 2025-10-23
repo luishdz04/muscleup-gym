@@ -37,39 +37,26 @@ export function useCategories(): UseCategoriesReturn {
       setLoading(true);
       setError(null);
       
-      // Por ahora, crear categorías basadas en los productos existentes
-      // TODO: Implementar tabla categories en la base de datos
-      const { data: products, error: productsError } = await supabase
-        .from('products')
-        .select('category, subcategory')
-        .not('category', 'is', null);
+      // Cargar desde la tabla categories
+      const { data: categoriesData, error: categoriesError } = await supabase
+        .from('categories')
+        .select('*')
+        .order('name', { ascending: true });
 
-      if (productsError) {
-        throw productsError;
+      if (categoriesError) {
+        throw categoriesError;
       }
 
-      // Agrupar categorías y subcategorías
-      const categoryMap = new Map<string, Set<string>>();
-      
-      products?.forEach(product => {
-        if (product.category) {
-          if (!categoryMap.has(product.category)) {
-            categoryMap.set(product.category, new Set());
-          }
-          if (product.subcategory) {
-            categoryMap.get(product.category)?.add(product.subcategory);
-          }
-        }
-      });
-
       // Convertir a formato Category
-      const categoriesData: Category[] = Array.from(categoryMap.entries()).map(([name, subcategoriesSet]) => ({
-        id: name.toLowerCase().replace(/\s+/g, '-'),
-        name,
-        subcategories: Array.from(subcategoriesSet)
+      const categories: Category[] = (categoriesData || []).map(cat => ({
+        id: cat.id,
+        name: cat.name,
+        subcategories: cat.subcategories || [],
+        created_at: cat.created_at,
+        updated_at: cat.updated_at
       }));
 
-      setCategories(categoriesData);
+      setCategories(categories);
     } catch (err: any) {
       console.error('Error loading categories:', err?.message || err || 'Error desconocido');
       setError(err?.message || 'Error al cargar categorías');
@@ -81,84 +68,159 @@ export function useCategories(): UseCategoriesReturn {
   // Agregar nueva categoría
   const addCategory = useCallback(async (name: string): Promise<boolean> => {
     try {
+      const { data, error } = await supabase
+        .from('categories')
+        .insert({
+          name,
+          subcategories: []
+        })
+        .select()
+        .single();
+
+      if (error) {
+        throw error;
+      }
+
       const newCategory: Category = {
-        id: name.toLowerCase().replace(/\s+/g, '-'),
-        name,
-        subcategories: []
+        id: data.id,
+        name: data.name,
+        subcategories: data.subcategories || [],
+        created_at: data.created_at,
+        updated_at: data.updated_at
       };
       
       setCategories(prev => [...prev, newCategory]);
       return true;
     } catch (err: any) {
       console.error('Error adding category:', err);
-      setError(err.message || 'Error al agregar categoría');
+      setError(err?.message || 'Error al agregar categoría');
       return false;
     }
-  }, []);
+  }, [supabase]);
 
   // Actualizar categoría
   const updateCategory = useCallback(async (id: string, name: string): Promise<boolean> => {
     try {
+      const { data, error } = await supabase
+        .from('categories')
+        .update({ name })
+        .eq('id', id)
+        .select()
+        .single();
+
+      if (error) {
+        throw error;
+      }
+
       setCategories(prev => 
         prev.map(cat => 
-          cat.id === id ? { ...cat, name } : cat
+          cat.id === id ? { ...cat, name: data.name, updated_at: data.updated_at } : cat
         )
       );
       return true;
     } catch (err: any) {
       console.error('Error updating category:', err);
-      setError(err.message || 'Error al actualizar categoría');
+      setError(err?.message || 'Error al actualizar categoría');
       return false;
     }
-  }, []);
+  }, [supabase]);
 
   // Eliminar categoría
   const deleteCategory = useCallback(async (id: string): Promise<boolean> => {
     try {
+      const { error } = await supabase
+        .from('categories')
+        .delete()
+        .eq('id', id);
+
+      if (error) {
+        throw error;
+      }
+
       setCategories(prev => prev.filter(cat => cat.id !== id));
       return true;
     } catch (err: any) {
       console.error('Error deleting category:', err);
-      setError(err.message || 'Error al eliminar categoría');
+      setError(err?.message || 'Error al eliminar categoría');
       return false;
     }
-  }, []);
+  }, [supabase]);
 
   // Agregar subcategoría
   const addSubcategory = useCallback(async (categoryId: string, subcategoryName: string): Promise<boolean> => {
     try {
+      // Obtener la categoría actual
+      const currentCategory = categories.find(cat => cat.id === categoryId);
+      if (!currentCategory) {
+        throw new Error('Categoría no encontrada');
+      }
+
+      // Agregar la nueva subcategoría
+      const newSubcategories = [...currentCategory.subcategories, subcategoryName];
+
+      const { data, error } = await supabase
+        .from('categories')
+        .update({ subcategories: newSubcategories })
+        .eq('id', categoryId)
+        .select()
+        .single();
+
+      if (error) {
+        throw error;
+      }
+
       setCategories(prev => 
         prev.map(cat => 
           cat.id === categoryId 
-            ? { ...cat, subcategories: [...cat.subcategories, subcategoryName] }
+            ? { ...cat, subcategories: data.subcategories, updated_at: data.updated_at }
             : cat
         )
       );
       return true;
     } catch (err: any) {
       console.error('Error adding subcategory:', err);
-      setError(err.message || 'Error al agregar subcategoría');
+      setError(err?.message || 'Error al agregar subcategoría');
       return false;
     }
-  }, []);
+  }, [supabase, categories]);
 
   // Eliminar subcategoría
   const removeSubcategory = useCallback(async (categoryId: string, subcategoryName: string): Promise<boolean> => {
     try {
+      // Obtener la categoría actual
+      const currentCategory = categories.find(cat => cat.id === categoryId);
+      if (!currentCategory) {
+        throw new Error('Categoría no encontrada');
+      }
+
+      // Remover la subcategoría
+      const newSubcategories = currentCategory.subcategories.filter(sub => sub !== subcategoryName);
+
+      const { data, error } = await supabase
+        .from('categories')
+        .update({ subcategories: newSubcategories })
+        .eq('id', categoryId)
+        .select()
+        .single();
+
+      if (error) {
+        throw error;
+      }
+
       setCategories(prev => 
         prev.map(cat => 
           cat.id === categoryId 
-            ? { ...cat, subcategories: cat.subcategories.filter(sub => sub !== subcategoryName) }
+            ? { ...cat, subcategories: data.subcategories, updated_at: data.updated_at }
             : cat
         )
       );
       return true;
     } catch (err: any) {
       console.error('Error removing subcategory:', err);
-      setError(err.message || 'Error al eliminar subcategoría');
+      setError(err?.message || 'Error al eliminar subcategoría');
       return false;
     }
-  }, []);
+  }, [supabase, categories]);
 
   // Refrescar categorías
   const refreshCategories = useCallback(async () => {
