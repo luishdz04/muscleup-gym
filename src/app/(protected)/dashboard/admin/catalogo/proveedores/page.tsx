@@ -605,12 +605,12 @@ export default function ProveedoresPage() {
                 fullWidth
                 variant="outlined"
                 startIcon={<FilterIcon />}
-                onClick={() => {
-                  updateFilters({ 
-                    search: '', 
-                    category: '', 
+                onClick={async () => {
+                  updateFilters({
+                    search: '',
+                    category: '',
                     rating: undefined,
-                    page: 1 
+                    page: 1
                   });
                   await showSuccess('Filtros limpiados', '🧹 Filtros Limpiados');
                 }}
