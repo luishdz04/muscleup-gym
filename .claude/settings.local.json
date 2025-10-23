@@ -70,7 +70,9 @@
       "Read(//c/Projects/BiometricServiceMUP/**)",
       "Bash(cd:*)",
       "Bash(timeout 5 echo:*)",
-      "Bash(start:*)"
+      "Bash(start:*)",
+      "Bash(timeout 180 npm run build:*)",
+      "Bash(tee:*)"
     ],
     "deny": [],
     "ask": []

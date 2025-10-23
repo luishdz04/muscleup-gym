@@ -1,0 +1,263 @@
+{
+  "total_ejercicios": 342,
+  "grupos_musculares": [
+    "Cuádriceps",
+    "Isquiotibiales",
+    "Aductores",
+    "Tríceps",
+    "Recto abdominal",
+    "Oblicuos"
+  ],
+  "ejercicios_muestra": [
+    {
+      "numero": "1",
+      "nombre": "Sentadilla Goblet (flexión de rodilla)  ",
+      "detalle": ""
+    },
+    {
+      "numero": "2",
+      "nombre": "Desplante estático con apoyo (flexión de rodilla)  ",
+      "detalle": ""
+    },
+    {
+      "numero": "3",
+      "nombre": "Sentadilla en máquina perf ecta (flexión de rodilla)  ",
+      "detalle": ""
+    },
+    {
+      "numero": "4",
+      "nombre": "Sent adilla Hack (flexión de rodilla)  ",
+      "detalle": ""
+    },
+    {
+      "numero": "5",
+      "nombre": "Sentadilla Smith (flexión de rodilla)  ",
+      "detalle": ""
+    },
+    {
+      "numero": "6",
+      "nombre": "Prensa de piernas (flexión de rodilla)  ",
+      "detalle": ""
+    },
+    {
+      "numero": "7",
+      "nombre": "Escalón con mancuernas (flexión de rodilla)  ",
+      "detalle": ""
+    },
+    {
+      "numero": "8",
+      "nombre": "Escalón en cables (flexión de rodilla)  ",
+      "detalle": ""
+    },
+    {
+      "numero": "9",
+      "nombre": "Desplante con talón elevado (flexión de rodilla)  ",
+      "detalle": ""
+    },
+    {
+      "numero": "10",
+      "nombre": "D esplante en máquina Smith (flexión de rodilla)  ",
+      "detalle": ""
+    },
+    {
+      "numero": "11",
+      "nombre": "Desplante con barr a libre (flexión de rodilla)  ",
+      "detalle": ""
+    },
+    {
+      "numero": "12",
+      "nombre": "Sentadilla Búlgara (flexión de rodilla)  ",
+      "detalle": ""
+    },
+    {
+      "numero": "13",
+      "nombre": "Prensa de piernas unilateral (flexión de rodilla)  ",
+      "detalle": ""
+    },
+    {
+      "numero": "14",
+      "nombre": "Step -ups con barra o mancuernas (flexión de rodilla)  ",
+      "detalle": ""
+    },
+    {
+      "numero": "15",
+      "nombre": "Sentadilla en máquina unilateral (flexión de rodill a) ",
+      "detalle": ""
+    },
+    {
+      "numero": "16",
+      "nombre": "Sentadilla Hack unilateral (flexión de rodilla)  ",
+      "detalle": ""
+    },
+    {
+      "numero": "17",
+      "nombre": "Extensión de piernas (flexión de rodilla)  ",
+      "detalle": ""
+    },
+    {
+      "numero": "18",
+      "nombre": "Extensión de piernas unilateral (flexión de rodilla)  ",
+      "detalle": ""
+    },
+    {
+      "numero": "19",
+      "nombre": "Nórdico inverso (flexión de rodilla)  ",
+      "detalle": ""
+    },
+    {
+      "numero": "20",
+      "nombre": "Sentadilla Sissy (flexión de rodilla)  ",
+      "detalle": ""
+    },
+    {
+      "numero": "21",
+      "nombre": "Sen tadilla española (flexión de rodilla)  ",
+      "detalle": ""
+    },
+    {
+      "numero": "22",
+      "nombre": "Se ntadilla Goblet con talones elevados (flexión de rodilla)  ",
+      "detalle": ""
+    },
+    {
+      "numero": "23",
+      "nombre": "Sentadilla libre con  talones elevados (f lexión de rodilla)  ",
+      "detalle": ""
+    },
+    {
+      "numero": "24",
+      "nombre": "Sentadilla en Sissy con déficit y lastre ( flexión de rodilla)  ",
+      "detalle": ""
+    },
+    {
+      "numero": "25",
+      "nombre": "Sentadilla en Sissy desde plataforma (flexión de rodilla)  ",
+      "detalle": ""
+    },
+    {
+      "numero": "1",
+      "nombre": "Sentadilla Goblet (énfasis en extensión de cadera)  ",
+      "detalle": ""
+    },
+    {
+      "numero": "2",
+      "nombre": "Desplante inverso estático con apoyo (énfasis en extensión d e cadera)  ",
+      "detalle": ""
+    },
+    {
+      "numero": "3",
+      "nombre": "Sentadilla en máquina perfecta (énfasis en extensión de cadera)  ",
+      "detalle": ""
+    },
+    {
+      "numero": "4",
+      "nombre": "Sentadilla Hack (énfasis en extensión de cadera)  ",
+      "detalle": ""
+    },
+    {
+      "numero": "5",
+      "nombre": "Sentadilla Smith (énfasis en extensión de cadera)  ",
+      "detalle": ""
+    },
+    {
+      "numero": "6",
+      "nombre": "Prensa de piernas (énfasis en extensión de cadera)  ",
+      "detalle": ""
+    },
+    {
+      "numero": "7",
+      "nombre": "Escalón con mancuernas  (énfasis en extensión de cadera)  ",
+      "detalle": ""
+    },
+    {
+      "numero": "8",
+      "nombre": "Escalón en cables (énfasis en extensión de cadera)  ",
+      "detalle": ""
+    },
+    {
+      "numero": "9",
+      "nombre": "Desplante inverso con elevación (énfasis en extensión de cadera)  ",
+      "detalle": ""
+    },
+    {
+      "numero": "10",
+      "nombre": "Desplante inverso en máquina Smith (énfasis en extensión de cadera)  ",
+      "detalle": ""
+    },
+    {
+      "numero": "11",
+      "nombre": "Sentadill a Hack unilateral (énfasis en extensión de cadera)  ",
+      "detalle": ""
+    },
+    {
+      "numero": "12",
+      "nombre": "Sentadilla entre bancos (énfasis en extensión de cadera)  ",
+      "detalle": ""
+    },
+    {
+      "numero": "13",
+      "nombre": "Sentadilla con pasos laterales (énfasis en extensión de cadera)  ",
+      "detalle": ""
+    },
+    {
+      "numero": "14",
+      "nombre": "Sentadilla con abducción con banda (énfasis en extensión de cadera)  ",
+      "detalle": ""
+    },
+    {
+      "numero": "15",
+      "nombre": "Sentadilla con abducción en máquina (énfasis en extensión de cadera)  ",
+      "detalle": ""
+    },
+    {
+      "numero": "16",
+      "nombre": "Desplante drop (énfasis en extensión de cadera)  ",
+      "detalle": ""
+    },
+    {
+      "numero": "17",
+      "nombre": "Desplante curtsy (crossover lunge)  ",
+      "detalle": ""
+    },
+    {
+      "numero": "18",
+      "nombre": "Peso muerto rumano con mancuernas (énfasis en extensión de cadera / glúteo)  ",
+      "detalle": ""
+    },
+    {
+      "numero": "19",
+      "nombre": "Peso muerto rumano con barra olímpica (énfasis en extensión de cadera / ",
+      "detalle": ""
+    },
+    {
+      "numero": "20",
+      "nombre": "Peso muerto rumano en máquina Smith (énfasis en extensión de cadera / ",
+      "detalle": ""
+    },
+    {
+      "numero": "22",
+      "nombre": "Peso muerto rumano B -Stance (énfasis en extensión de cadera)  ",
+      "detalle": ""
+    },
+    {
+      "numero": "23",
+      "nombre": "Peso muerto convencional (énfasis en extensión de cadera)  ",
+      "detalle": ""
+    },
+    {
+      "numero": "24",
+      "nombre": "Puente con piernas flexionadas y elevadas (énfasis en extensión de cadera)  ",
+      "detalle": ""
+    },
+    {
+      "numero": "25",
+      "nombre": "Puente de glúteo desde el suelo (bodyweight hip bridge)  ",
+      "detalle": ""
+    },
+    {
+      "numero": "26",
+      "nombre": "Puente de glúteo en máquina (hip bridge machine)  ",
+      "detalle": ""
+    }
+  ]
+}
