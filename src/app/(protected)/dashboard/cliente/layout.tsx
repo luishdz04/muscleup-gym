@@ -49,7 +49,6 @@ import MenuIcon from '@mui/icons-material/Menu';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import PersonIcon from '@mui/icons-material/Person';
 import LogoutIcon from '@mui/icons-material/Logout';
-import NotificationsIcon from '@mui/icons-material/Notifications';
 import HomeIcon from '@mui/icons-material/Home';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
@@ -180,12 +179,12 @@ interface MenuItemDef {
 // ✅ DEFINICIÓN COMPLETA DEL MENÚ - FUERA DEL COMPONENTE
 const menuItems: MenuItemDef[] = [
   {
-    text: 'Mi Información',
+    text: 'Dashboard',
     path: '/dashboard/cliente',
     icon: <AccountCircleIcon />,
     mobileIcon: <HomeIcon />,
     section: 'info',
-    description: 'Gestiona tu perfil personal'
+    description: 'Vista general de tu información'
   },
   {
     text: 'Pagos',
@@ -508,37 +507,6 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
               </Typography>
             </Box>
 
-            <Tooltip title="Notificaciones">
-              <IconButton
-                color="inherit"
-                sx={{
-                  mr: 1,
-                  position: 'relative',
-                  '&:hover': {
-                    backgroundColor: alpha(colorTokens.brand, 0.1),
-                  }
-                }}
-              >
-                <Badge
-                  badgeContent={unreadCount}
-                  max={99}
-                  sx={{
-                    '& .MuiBadge-badge': {
-                      background: `linear-gradient(135deg, ${colorTokens.danger}, #ff6666)`,
-                      color: colorTokens.white,
-                      fontWeight: 800,
-                      fontSize: '0.65rem',
-                      minWidth: '18px',
-                      height: '18px',
-                      borderRadius: '10px',
-                      animation: unreadCount > 0 ? `${pulse} 2s ease-in-out infinite` : 'none'
-                    }
-                  }}
-                >
-                  <NotificationsIcon sx={{ fontSize: 22 }} />
-                </Badge>
-              </IconButton>
-            </Tooltip>
 
             <Tooltip title="Cerrar sesión">
               <IconButton
@@ -661,49 +629,8 @@ export default function ClienteLayout({ children }: ClienteLayoutProps) {
 
             <Box sx={{ flexGrow: 1 }} />
 
-            {/* 🔔 ÁREA DE NOTIFICACIONES Y USUARIO - RESPONSIVE */}
+            {/* 👤 ÁREA DE USUARIO - RESPONSIVE */}
             <Box sx={{ display: 'flex', alignItems: 'center', gap: { xs: 0.5, sm: 1 } }}>
-              <Tooltip title={unreadCount > 0 ? `${unreadCount} notificaciones sin leer` : 'Sin notificaciones'}>
-                <IconButton
-                  color="inherit"
-                  sx={{
-                    mr: { xs: 0.5, sm: 1 },
-                    position: 'relative',
-                    padding: { xs: '6px', sm: '8px' },
-                    '&:hover': {
-                      backgroundColor: alpha(colorTokens.brand, 0.1),
-                    }
-                  }}
-                  aria-label="mostrar notificaciones"
-                >
-                  <Badge
-                    badgeContent={unreadCount}
-                    max={99}
-                    sx={{
-                      '& .MuiBadge-badge': {
-                        background: `linear-gradient(135deg, ${colorTokens.danger}, #ff6666)`,
-                        color: colorTokens.white,
-                        fontWeight: 800,
-                        fontSize: { xs: '0.65rem', sm: '0.7rem' },
-                        minWidth: { xs: '18px', sm: '20px' },
-                        height: { xs: '18px', sm: '20px' },
-                        borderRadius: '10px',
-                        padding: '0 6px',
-                        top: '3px',
-                        right: '3px',
-                        border: `2px solid ${colorTokens.black}`,
-                        boxShadow: `0 2px 8px ${alpha(colorTokens.danger, 0.5)}`,
-                        animation: unreadCount > 0 ? `${pulse} 2s ease-in-out infinite` : 'none'
-                      }
-                    }}
-                  >
-                    <NotificationsIcon sx={{
-                      color: colorTokens.brand,
-                      fontSize: { xs: 22, sm: 26, md: 28 }
-                    }} />
-                  </Badge>
-                </IconButton>
-              </Tooltip>
 
               {/* Chip de bienvenida solo en desktop */}
               <Chip
