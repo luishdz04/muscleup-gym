@@ -1,7 +1,7 @@
 // src/app/(protected)/dashboard/admin/catalogo/productos/page.tsx
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   Box,
   Paper,
@@ -59,7 +59,7 @@ import { formatTimestampForDisplay } from '@/utils/dateUtils';
 import { useProducts } from '@/hooks/useCatalog';
 import { Product } from '@/services/catalogService';
 import ProductFormDialog from '@/components/catalogo/ProductFormDialog';
-import CategoryManager from '@/components/admin/CategoryManager';
+import { useCategories } from '@/hooks/useCategories';
 
 const STATUS_FILTERS = [
   { value: 'active', label: 'Productos Activos' },
@@ -97,12 +97,9 @@ export default function ProductosPage() {
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
   const [menuProduct, setMenuProduct] = useState<Product | null>(null);
   const [categoryManagerOpen, setCategoryManagerOpen] = useState(false);
-  const [categories, setCategories] = useState<Array<{id: string, name: string, subcategories: string[]}>>([]);
-
-  // CATEGORÍAS ÚNICAS MEMORIZADAS
-  const uniqueCategories = useMemo(() => {
-    return [...new Set(products.map(p => p.category))];
-  }, [products]);
+  
+  // Hook para gestión de categorías
+  const { categories } = useCategories();
 
   // CONTAR PRODUCTOS ACTIVOS
   const activeProductsCount = useMemo(() => {
@@ -437,9 +434,9 @@ export default function ProductosPage() {
                   }}
                 >
                   <MenuItem value="">Todas</MenuItem>
-                  {uniqueCategories.map((category) => (
-                    <MenuItem key={category} value={category}>
-                      {category}
+                  {categories.map((category) => (
+                    <MenuItem key={category.id} value={category.name}>
+                      {category.name}
                     </MenuItem>
                   ))}
                 </Select>
@@ -740,14 +737,13 @@ export default function ProductosPage() {
         onClose={closeProductDialog}
         product={selectedProduct || undefined}
         onSave={handleProductSave}
+        categories={categories}
       />
 
       {/* GESTIÓN DE CATEGORÍAS */}
       <CategoryManager
         open={categoryManagerOpen}
         onClose={() => setCategoryManagerOpen(false)}
-        categories={categories}
-        onUpdateCategories={setCategories}
       />
     </Box>
   );

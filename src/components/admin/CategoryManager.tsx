@@ -1,206 +1,184 @@
 // src/components/admin/CategoryManager.tsx
 'use client';
 
-import React, { useState, useCallback } from 'react';
+import React, { useState } from 'react';
 import {
   Dialog,
   DialogTitle,
   DialogContent,
   DialogActions,
   Button,
-  TextField,
-  Box,
   Typography,
-  Chip,
-  IconButton,
+  Box,
+  TextField,
   List,
   ListItem,
   ListItemText,
   ListItemSecondaryAction,
+  IconButton,
   Divider,
+  Card,
+  CardContent,
+  Grid,
+  Chip,
+  CircularProgress,
   Alert
 } from '@mui/material';
 import {
   Add as AddIcon,
-  Edit as EditIcon,
   Delete as DeleteIcon,
+  Edit as EditIcon,
   Category as CategoryIcon,
   SubdirectoryArrowRight as SubcategoryIcon
 } from '@mui/icons-material';
 import { colorTokens } from '@/theme';
 import { showSuccess, showError, showDeleteConfirmation, showConfirmation } from '@/lib/notifications/MySwal';
-
-interface Category {
-  id: string;
-  name: string;
-  subcategories: string[];
-}
+import { useCategories, Category } from '@/hooks/useCategories';
 
 interface CategoryManagerProps {
   open: boolean;
   onClose: () => void;
-  categories: Category[];
-  onUpdateCategories: (categories: Category[]) => void;
 }
 
 export default function CategoryManager({ 
   open, 
-  onClose, 
-  categories, 
-  onUpdateCategories 
+  onClose
 }: CategoryManagerProps) {
-  const [newCategory, setNewCategory] = useState('');
-  const [editingCategory, setEditingCategory] = useState<Category | null>(null);
-  const [newSubcategory, setNewSubcategory] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<Category | null>(null);
+  
+  const {
+    categories,
+    loading,
+    error,
+    addCategory,
+    updateCategory,
+    deleteCategory,
+    addSubcategory,
+    removeSubcategory,
+    refreshCategories
+  } = useCategories();
 
-  const handleAddCategory = useCallback(async () => {
-    if (!newCategory.trim()) {
-      await showError('Ingresa un nombre para la categoría', '⚠️ Nombre Requerido');
+  // Estados locales para formularios
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [editingCategory, setEditingCategory] = useState<string | null>(null);
+  const [editingCategoryName, setEditingCategoryName] = useState('');
+  const [newSubcategoryName, setNewSubcategoryName] = useState('');
+  const [selectedCategoryForSubcategory, setSelectedCategoryForSubcategory] = useState<string | null>(null);
+
+  // Agregar nueva categoría
+  const handleAddCategory = async () => {
+    if (!newCategoryName.trim()) {
+      await showError('El nombre de la categoría es obligatorio', '⚠️ Campo Requerido');
       return;
     }
 
-    if (categories.some(cat => cat.name.toLowerCase() === newCategory.toLowerCase())) {
+    if (categories.some(cat => cat.name.toLowerCase() === newCategoryName.toLowerCase())) {
       await showError('Ya existe una categoría con ese nombre', '⚠️ Categoría Duplicada');
       return;
     }
 
-    const category: Category = {
-      id: Date.now().toString(),
-      name: newCategory.trim(),
-      subcategories: []
-    };
-
-    onUpdateCategories([...categories, category]);
-    setNewCategory('');
-    await showSuccess(`Categoría "${category.name}" agregada exitosamente`, '✅ Categoría Agregada');
-  }, [newCategory, categories, onUpdateCategories]);
-
-  const handleEditCategory = useCallback(async (category: Category) => {
-    const result = await showConfirmation(
-      `¿Editar la categoría "${category.name}"?`,
-      '✏️ Editar Categoría',
-      'Editar',
-      'Cancelar'
-    );
-
-    if (result.isConfirmed) {
-      setEditingCategory(category);
-      setNewCategory(category.name);
+    const success = await addCategory(newCategoryName.trim());
+    if (success) {
+      await showSuccess(`Categoría "${newCategoryName}" agregada exitosamente`, '✅ Categoría Agregada');
+      setNewCategoryName('');
     }
-  }, []);
+  };
 
-  const handleUpdateCategory = useCallback(async () => {
-    if (!editingCategory || !newCategory.trim()) return;
+  // Editar categoría
+  const handleEditCategory = async (categoryId: string, newName: string) => {
+    if (!newName.trim()) {
+      await showError('El nombre de la categoría es obligatorio', '⚠️ Campo Requerido');
+      return;
+    }
 
-    if (categories.some(cat => 
-      cat.id !== editingCategory.id && 
-      cat.name.toLowerCase() === newCategory.toLowerCase()
-    )) {
+    if (categories.some(cat => cat.id !== categoryId && cat.name.toLowerCase() === newName.toLowerCase())) {
       await showError('Ya existe una categoría con ese nombre', '⚠️ Categoría Duplicada');
       return;
     }
 
-    const updatedCategories = categories.map(cat =>
-      cat.id === editingCategory.id
-        ? { ...cat, name: newCategory.trim() }
-        : cat
-    );
+    const success = await updateCategory(categoryId, newName.trim());
+    if (success) {
+      await showSuccess(`Categoría actualizada exitosamente`, '✅ Categoría Actualizada');
+      setEditingCategory(null);
+      setEditingCategoryName('');
+    }
+  };
 
-    onUpdateCategories(updatedCategories);
-    setEditingCategory(null);
-    setNewCategory('');
-    await showSuccess(`Categoría actualizada a "${newCategory.trim()}"`, '✅ Categoría Actualizada');
-  }, [editingCategory, newCategory, categories, onUpdateCategories]);
-
-  const handleDeleteCategory = useCallback(async (category: Category) => {
+  // Eliminar categoría
+  const handleDeleteCategory = async (category: Category) => {
     const result = await showDeleteConfirmation(`"${category.name}"`);
-    
     if (result.isConfirmed) {
       const finalResult = await showConfirmation(
         `¿Estás COMPLETAMENTE seguro de eliminar la categoría "${category.name}"?\n\n` +
         `Esta acción eliminará:\n` +
-        `• La categoría principal\n` +
-        `• Todas las subcategorías asociadas\n` +
-        `• Referencias en productos\n\n` +
+        `• La categoría y todas sus subcategorías\n` +
+        `• Las referencias en productos\n\n` +
         `⚠️ Esta acción NO se puede deshacer`,
         '⚠️ Confirmación Final',
         'Sí, eliminar definitivamente',
         'Cancelar'
       );
-
+      
       if (finalResult.isConfirmed) {
-        const updatedCategories = categories.filter(cat => cat.id !== category.id);
-        onUpdateCategories(updatedCategories);
-        await showSuccess(`Categoría "${category.name}" eliminada exitosamente`, '✅ Categoría Eliminada');
+        const success = await deleteCategory(category.id);
+        if (success) {
+          await showSuccess(`Categoría "${category.name}" eliminada exitosamente`, '✅ Eliminada');
+        }
       }
     }
-  }, [categories, onUpdateCategories]);
+  };
 
-  const handleAddSubcategory = useCallback(async () => {
-    if (!selectedCategory || !newSubcategory.trim()) {
-      await showError('Selecciona una categoría e ingresa el nombre de la subcategoría', '⚠️ Datos Requeridos');
+  // Agregar subcategoría
+  const handleAddSubcategory = async () => {
+    if (!newSubcategoryName.trim() || !selectedCategoryForSubcategory) {
+      await showError('Completa todos los campos requeridos', '⚠️ Campos Requeridos');
       return;
     }
 
-    if (selectedCategory.subcategories.some(sub => 
-      sub.toLowerCase() === newSubcategory.toLowerCase()
-    )) {
-      await showError('Ya existe una subcategoría con ese nombre', '⚠️ Subcategoría Duplicada');
+    const category = categories.find(cat => cat.id === selectedCategoryForSubcategory);
+    if (category?.subcategories.includes(newSubcategoryName.trim())) {
+      await showError('Ya existe esa subcategoría en esta categoría', '⚠️ Subcategoría Duplicada');
       return;
     }
 
-    const updatedCategories = categories.map(cat =>
-      cat.id === selectedCategory.id
-        ? { ...cat, subcategories: [...cat.subcategories, newSubcategory.trim()] }
-        : cat
-    );
+    const success = await addSubcategory(selectedCategoryForSubcategory, newSubcategoryName.trim());
+    if (success) {
+      await showSuccess(`Subcategoría "${newSubcategoryName}" agregada exitosamente`, '✅ Subcategoría Agregada');
+      setNewSubcategoryName('');
+      setSelectedCategoryForSubcategory(null);
+    }
+  };
 
-    onUpdateCategories(updatedCategories);
-    setNewSubcategory('');
-    await showSuccess(`Subcategoría "${newSubcategory.trim()}" agregada a "${selectedCategory.name}"`, '✅ Subcategoría Agregada');
-  }, [selectedCategory, newSubcategory, categories, onUpdateCategories]);
-
-  const handleDeleteSubcategory = useCallback(async (category: Category, subcategory: string) => {
-    const result = await showConfirmation(
-      `¿Eliminar la subcategoría "${subcategory}" de "${category.name}"?`,
-      '🗑️ Eliminar Subcategoría',
-      'Eliminar',
-      'Cancelar'
-    );
-
+  // Eliminar subcategoría
+  const handleDeleteSubcategory = async (categoryId: string, subcategoryName: string) => {
+    const result = await showDeleteConfirmation(`"${subcategoryName}"`);
     if (result.isConfirmed) {
-      const updatedCategories = categories.map(cat =>
-        cat.id === category.id
-          ? { ...cat, subcategories: cat.subcategories.filter(sub => sub !== subcategory) }
-          : cat
-      );
-
-      onUpdateCategories(updatedCategories);
-      await showSuccess(`Subcategoría "${subcategory}" eliminada`, '✅ Subcategoría Eliminada');
+      const success = await removeSubcategory(categoryId, subcategoryName);
+      if (success) {
+        await showSuccess(`Subcategoría "${subcategoryName}" eliminada exitosamente`, '✅ Eliminada');
+      }
     }
-  }, [categories, onUpdateCategories]);
+  };
 
-  const handleClose = useCallback(() => {
-    setNewCategory('');
+  // Limpiar formularios al cerrar
+  const handleClose = () => {
+    setNewCategoryName('');
     setEditingCategory(null);
-    setNewSubcategory('');
-    setSelectedCategory(null);
+    setEditingCategoryName('');
+    setNewSubcategoryName('');
+    setSelectedCategoryForSubcategory(null);
     onClose();
-  }, [onClose]);
+  };
 
   return (
-    <Dialog
-      open={open}
+    <Dialog 
+      open={open} 
       onClose={handleClose}
       maxWidth="md"
       fullWidth
       PaperProps={{
         sx: {
-          background: `linear-gradient(135deg, ${colorTokens.surfaceLevel2}, ${colorTokens.surfaceLevel3})`,
-          color: colorTokens.textPrimary,
           borderRadius: 3,
-          border: `1px solid ${colorTokens.border}`
+          boxShadow: '0 20px 40px rgba(0,0,0,0.1)'
         }
       }}
     >
@@ -220,180 +198,264 @@ export default function CategoryManager({
       </DialogTitle>
 
       <DialogContent sx={{ p: 3 }}>
-        {/* AGREGAR CATEGORÍA */}
-        <Box sx={{ mb: 4 }}>
-          <Typography variant="h6" sx={{ mb: 2, color: colorTokens.textPrimary }}>
-            Agregar Nueva Categoría
-          </Typography>
-          <Box display="flex" gap={2}>
-            <TextField
-              fullWidth
-              placeholder="Nombre de la categoría"
-              value={editingCategory ? newCategory : newCategory}
-              onChange={(e) => setNewCategory(e.target.value)}
-              sx={{
-                '& .MuiOutlinedInput-root': {
-                  backgroundColor: colorTokens.surfaceLevel1,
-                  '& fieldset': { borderColor: colorTokens.border },
-                  '&:hover fieldset': { borderColor: colorTokens.brand },
-                  '&.Mui-focused fieldset': { borderColor: colorTokens.brand }
-                }
-              }}
-            />
-            <Button
-              variant="contained"
-              onClick={editingCategory ? handleUpdateCategory : handleAddCategory}
-              sx={{
-                background: `linear-gradient(135deg, ${colorTokens.brand}, ${colorTokens.brandHover})`,
-                color: colorTokens.textOnBrand,
-                fontWeight: 600,
-                px: 3
-              }}
-            >
-              {editingCategory ? 'Actualizar' : 'Agregar'}
-            </Button>
+        {error && (
+          <Alert severity="error" sx={{ mb: 3 }}>
+            {error}
+          </Alert>
+        )}
+
+        {loading ? (
+          <Box display="flex" justifyContent="center" alignItems="center" minHeight="200px">
+            <CircularProgress />
           </Box>
-          {editingCategory && (
-            <Button
-              variant="outlined"
-              onClick={() => {
-                setEditingCategory(null);
-                setNewCategory('');
-              }}
-              sx={{ mt: 1 }}
-            >
-              Cancelar Edición
-            </Button>
-          )}
-        </Box>
-
-        <Divider sx={{ my: 3, borderColor: colorTokens.border }} />
-
-        {/* LISTA DE CATEGORÍAS */}
-        <Box sx={{ mb: 4 }}>
-          <Typography variant="h6" sx={{ mb: 2, color: colorTokens.textPrimary }}>
-            Categorías Existentes
-          </Typography>
-          {categories.length === 0 ? (
-            <Alert severity="info" sx={{ backgroundColor: `${colorTokens.info}10` }}>
-              No hay categorías creadas. Agrega la primera categoría arriba.
-            </Alert>
-          ) : (
-            <List sx={{ backgroundColor: colorTokens.surfaceLevel1, borderRadius: 2 }}>
-              {categories.map((category) => (
-                <React.Fragment key={category.id}>
-                  <ListItem sx={{ py: 2 }}>
-                    <ListItemText
-                      primary={
-                        <Box display="flex" alignItems="center" gap={1}>
-                          <CategoryIcon sx={{ color: colorTokens.brand, fontSize: 20 }} />
-                          <Typography variant="subtitle1" fontWeight="bold">
-                            {category.name}
-                          </Typography>
-                          <Chip
-                            label={`${category.subcategories.length} subcategorías`}
-                            size="small"
-                            sx={{ backgroundColor: `${colorTokens.brand}20`, color: colorTokens.brand }}
-                          />
-                        </Box>
-                      }
-                      secondary={
-                        category.subcategories.length > 0 && (
-                          <Box display="flex" flexWrap="wrap" gap={0.5} mt={1}>
-                            {category.subcategories.map((subcategory) => (
-                              <Chip
-                                key={subcategory}
-                                label={subcategory}
-                                size="small"
-                                variant="outlined"
-                                sx={{ 
-                                  borderColor: colorTokens.border,
-                                  color: colorTokens.textSecondary,
-                                  fontSize: '0.75rem'
-                                }}
-                              />
-                            ))}
-                          </Box>
-                        )
-                      }
+        ) : (
+          <Grid container spacing={3}>
+            {/* AGREGAR NUEVA CATEGORÍA */}
+            <Grid item xs={12}>
+              <Card sx={{ border: `1px solid ${colorTokens.brand}20` }}>
+                <CardContent>
+                  <Typography variant="h6" sx={{ mb: 2, color: colorTokens.brand, fontWeight: 600 }}>
+                    <AddIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
+                    Agregar Nueva Categoría
+                  </Typography>
+                  <Box display="flex" gap={2} alignItems="center">
+                    <TextField
+                      fullWidth
+                      label="Nombre de la categoría"
+                      value={newCategoryName}
+                      onChange={(e) => setNewCategoryName(e.target.value)}
+                      onKeyPress={(e) => e.key === 'Enter' && handleAddCategory()}
+                      sx={{
+                        '& .MuiOutlinedInput-root': {
+                          '& fieldset': { borderColor: `${colorTokens.brand}30` },
+                          '&:hover fieldset': { borderColor: colorTokens.brand },
+                          '&.Mui-focused fieldset': { borderColor: colorTokens.brand }
+                        }
+                      }}
                     />
-                    <ListItemSecondaryAction>
-                      <Box display="flex" gap={1}>
-                        <IconButton
-                          onClick={() => setSelectedCategory(category)}
-                          sx={{ color: colorTokens.brand }}
-                        >
-                          <SubcategoryIcon />
-                        </IconButton>
-                        <IconButton
-                          onClick={() => handleEditCategory(category)}
-                          sx={{ color: colorTokens.warning }}
-                        >
-                          <EditIcon />
-                        </IconButton>
-                        <IconButton
-                          onClick={() => handleDeleteCategory(category)}
-                          sx={{ color: colorTokens.danger }}
-                        >
-                          <DeleteIcon />
-                        </IconButton>
-                      </Box>
-                    </ListItemSecondaryAction>
-                  </ListItem>
-                  <Divider sx={{ borderColor: colorTokens.border }} />
-                </React.Fragment>
-              ))}
-            </List>
-          )}
-        </Box>
+                    <Button
+                      variant="contained"
+                      onClick={handleAddCategory}
+                      disabled={!newCategoryName.trim()}
+                      sx={{
+                        backgroundColor: colorTokens.brand,
+                        '&:hover': { backgroundColor: colorTokens.brandHover },
+                        minWidth: '120px'
+                      }}
+                    >
+                      Agregar
+                    </Button>
+                  </Box>
+                </CardContent>
+              </Card>
+            </Grid>
 
-        {/* AGREGAR SUBCATEGORÍA */}
-        {selectedCategory && (
-          <>
-            <Divider sx={{ my: 3, borderColor: colorTokens.border }} />
-            <Box>
-              <Typography variant="h6" sx={{ mb: 2, color: colorTokens.textPrimary }}>
-                Agregar Subcategoría a "{selectedCategory.name}"
+            {/* AGREGAR SUBCATEGORÍA */}
+            <Grid item xs={12}>
+              <Card sx={{ border: `1px solid ${colorTokens.brand}20` }}>
+                <CardContent>
+                  <Typography variant="h6" sx={{ mb: 2, color: colorTokens.brand, fontWeight: 600 }}>
+                    <SubcategoryIcon sx={{ mr: 1, verticalAlign: 'middle' }} />
+                    Agregar Subcategoría
+                  </Typography>
+                  <Grid container spacing={2} alignItems="center">
+                    <Grid item xs={12} md={4}>
+                      <TextField
+                        fullWidth
+                        select
+                        label="Categoría"
+                        value={selectedCategoryForSubcategory || ''}
+                        onChange={(e) => setSelectedCategoryForSubcategory(e.target.value)}
+                        SelectProps={{ native: true }}
+                        sx={{
+                          '& .MuiOutlinedInput-root': {
+                            '& fieldset': { borderColor: `${colorTokens.brand}30` },
+                            '&:hover fieldset': { borderColor: colorTokens.brand },
+                            '&.Mui-focused fieldset': { borderColor: colorTokens.brand }
+                          }
+                        }}
+                      >
+                        <option value="">Seleccionar categoría</option>
+                        {categories.map(category => (
+                          <option key={category.id} value={category.id}>
+                            {category.name}
+                          </option>
+                        ))}
+                      </TextField>
+                    </Grid>
+                    <Grid item xs={12} md={4}>
+                      <TextField
+                        fullWidth
+                        label="Nombre de la subcategoría"
+                        value={newSubcategoryName}
+                        onChange={(e) => setNewSubcategoryName(e.target.value)}
+                        onKeyPress={(e) => e.key === 'Enter' && handleAddSubcategory()}
+                        sx={{
+                          '& .MuiOutlinedInput-root': {
+                            '& fieldset': { borderColor: `${colorTokens.brand}30` },
+                            '&:hover fieldset': { borderColor: colorTokens.brand },
+                            '&.Mui-focused fieldset': { borderColor: colorTokens.brand }
+                          }
+                        }}
+                      />
+                    </Grid>
+                    <Grid item xs={12} md={4}>
+                      <Button
+                        variant="contained"
+                        onClick={handleAddSubcategory}
+                        disabled={!newSubcategoryName.trim() || !selectedCategoryForSubcategory}
+                        sx={{
+                          backgroundColor: colorTokens.brand,
+                          '&:hover': { backgroundColor: colorTokens.brandHover },
+                          width: '100%'
+                        }}
+                      >
+                        Agregar Subcategoría
+                      </Button>
+                    </Grid>
+                  </Grid>
+                </CardContent>
+              </Card>
+            </Grid>
+
+            {/* LISTA DE CATEGORÍAS */}
+            <Grid item xs={12}>
+              <Typography variant="h6" sx={{ mb: 2, color: colorTokens.textPrimary, fontWeight: 600 }}>
+                Categorías Existentes ({categories.length})
               </Typography>
-              <Box display="flex" gap={2}>
-                <TextField
-                  fullWidth
-                  placeholder="Nombre de la subcategoría"
-                  value={newSubcategory}
-                  onChange={(e) => setNewSubcategory(e.target.value)}
-                  sx={{
-                    '& .MuiOutlinedInput-root': {
-                      backgroundColor: colorTokens.surfaceLevel1,
-                      '& fieldset': { borderColor: colorTokens.border },
-                      '&:hover fieldset': { borderColor: colorTokens.brand },
-                      '&.Mui-focused fieldset': { borderColor: colorTokens.brand }
-                    }
-                  }}
-                />
-                <Button
-                  variant="contained"
-                  onClick={handleAddSubcategory}
-                  sx={{
-                    background: `linear-gradient(135deg, ${colorTokens.success}, ${colorTokens.success}dd)`,
-                    color: colorTokens.textOnBrand,
-                    fontWeight: 600,
-                    px: 3
-                  }}
-                >
-                  Agregar
-                </Button>
-              </Box>
-            </Box>
-          </>
+              
+              {categories.length === 0 ? (
+                <Alert severity="info">
+                  No hay categorías registradas. Agrega la primera categoría arriba.
+                </Alert>
+              ) : (
+                <List sx={{ bgcolor: 'background.paper', borderRadius: 2 }}>
+                  {categories.map((category, index) => (
+                    <React.Fragment key={category.id}>
+                      <ListItem sx={{ py: 2 }}>
+                        <ListItemText
+                          primary={
+                            editingCategory === category.id ? (
+                              <Box display="flex" alignItems="center" gap={2}>
+                                <TextField
+                                  size="small"
+                                  value={editingCategoryName}
+                                  onChange={(e) => setEditingCategoryName(e.target.value)}
+                                  onKeyPress={(e) => e.key === 'Enter' && handleEditCategory(category.id, editingCategoryName)}
+                                  sx={{ flexGrow: 1 }}
+                                />
+                                <Button
+                                  size="small"
+                                  onClick={() => handleEditCategory(category.id, editingCategoryName)}
+                                  sx={{ color: colorTokens.brand }}
+                                >
+                                  Guardar
+                                </Button>
+                                <Button
+                                  size="small"
+                                  onClick={() => {
+                                    setEditingCategory(null);
+                                    setEditingCategoryName('');
+                                  }}
+                                >
+                                  Cancelar
+                                </Button>
+                              </Box>
+                            ) : (
+                              <Box display="flex" alignItems="center" gap={1}>
+                                <CategoryIcon sx={{ color: colorTokens.brand, fontSize: 20 }} />
+                                <Typography variant="subtitle1" sx={{ fontWeight: 600 }}>
+                                  {category.name}
+                                </Typography>
+                                <Chip 
+                                  label={`${category.subcategories.length} subcategorías`}
+                                  size="small"
+                                  sx={{ 
+                                    backgroundColor: `${colorTokens.brand}20`,
+                                    color: colorTokens.brand,
+                                    fontWeight: 500
+                                  }}
+                                />
+                              </Box>
+                            )
+                          }
+                          secondary={
+                            category.subcategories.length > 0 && (
+                              <Box display="flex" flexWrap="wrap" gap={0.5} mt={1}>
+                                {category.subcategories.map((subcategory) => (
+                                  <Chip
+                                    key={subcategory}
+                                    label={subcategory}
+                                    size="small"
+                                    variant="outlined"
+                                    onDelete={() => handleDeleteSubcategory(category.id, subcategory)}
+                                    sx={{
+                                      borderColor: `${colorTokens.brand}40`,
+                                      color: colorTokens.textSecondary,
+                                      '& .MuiChip-deleteIcon': {
+                                        color: colorTokens.error
+                                      }
+                                    }}
+                                  />
+                                ))}
+                              </Box>
+                            )
+                          }
+                        />
+                        <ListItemSecondaryAction>
+                          <Box display="flex" gap={1}>
+                            <IconButton
+                              size="small"
+                              onClick={() => {
+                                setEditingCategory(category.id);
+                                setEditingCategoryName(category.name);
+                              }}
+                              disabled={editingCategory === category.id}
+                              sx={{ color: colorTokens.brand }}
+                            >
+                              <EditIcon />
+                            </IconButton>
+                            <IconButton
+                              size="small"
+                              onClick={() => handleDeleteCategory(category)}
+                              sx={{ color: colorTokens.error }}
+                            >
+                              <DeleteIcon />
+                            </IconButton>
+                          </Box>
+                        </ListItemSecondaryAction>
+                      </ListItem>
+                      {index < categories.length - 1 && <Divider />}
+                    </React.Fragment>
+                  ))}
+                </List>
+              )}
+            </Grid>
+          </Grid>
         )}
       </DialogContent>
 
-      <DialogActions sx={{ p: 3, borderTop: `1px solid ${colorTokens.border}` }}>
+      <DialogActions sx={{ p: 3, gap: 2 }}>
+        <Button
+          onClick={refreshCategories}
+          variant="outlined"
+          sx={{
+            borderColor: colorTokens.brand,
+            color: colorTokens.brand,
+            '&:hover': {
+              borderColor: colorTokens.brandHover,
+              backgroundColor: `${colorTokens.brand}10`
+            }
+          }}
+        >
+          Actualizar
+        </Button>
         <Button
           onClick={handleClose}
+          variant="contained"
           sx={{
-            color: colorTokens.textSecondary,
-            fontWeight: 600
+            backgroundColor: colorTokens.brand,
+            '&:hover': { backgroundColor: colorTokens.brandHover }
           }}
         >
           Cerrar

@@ -39,6 +39,7 @@ import {
 // ✅ IMPORTS ENTERPRISE v6.0
 import { colorTokens } from '@/theme';
 import { notify } from '@/utils/notifications';
+import { showSuccess, showError } from '@/lib/notifications/MySwal';
 import { getCurrentTimestamp } from '@/utils/dateUtils';
 import { useSuppliers, useProducts } from '@/hooks/useCatalog';
 import { Product } from '@/services/catalogService';
@@ -129,13 +130,15 @@ interface ProductFormDialogProps {
   onClose: () => void;
   product?: Product | null;
   onSave: () => void;
+  categories?: Array<{id: string, name: string, subcategories: string[]}>;
 }
 
 export default function ProductFormDialog({
   open,
   onClose,
   product,
-  onSave
+  onSave,
+  categories = []
 }: ProductFormDialogProps) {
   
   // HOOKS
@@ -156,6 +159,7 @@ export default function ProductFormDialog({
   const [formData, setFormData] = useState<FormDataType>(INITIAL_FORM_STATE);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
+  const [availableSubcategories, setAvailableSubcategories] = useState<string[]>([]);
 
   // CARGAR DATOS DEL PRODUCTO
   useEffect(() => {
@@ -186,6 +190,25 @@ export default function ProductFormDialog({
     }
     setErrors({});
   }, [product, open]);
+
+  // ACTUALIZAR SUBCATEGORÍAS DISPONIBLES CUANDO CAMBIE LA CATEGORÍA
+  useEffect(() => {
+    if (formData.category && categories.length > 0) {
+      const selectedCategory = categories.find(cat => cat.name === formData.category);
+      if (selectedCategory) {
+        setAvailableSubcategories(selectedCategory.subcategories);
+        // Si la subcategoría actual no está en las disponibles, limpiarla
+        if (formData.subcategory && !selectedCategory.subcategories.includes(formData.subcategory)) {
+          setFormData(prev => ({ ...prev, subcategory: '' }));
+        }
+      } else {
+        setAvailableSubcategories([]);
+        setFormData(prev => ({ ...prev, subcategory: '' }));
+      }
+    } else {
+      setAvailableSubcategories([]);
+    }
+  }, [formData.category, categories]);
 
   // CALCULAR MARGEN AUTOMÁTICAMENTE
   useEffect(() => {
@@ -272,7 +295,7 @@ export default function ProductFormDialog({
       
     } catch (error) {
       console.error('Error inesperado al guardar producto:', error);
-      notify.error('Error inesperado al guardar producto');
+      await showError('Error inesperado al guardar producto', '❌ Error al Guardar');
     } finally {
       setLoading(false);
     }
@@ -556,24 +579,35 @@ export default function ProductFormDialog({
                   </Grid>
 
                   <Grid size={{ xs: 12, md: 4 }}>
-                    <TextField
-                      fullWidth
-                      label="Subcategoría"
-                      value={formData.subcategory}
-                      onChange={(e) => handleChange('subcategory', e.target.value)}
-                      sx={{
-                        '& .MuiOutlinedInput-root': {
-                          color: colorTokens.textPrimary,
-                          '& fieldset': { borderColor: `${colorTokens.brand}30` },
-                          '&:hover fieldset': { borderColor: colorTokens.brand },
-                          '&.Mui-focused fieldset': { borderColor: colorTokens.brand }
-                        },
-                        '& .MuiInputLabel-root': { 
-                          color: colorTokens.textSecondary,
-                          '&.Mui-focused': { color: colorTokens.brand }
-                        }
-                      }}
-                    />
+                    <FormControl fullWidth>
+                      <InputLabel>Subcategoría</InputLabel>
+                      <Select
+                        value={formData.subcategory}
+                        onChange={(e) => handleChange('subcategory', e.target.value)}
+                        label="Subcategoría"
+                        sx={{
+                          '& .MuiOutlinedInput-root': {
+                            color: colorTokens.textPrimary,
+                            '& fieldset': { borderColor: `${colorTokens.brand}30` },
+                            '&:hover fieldset': { borderColor: colorTokens.brand },
+                            '&.Mui-focused fieldset': { borderColor: colorTokens.brand }
+                          },
+                          '& .MuiInputLabel-root': { 
+                            color: colorTokens.textSecondary,
+                            '&.Mui-focused': { color: colorTokens.brand }
+                          }
+                        }}
+                      >
+                        <MenuItem value="">
+                          <em>Sin subcategoría</em>
+                        </MenuItem>
+                        {availableSubcategories.map((subcategory) => (
+                          <MenuItem key={subcategory} value={subcategory}>
+                            {subcategory}
+                          </MenuItem>
+                        ))}
+                      </Select>
+                    </FormControl>
                   </Grid>
                 </Grid>
               </CardContent>

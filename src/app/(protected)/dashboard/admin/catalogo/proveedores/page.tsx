@@ -57,7 +57,8 @@ import {
   WhatsApp as WhatsAppIcon,
   Language as WebsiteIcon,
   CreditCard as CreditIcon,
-  Warning as WarningIcon
+  Warning as WarningIcon,
+  Category as CategoryIcon
 } from '@mui/icons-material';
 import { useRouter } from 'next/navigation';
 
@@ -70,6 +71,8 @@ import { formatTimestampForDisplay } from '@/utils/dateUtils';
 import { useSuppliers, useSupplierStats } from '@/hooks/useCatalog';
 import { Supplier } from '@/services/catalogService';
 import SupplierFormDialog from '@/components/catalogo/SupplierFormDialog';
+import { useCategories } from '@/hooks/useCategories';
+import CategoryManager from '@/components/admin/CategoryManager';
 
 const STATUS_FILTERS = [
   { value: 'active', label: 'Proveedores Activos' },
@@ -119,6 +122,10 @@ export default function ProveedoresPage() {
   const [supplierDialogOpen, setSupplierDialogOpen] = useState(false);
   const [menuAnchor, setMenuAnchor] = useState<null | HTMLElement>(null);
   const [menuSupplier, setMenuSupplier] = useState<Supplier | null>(null);
+  const [categoryManagerOpen, setCategoryManagerOpen] = useState(false);
+  
+  // Hook para gestión de categorías
+  const { categories } = useCategories();
 
   // CATEGORÍAS ÚNICAS MEMORIZADAS
   const uniqueCategories = useMemo(() => {
@@ -305,19 +312,39 @@ export default function ProveedoresPage() {
               </Typography>
             </Box>
             
-            <Button
-              variant="outlined"
-              startIcon={<RefreshIcon />}
-              onClick={reload}
-              disabled={loading}
-              sx={{ 
-                color: colorTokens.textSecondary,
-                borderColor: `${colorTokens.textSecondary}60`,
-                px: 3, py: 1.5, borderRadius: 3, fontWeight: 600
-              }}
-            >
-              {loading ? <CircularProgress size={20} /> : 'Actualizar'}
-            </Button>
+            <Box display="flex" gap={2}>
+              <Button
+                variant="outlined"
+                startIcon={<RefreshIcon />}
+                onClick={reload}
+                disabled={loading}
+                sx={{ 
+                  color: colorTokens.textSecondary,
+                  borderColor: `${colorTokens.textSecondary}60`,
+                  px: 3, py: 1.5, borderRadius: 3, fontWeight: 600
+                }}
+              >
+                {loading ? <CircularProgress size={20} /> : 'Actualizar'}
+              </Button>
+              
+              <Button
+                variant="contained"
+                startIcon={<CategoryIcon />}
+                onClick={() => setCategoryManagerOpen(true)}
+                sx={{
+                  backgroundColor: colorTokens.brand,
+                  '&:hover': { backgroundColor: colorTokens.brandHover },
+                  px: 3, py: 1.5, borderRadius: 3, fontWeight: 600
+                }}
+              >
+                <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' } }}>
+                  Gestionar Categorías
+                </Box>
+                <Box component="span" sx={{ display: { xs: 'inline', sm: 'none' } }}>
+                  Categorías
+                </Box>
+              </Button>
+            </Box>
           </Box>
 
           {/* ESTADÍSTICAS */}
@@ -931,6 +958,12 @@ export default function ProveedoresPage() {
         onClose={closeSupplierDialog}
         supplier={selectedSupplier}
         onSave={handleSupplierSave}
+      />
+
+      {/* GESTIÓN DE CATEGORÍAS */}
+      <CategoryManager
+        open={categoryManagerOpen}
+        onClose={() => setCategoryManagerOpen(false)}
       />
     </Box>
   );
