@@ -71,8 +71,8 @@ export function useCategories(): UseCategoriesReturn {
 
       setCategories(categoriesData);
     } catch (err: any) {
-      console.error('Error loading categories:', err);
-      setError(err.message || 'Error al cargar categorías');
+      console.error('Error loading categories:', err?.message || err || 'Error desconocido');
+      setError(err?.message || 'Error al cargar categorías');
     } finally {
       setLoading(false);
     }
