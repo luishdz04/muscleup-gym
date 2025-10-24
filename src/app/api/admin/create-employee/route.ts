@@ -4,7 +4,7 @@ import { supabaseAdmin } from '@/lib/supabase/admin';
 export async function POST(req: NextRequest) {
   try {
     console.log('🚀 Iniciando creación de usuario...');
-    
+
     // Cambiar de JSON a FormData
     const formData = await req.formData();
     
@@ -165,13 +165,21 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 4. Insertar en tabla Users (SOLO ID - RELACIÓN CON AUTH)
-    console.log('👤 Insertando en tabla Users (solo ID para relación)...');
+    // 4. Insertar en tabla Users (datos básicos requeridos)
+    console.log('👤 Insertando en tabla Users...');
     const { error: userError } = await supabaseAdmin
       .from('Users')
       .insert({
         id: userId,
-        // ⚠️ SOLO ID - Todos los demás datos van en employees
+        firstName,
+        lastName,
+        email,
+        rol: rol, // admin o empleado
+        whatsapp: phone || null, // ⚠️ El campo se llama "whatsapp" en la tabla
+        birthDate: birthDate || null,
+        gender: gender || null,
+        maritalStatus: maritalStatus || null,
+        profilePictureUrl: profilePictureUrl,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         createdBy: createdBy || null
@@ -200,9 +208,9 @@ export async function POST(req: NextRequest) {
       .insert({
         user_id: userId,
 
-        // ✅ DATOS PERSONALES (que antes estaban en Users)
-        first_name: firstName,
-        last_name: lastName,
+        // ✅ DATOS PERSONALES
+        firstname: firstName, // ⚠️ lowercase sin guiones
+        lastname: lastName,   // ⚠️ lowercase sin guiones
         email: email,
 
         // ✅ DATOS ADICIONALES

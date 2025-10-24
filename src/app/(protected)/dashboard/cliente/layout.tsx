@@ -219,13 +219,28 @@ const menuItems: MenuItemDef[] = [
     description: 'Completa encuestas disponibles'
   },
   {
+    text: 'Ejercicios',
+    path: '/dashboard/cliente/ejercicios',
+    icon: <FitnessCenterIcon />,
+    mobileIcon: <FitnessCenterIcon />,
+    section: 'ejercicios',
+    description: 'Biblioteca de ejercicios'
+  },
+  {
     text: 'Rutinas',
     path: '/dashboard/cliente/rutinas',
     icon: <FitnessCenterIcon />,
     mobileIcon: <FitnessCenterIcon />,
     section: 'rutinas',
-    description: 'Próximamente',
-    disabled: true
+    description: 'Rutinas disponibles del gym'
+  },
+  {
+    text: 'Mi Workout',
+    path: '/dashboard/cliente/mi-workout',
+    icon: <FitnessCenterIcon />,
+    mobileIcon: <FitnessCenterIcon />,
+    section: 'mi-workout',
+    description: 'Mis rutinas personalizadas'
   }
 ];
 

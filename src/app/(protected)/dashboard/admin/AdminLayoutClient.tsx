@@ -46,6 +46,8 @@ import Link from 'next/link';
 import { colorTokens } from '@/theme';
 import { formatMexicoTime } from '@/utils/dateUtils';
 import { useToast } from '@/hooks/useToast';
+import { useUserRole } from '@/hooks/useUserRole';
+import { hasPermission, canAccessRoute, type Permission } from '@/config/permissions';
 
 // Hook para evitar errores de hidratación con tiempo
 const useCurrentTime = () => {
@@ -55,12 +57,19 @@ const useCurrentTime = () => {
   useEffect(() => {
     setMounted(true);
     const updateTime = () => {
-      setCurrentTime(formatMexicoTime(new Date()));
+      const now = new Date();
+      const mexicoTime = formatMexicoTime(now, {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: true
+      });
+      setCurrentTime(mexicoTime);
     };
-    
+
     updateTime();
     const interval = setInterval(updateTime, 1000);
-    
+
     return () => clearInterval(interval);
   }, []);
 
@@ -274,16 +283,18 @@ interface MenuItem {
   items?: MenuItem[];
   color?: string;
   description?: string;
+  permission?: Permission; // ✅ Permiso requerido para ver este item
 }
 
 // ✅ DEFINICIÓN COMPLETA DEL MENÚ REESTRUCTURADO - FUERA DEL COMPONENTE
 const menuItems: MenuItem[] = [
-  { 
-    text: 'Dashboard', 
-    path: '/dashboard/admin/dashboard', 
+  {
+    text: 'Dashboard',
+    path: '/dashboard/admin/dashboard',
     icon: <DashboardIcon />,
     section: 'dashboard',
-    description: 'Vista general del sistema'
+    description: 'Vista general del sistema',
+    permission: 'dashboard.view' // ❌ Empleado NO puede ver
   },
   
   // 👥 GESTIÓN DE USUARIOS (Ya completado - MUP)
@@ -295,13 +306,14 @@ const menuItems: MenuItem[] = [
     description: 'Gestión completa de clientes'
   },
   
-// 👨‍💼 EMPLEADOS (Gestión de staff interno)
-{ 
-  text: 'Empleados', 
+// 👨‍💼 EMPLEADOS (Gestión de staff interno) - SOLO ADMIN
+{
+  text: 'Empleados',
   icon: <BadgeIcon />,
   submenu: true,
   section: 'empleados',
   description: 'Gestión de personal interno',
+  permission: 'employees.view', // ✅ Solo admin puede ver
   items: [
     {
       text: 'Registrar Empleado',
@@ -309,7 +321,8 @@ const menuItems: MenuItem[] = [
       icon: <PersonAddIcon />,
       parent: 'empleados',
       section: 'registrar-empleado',
-      description: 'Agregar nuevo empleado'
+      description: 'Agregar nuevo empleado',
+      permission: 'employees.create'
     },
     {
       text: 'Lista de Empleados',
@@ -317,107 +330,117 @@ const menuItems: MenuItem[] = [
       icon: <PeopleIcon />,
       parent: 'empleados',
       section: 'lista-empleados',
-      description: 'Gestionar personal existente'
+      description: 'Gestionar personal existente',
+      permission: 'employees.view'
     }
   ]
 },
 
-  // 💪 PLANES (CATÁLOGO DE MEMBRESÍAS) - SIN SUBMENU
-  { 
-    text: 'Planes', 
-    path: '/dashboard/admin/planes', 
+  // 💪 PLANES (CATÁLOGO DE MEMBRESÍAS) - SOLO ADMIN
+  {
+    text: 'Planes',
+    path: '/dashboard/admin/planes',
     icon: <FitnessCenterIcon />,
     section: 'planes',
-    description: 'Catálogo de membresías disponibles'
+    description: 'Catálogo de membresías disponibles',
+    permission: 'plans.view' // ❌ Empleado NO puede ver
   },
   
-  // 💰 MEMBRESÍAS & PAGOS (UNIFICADO) - REEMPLAZAR AMBAS SECCIONES
-  { 
-    text: 'Membresías & Pagos', 
+  // 💰 MEMBRESÍAS & PAGOS - Empleado solo ve: Registrar Membresía + Historial de Pagos
+  {
+    text: 'Membresías & Pagos',
     icon: <PaymentIcon />,
     submenu: true,
     section: 'membresias',
     description: 'Gestión completa de membresías y pagos',
     badge: 15,
     items: [
-      { 
-        text: 'Dashboard', 
-        path: '/dashboard/admin/membresias', 
+      {
+        text: 'Dashboard',
+        path: '/dashboard/admin/membresias',
         icon: <DashboardIcon />,
         parent: 'membresias',
         section: 'membresias',
-        description: 'Vista general y estadísticas'
+        description: 'Vista general y estadísticas',
+        permission: 'memberships.dashboard' // ❌ Empleado NO puede ver
       },
-      { 
-        text: 'Registrar Membresía', 
-        path: '/dashboard/admin/membresias/registrar', 
+      {
+        text: 'Registrar Membresía',
+        path: '/dashboard/admin/membresias/registrar',
         icon: <PersonAddAltIcon />,
         parent: 'membresias',
         section: 'registrar',
         description: 'Proceso completo usuario + plan + pago'
+        // ✅ NO tiene permission - Empleado SÍ puede ver
       },
-      { 
-        text: 'Historial de Pagos', 
-        path: '/dashboard/admin/membresias/historial', 
+      {
+        text: 'Historial de Pagos',
+        path: '/dashboard/admin/membresias/historial',
         icon: <ReceiptLongIcon />,
         parent: 'membresias',
         section: 'historial',
         description: 'Registro de transacciones'
+        // ✅ NO tiene permission - Empleado SÍ puede ver
       },
-      { 
-        text: 'Cupones y Descuentos', 
-        path: '/dashboard/admin/membresias/cupones', 
+      {
+        text: 'Cupones y Descuentos',
+        path: '/dashboard/admin/membresias/cupones',
         icon: <LocalOfferIcon />,
         parent: 'membresias',
         section: 'cupones',
-        description: 'Gestión de promociones'
+        description: 'Gestión de promociones',
+        permission: 'memberships.coupons' // ❌ Empleado NO puede ver
       }
     ]
   },
   
-  // 🛍️ POS MUP (PUNTO DE VENTA UNIFICADO) - CON SUBMENU
-  { 
-    text: 'POS MUP', 
+  // 🛍️ POS MUP - Empleado solo ve: Punto de Venta + Gestión de Apartados
+  {
+    text: 'POS MUP',
     icon: <StorefrontIcon />,
     submenu: true,
     section: 'pos',
     description: 'Sistema de punto de venta completo',
     badge: 8,
     items: [
-      { 
-        text: 'Punto de Venta', 
-        path: '/dashboard/admin/pos', 
+      {
+        text: 'Punto de Venta',
+        path: '/dashboard/admin/pos',
         icon: <CashRegisterIcon />,
         parent: 'pos',
         section: 'venta',
         description: 'Terminal de venta principal'
+        // ✅ NO tiene permission - Empleado SÍ puede ver
       },
-      { 
-        text: 'Historial de Ventas', 
-        path: '/dashboard/admin/sales/history', 
+      {
+        text: 'Historial de Ventas',
+        path: '/dashboard/admin/sales/history',
         icon: <HistoryIcon />,
         parent: 'pos',
         section: 'historial',
-        description: 'Registro completo de transacciones'
+        description: 'Registro completo de transacciones',
+        permission: 'sales.history' // ❌ Empleado NO puede ver
       },
-      { 
-        text: 'Gestión de Apartados', 
-        path: '/dashboard/admin/layaways/management', 
+      {
+        text: 'Gestión de Apartados',
+        path: '/dashboard/admin/layaways/management',
         icon: <ScheduleIcon />,
         parent: 'pos',
         section: 'apartados',
         description: 'Administración de apartados'
+        // ✅ NO tiene permission - Empleado SÍ puede ver
       }
     ]
   },
   
-  // 📦 CATÁLOGO
-  { 
-    text: 'Catálogo', 
+  // 📦 CATÁLOGO - SOLO ADMIN
+  {
+    text: 'Catálogo',
     icon: <CategoryIcon />,
     submenu: true,
     section: 'catalogo',
     description: 'Gestión de inventario y productos',
+    permission: 'catalog.view', // ❌ Empleado NO puede ver
     items: [
       { 
         text: 'Productos', 
@@ -450,13 +473,14 @@ const menuItems: MenuItem[] = [
     ]
   },
   
-  // 💳 EGRESOS - CONVERTIR A SUBMENU
-  { 
-    text: 'Egresos', 
+  // 💳 EGRESOS - SOLO ADMIN
+  {
+    text: 'Egresos',
     icon: <ReceiptIcon />,
     submenu: true,
     section: 'egresos',
     description: 'Control de gastos y egresos',
+    permission: 'finance.expenses.view', // ❌ Empleado NO puede ver
     items: [
       { 
         text: 'Dashboard Egresos', 
@@ -485,13 +509,14 @@ const menuItems: MenuItem[] = [
     ]
   },
   
-  // 📊 CORTES Y ANÁLISIS - CON SUBMENU
-  { 
-    text: 'Cortes', 
+  // 📊 CORTES Y ANÁLISIS - SOLO ADMIN
+  {
+    text: 'Cortes',
     icon: <BarChartIcon />,
     submenu: true,
     section: 'cortes',
     description: 'Cierre diario y mensual',
+    permission: 'finance.cuts', // ❌ Empleado NO puede ver
     items: [
       { 
         text: 'Dashboard Cortes', 
@@ -520,59 +545,86 @@ const menuItems: MenuItem[] = [
     ]
   },
   
-  // 📋 HISTORIAL DE ASISTENCIAS
+  // 📋 HISTORIAL DE ASISTENCIAS - Empleado SÍ puede ver
   {
     text: 'Historial de Asistencias',
     path: '/dashboard/admin/acceso',
     icon: <HistoryIcon />,
     section: 'historial_asistencias',
     description: 'Registro de accesos y asistencias'
+    // ✅ NO tiene permission - Empleado SÍ puede ver
   },
-  
-  // 📈 REPORTES
-  { 
-    text: 'Reportes', 
-    path: '/dashboard/admin/reportes', 
+
+  // 📈 REPORTES - SOLO ADMIN
+  {
+    text: 'Reportes',
+    path: '/dashboard/admin/reportes',
     icon: <AssessmentIcon />,
     section: 'reportes',
-    description: 'Analytics y reportes del negocio'
+    description: 'Analytics y reportes del negocio',
+    permission: 'reports.view' // ❌ Empleado NO puede ver
   },
-  
-  // ⚙️ HERRAMIENTAS
+
+  // 💪 BIBLIOTECA DE EJERCICIOS - SOLO ADMIN
+  {
+    text: 'Biblioteca de Ejercicios',
+    path: '/dashboard/admin/biblioteca',
+    icon: <FitnessCenterIcon />,
+    section: 'biblioteca',
+    description: 'Gestión de ejercicios',
+    permission: 'exercises.view' // ❌ Empleado NO puede ver
+  },
+
+  // 📋 RUTINAS DE ENTRENAMIENTO - SOLO ADMIN
+  {
+    text: 'Rutinas',
+    path: '/dashboard/admin/rutinas',
+    icon: <EventIcon />,
+    section: 'rutinas',
+    description: 'Crear y asignar rutinas personalizadas',
+    permission: 'routines.view' // ❌ Empleado NO puede ver
+  },
+
+  // ⚙️ HERRAMIENTAS - SOLO ADMIN
   {
     text: 'Herramientas',
     icon: <BuildIcon />,
     submenu: true,
     section: 'herramientas',
     description: 'Configuración y mantenimiento',
+    permission: 'tools.settings', // ✅ Solo admin
     items: [
       {
         text: 'Configuración General',
         path: '/dashboard/admin/herramientas/configuracion',
         icon: <SettingsIcon />,
         parent: 'herramientas',
-        section: 'configuracion-sistema'
+        section: 'configuracion-sistema',
+        permission: 'tools.settings'
       },
       {
         text: 'Avisos para Clientes',
         path: '/dashboard/admin/herramientas/avisos',
         icon: <CampaignIcon />,
         parent: 'herramientas',
-        section: 'avisos-clientes'
+        section: 'avisos-clientes',
+        permission: 'tools.announcements'
       },
       {
         text: 'Encuestas',
         path: '/dashboard/admin/encuestas',
         icon: <PollIcon />,
         parent: 'herramientas',
-        section: 'encuestas'
+        section: 'encuestas',
+        permission: 'tools.settings'
       },
       {
         text: 'Respaldo de Datos',
         path: '/dashboard/admin/herramientas/respaldos',
         icon: <BackupIcon />,
         parent: 'herramientas',
-        section: 'respaldo-datos'
+        section: 'respaldo-datos',
+        permission: 'tools.backups' // ✅ Solo admin puede hacer respaldos
       }
     ]
   }
@@ -595,15 +647,15 @@ export default function AdminLayoutClient({ children, user }: AdminLayoutClientP
   const router = useRouter();
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('lg'));
-  
+
   // 🔧 ESTADOS MEJORADOS
   const [drawerOpen, setDrawerOpen] = useState(!isMobile);
   const [userMenuAnchor, setUserMenuAnchor] = useState<null | HTMLElement>(null);
   const [activeSection, setActiveSection] = useState<string>('');
-  
+
   // ✅ ESTADO SIMPLIFICADO PARA SUBMENÚS (solo uno abierto a la vez)
   const [openSubMenu, setOpenSubMenu] = useState<string | null>(null);
-  
+
   const [loading, setLoading] = useState(false);
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [mobileBottomValue, setMobileBottomValue] = useState(0);
@@ -615,6 +667,38 @@ export default function AdminLayoutClient({ children, user }: AdminLayoutClientP
 
   // ✅ HOOK DE TOAST para notificaciones
   const toast = useToast();
+
+  // ✅ HOOK DE ROL DE USUARIO para permisos
+  const { role, isAdmin, isEmpleado, loading: roleLoading } = useUserRole();
+
+  // ✅ FILTRAR ITEMS DEL MENÚ SEGÚN PERMISOS
+  const filteredMenuItems = menuItems
+    .map(item => {
+      // Si el item tiene permiso, verificar si el usuario lo tiene
+      if (item.permission && !hasPermission(role, item.permission)) {
+        return null; // Usuario no tiene permiso, ocultar item
+      }
+
+      // Si tiene subitems, filtrar también los subitems
+      if (item.items) {
+        const filteredSubItems = item.items.filter(subItem => {
+          if (subItem.permission) {
+            return hasPermission(role, subItem.permission);
+          }
+          return true; // Si no requiere permiso, mostrar
+        });
+
+        // Si no quedan subitems después del filtro, ocultar el item completo
+        if (filteredSubItems.length === 0) {
+          return null;
+        }
+
+        return { ...item, items: filteredSubItems };
+      }
+
+      return item;
+    })
+    .filter((item): item is MenuItem => item !== null); // Eliminar nulls
   
   // ✅ useEffect OPTIMIZADO - SIN menuItems como dependencia
   useEffect(() => {
@@ -721,8 +805,8 @@ export default function AdminLayoutClient({ children, user }: AdminLayoutClientP
 
   const scrollToTop = () => window.scrollTo({ top: 0, behavior: 'smooth' });
 
-  // Define bottom nav items - SOLO items principales del menú
-  const bottomNavItems = menuItems;
+  // Define bottom nav items - SOLO items principales del menú (filtrados por permisos)
+  const bottomNavItems = filteredMenuItems;
 
   const handleMobileNavChange = (event: React.SyntheticEvent, newValue: number) => {
     const selectedItem = bottomNavItems[newValue];
@@ -1479,7 +1563,7 @@ export default function AdminLayoutClient({ children, user }: AdminLayoutClientP
               }
             }}
           >
-            {menuItems.map((item, index) => {
+            {filteredMenuItems.map((item, index) => {
               // ITEMS CON SUBMENÚ
               if (item.submenu && item.items) {
                 return (
