@@ -6,7 +6,28 @@ export async function GET(request: NextRequest) {
   try {
     console.log('📊 [API-USERS] Obteniendo usuarios con datos relacionados...');
 
+    // Verificar que las variables de entorno estén configuradas
+    if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
+      console.error('❌ [API-USERS] NEXT_PUBLIC_SUPABASE_URL no está configurada');
+      return NextResponse.json(
+        { error: 'Error de configuración: URL de Supabase no disponible' },
+        { status: 500 }
+      );
+    }
+
+    if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+      console.error('❌ [API-USERS] SUPABASE_SERVICE_ROLE_KEY no está configurada');
+      return NextResponse.json(
+        { error: 'Error de configuración: Service Role Key no disponible' },
+        { status: 500 }
+      );
+    }
+
+    console.log('✅ [API-USERS] Variables de entorno verificadas');
+
     const supabaseAdmin = createAdminSupabaseClient();
+    console.log('✅ [API-USERS] Cliente Supabase admin creado');
+
     const searchParams = request.nextUrl.searchParams;
 
     // Obtener parámetros de filtro
@@ -14,6 +35,7 @@ export async function GET(request: NextRequest) {
     const limit = searchParams.get('limit');
 
     // Construir query base
+    console.log('🔍 [API-USERS] Construyendo query...');
     let query = supabaseAdmin
       .from('Users')
       .select(`
@@ -39,22 +61,61 @@ export async function GET(request: NextRequest) {
     // Ordenar por fecha de creación
     query = query.order('createdAt', { ascending: false });
 
+    console.log('🔄 [API-USERS] Ejecutando query en Supabase...');
     const { data: users, error } = await query;
+    console.log('🔄 [API-USERS] Query completado. Error:', error, 'Data length:', users?.length);
 
     if (error) {
-      console.error('❌ [API-USERS] Error en query:', error);
+      console.error('❌ [API-USERS] Error en query:', {
+        message: error.message,
+        details: error.details,
+        hint: error.hint,
+        code: error.code
+      });
+
+      // Mensaje específico para error de API key
+      if (error.message === 'Invalid API key') {
+        return NextResponse.json(
+          {
+            error: 'Configuración de Supabase inválida',
+            message: 'La API key de Supabase es inválida. Por favor verifica SUPABASE_SERVICE_ROLE_KEY en .env.local',
+            hint: error.hint
+          },
+          { status: 500 }
+        );
+      }
+
       return NextResponse.json(
-        { error: 'Error al obtener usuarios: ' + error.message },
+        { error: 'Error al obtener usuarios: ' + error.message + (error.hint ? ' (' + error.hint + ')' : '') },
         { status: 500 }
       );
     }
 
     console.log(`✅ [API-USERS] ${users?.length || 0} usuarios obtenidos exitosamente`);
 
-    return NextResponse.json({ users });
+    // Verificar que la data es serializable
+    console.log('🔄 [API-USERS] Preparando respuesta JSON...');
+    try {
+      const response = NextResponse.json({ users });
+      console.log('✅ [API-USERS] Respuesta JSON preparada exitosamente');
+      return response;
+    } catch (jsonError: any) {
+      console.error('❌ [API-USERS] Error al serializar JSON:', {
+        message: jsonError.message,
+        stack: jsonError.stack
+      });
+      return NextResponse.json(
+        { error: 'Error al serializar datos: ' + jsonError.message },
+        { status: 500 }
+      );
+    }
 
   } catch (error: any) {
-    console.error('❌ [API-USERS] Error en API:', error);
+    console.error('❌ [API-USERS] Error en API (catch):', {
+      message: error.message,
+      stack: error.stack,
+      name: error.name
+    });
     return NextResponse.json(
       { message: 'Error interno: ' + (error.message || 'Error desconocido') },
       { status: 500 }

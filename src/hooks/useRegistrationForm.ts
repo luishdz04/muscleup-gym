@@ -61,9 +61,15 @@ type SavedFormData = FormData & {
 
 interface SignatureCanvasRef {
   clear: () => void;
+  isEmpty: () => boolean;
   getCanvas: () => HTMLCanvasElement;
+  getTrimmedCanvas: () => HTMLCanvasElement;
   toDataURL: (type?: string) => string;
-  getTrimmedCanvas?: () => HTMLCanvasElement;
+  fromDataURL: (base64String: string, options?: any) => void;
+  toData: () => any[];
+  fromData: (data: any[]) => void;
+  on: () => void;
+  off: () => void;
 }
 
 // Campos por paso (mantener tu lógica existente)
@@ -569,39 +575,38 @@ export const useRegistrationForm = () => {
       
       localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
         
-      // Calcular progreso
-      let completedFields = 0;
-      let requiredFields = 0;
-      
-      Object.keys(fieldsPerStep).forEach(stepKey => {
-        const stepNum = parseInt(stepKey);
-        
-        if (stepNum <= step || completedSteps.includes(stepNum)) {
-          fieldsPerStep[stepNum].forEach(field => {
-            if (field !== 'receivePlans') {
-              requiredFields++;
-              
-              const value = formValues[field as keyof FormData];
-              const hasValue = value !== undefined && 
-                           value !== null && 
-                           value !== '' && 
-                           !(value instanceof FileList && value.length === 0);
-              
-              if (hasValue) {
-                completedFields++;
-              }
-            }
-          });
-        }
-      });
-      
-      const totalRequiredFields = 
-        fieldsPerStep[1].length + 
-        fieldsPerStep[2].length + 
-        fieldsPerStep[3].length + 
-        fieldsPerStep[4].length - 1; // -1 por receivePlans
-      
-      const progress = Math.min(Math.round((completedFields / totalRequiredFields) * 100), 100);
+      // Calcular progreso basado en steps completados
+      const totalSteps = 4;
+      const stepsCompleted = completedSteps.length;
+      const currentStepProgress = step > 4 ? 0 : (1 / totalSteps); // Progreso del step actual
+
+      // Progreso: (steps completados / total) + (progreso parcial del step actual)
+      let progress = Math.round((stepsCompleted / totalSteps) * 100);
+
+      // Si estamos en un step sin completar, añadir progreso parcial basado en campos completados
+      if (!completedSteps.includes(step) && step <= totalSteps) {
+        const currentStepFields = fieldsPerStep[step].filter(f => f !== 'receivePlans');
+        let completedFieldsInCurrentStep = 0;
+
+        currentStepFields.forEach(field => {
+          const value = formValues[field as keyof FormData];
+          const hasValue = value !== undefined &&
+                       value !== null &&
+                       value !== '' &&
+                       !(value instanceof FileList && value.length === 0);
+
+          if (hasValue) {
+            completedFieldsInCurrentStep++;
+          }
+        });
+
+        const currentStepPartialProgress =
+          (completedFieldsInCurrentStep / currentStepFields.length) * (100 / totalSteps);
+
+        progress += Math.round(currentStepPartialProgress);
+      }
+
+      progress = Math.min(progress, 100);
       setFormProgress(progress);
     } catch (error) {
       console.error("Error al guardar o calcular progreso:", error);

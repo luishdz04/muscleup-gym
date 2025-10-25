@@ -78,7 +78,10 @@
       "mcp__supabase__list_tables",
       "mcp__supabase__execute_sql",
       "Bash(npx kill-port:*)",
-      "Bash(timeout:*)"
+      "Bash(timeout:*)",
+      "Bash(sed:*)",
+      "Bash(git checkout:*)",
+      "Bash(git log:*)"
     ],
     "deny": [],
     "ask": []

@@ -18,8 +18,11 @@ export const MembershipInfoStep: React.FC<MembershipInfoStepProps> = ({
 }) => {
   return (
     <div className="animate-fadeIn">
-      <h2 className="text-xl font-bold mb-4 text-yellow-400">Información de Membresía</h2>
-      
+      <h2 className="text-xl font-bold mb-4 text-yellow-400">Preferencias de Entrenamiento</h2>
+      <p className="text-gray-400 text-sm mb-6">
+        Esta información nos ayudará a brindarte una mejor experiencia. Tu plan de membresía se seleccionará después con el personal del gimnasio.
+      </p>
+
       <div className="mb-4">
         <label className="block mb-1">¿Cómo te enteraste de nosotros? <span className="text-yellow-400">*</span></label>
         <select

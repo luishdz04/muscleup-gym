@@ -82,9 +82,13 @@ const UsersPage = memo(() => {
       }
 
       const data = await response.json();
-      console.log(`✅ [USUARIOS] ${data.length} usuarios cargados desde API`);
+      console.log('📦 [USUARIOS] Datos recibidos:', data);
 
-      setUsers(Array.isArray(data) ? data : []);
+      // La API devuelve { users: [...] }, no un array directamente
+      const usersArray = data.users || data || [];
+      console.log(`✅ [USUARIOS] ${usersArray.length} usuarios cargados desde API`);
+
+      setUsers(Array.isArray(usersArray) ? usersArray : []);
     } catch (err: any) {
       const errorMsg = err.message || 'Error al cargar usuarios';
       console.error('❌ [USUARIOS] Error:', errorMsg);

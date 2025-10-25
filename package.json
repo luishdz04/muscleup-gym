@@ -41,6 +41,7 @@
     "@supabase/supabase-js": "^2.74.0",
     "@types/canvas-confetti": "^1.9.0",
     "@types/three": "^0.177.0",
+    "animejs": "^4.2.2",
     "axios": "^1.9.0",
     "bcrypt": "^6.0.0",
     "browser-image-compression": "^2.0.2",

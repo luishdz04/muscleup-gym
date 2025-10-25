@@ -1,33 +1,26 @@
 // src/components/registro/steps/MembershipInfoStepV2.tsx
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import {
   Box,
   Paper,
   Typography,
   Button,
-  Grid,
-  Card,
-  CardContent,
-  Radio,
-  RadioGroup,
+  TextField,
+  MenuItem,
   FormControlLabel,
-  Chip,
-  Alert,
-  Divider,
-  CircularProgress
+  Checkbox,
+  Alert
 } from '@mui/material';
 import {
   ArrowBack as ArrowBackIcon,
   ArrowForward as ArrowForwardIcon,
   FitnessCenter as FitnessCenterIcon,
-  CheckCircle as CheckCircleIcon,
   Info as InfoIcon
 } from '@mui/icons-material';
 import { Controller } from 'react-hook-form';
 import { colorTokens } from '@/theme';
-import { createBrowserClient } from '@supabase/ssr';
 
 interface MembershipInfoStepV2Props {
   register: any;
@@ -37,17 +30,6 @@ interface MembershipInfoStepV2Props {
   onBack: () => void;
 }
 
-interface MembershipPlan {
-  id: string;
-  name: string;
-  price: number;
-  duration_days: number;
-  description: string;
-  features: string[];
-  is_active: boolean;
-  recommended?: boolean;
-}
-
 export const MembershipInfoStepV2: React.FC<MembershipInfoStepV2Props> = ({
   register,
   errors,
@@ -55,51 +37,6 @@ export const MembershipInfoStepV2: React.FC<MembershipInfoStepV2Props> = ({
   onNext,
   onBack
 }) => {
-  const [plans, setPlans] = useState<MembershipPlan[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedPlan, setSelectedPlan] = useState<string>('');
-
-  useEffect(() => {
-    fetchPlans();
-  }, []);
-
-  const fetchPlans = async () => {
-    try {
-      const supabase = createBrowserClient(
-        process.env.NEXT_PUBLIC_SUPABASE_URL!,
-        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-      );
-      const { data, error } = await supabase
-        .from('membership_types')
-        .select('*')
-        .eq('is_active', true)
-        .order('price', { ascending: true });
-
-      if (error) throw error;
-
-      setPlans(data || []);
-    } catch (error) {
-      console.error('Error al cargar planes:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const formatDuration = (days: number) => {
-    if (days === 30) return '1 Mes';
-    if (days === 90) return '3 Meses';
-    if (days === 180) return '6 Meses';
-    if (days === 365) return '1 Año';
-    return `${days} días`;
-  };
-
-  const formatPrice = (price: number) => {
-    return new Intl.NumberFormat('es-MX', {
-      style: 'currency',
-      currency: 'MXN'
-    }).format(price);
-  };
-
   return (
     <Paper
       elevation={0}
@@ -150,13 +87,13 @@ export const MembershipInfoStepV2: React.FC<MembershipInfoStepV2Props> = ({
               mb: 0.5
             }}
           >
-            Selecciona tu Membresía
+            Información de Membresía
           </Typography>
           <Typography
             variant="body2"
             sx={{ color: colorTokens.textSecondary }}
           >
-            Elige el plan que mejor se adapte a tus objetivos
+            Cuéntanos sobre tus objetivos de entrenamiento
           </Typography>
         </Box>
       </Box>
@@ -175,195 +112,186 @@ export const MembershipInfoStepV2: React.FC<MembershipInfoStepV2Props> = ({
           }
         }}
       >
-        Todos nuestros planes incluyen acceso completo al gimnasio y asesoría inicial gratuita.
-        Puedes cambiar o renovar tu plan en cualquier momento.
+        Esta información nos ayudará a brindarte una mejor experiencia.
+        La selección y pago de tu plan se realizará después con el personal del gimnasio.
       </Alert>
 
-      {/* Loading */}
-      {loading ? (
-        <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
-          <CircularProgress sx={{ color: colorTokens.brand }} />
-        </Box>
-      ) : (
+      {/* Formulario */}
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+        {/* ¿Cómo te enteraste de nosotros? */}
         <Controller
-          name="membershipTypeId"
+          name="referredBy"
           control={control}
-          rules={{ required: 'Debes seleccionar un plan de membresía' }}
+          rules={{ required: 'Este campo es obligatorio' }}
           render={({ field }) => (
-            <RadioGroup
+            <TextField
               {...field}
-              value={field.value || selectedPlan}
-              onChange={(e) => {
-                field.onChange(e);
-                setSelectedPlan(e.target.value);
+              select
+              label="¿Cómo te enteraste de nosotros?"
+              error={!!errors.referredBy}
+              helperText={errors.referredBy?.message}
+              required
+              fullWidth
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  bgcolor: colorTokens.surfaceLevel1,
+                  '& fieldset': {
+                    borderColor: colorTokens.border
+                  },
+                  '&:hover fieldset': {
+                    borderColor: colorTokens.brand
+                  },
+                  '&.Mui-focused fieldset': {
+                    borderColor: colorTokens.brand
+                  }
+                },
+                '& .MuiInputLabel-root': {
+                  color: colorTokens.textSecondary,
+                  '&.Mui-focused': {
+                    color: colorTokens.brand
+                  }
+                },
+                '& .MuiInputBase-input': {
+                  color: colorTokens.textPrimary
+                }
               }}
             >
-              <Grid container spacing={3}>
-                {plans.map((plan) => (
-                  <Grid size={{ xs: 12, md: 6 }} key={plan.id}>
-                    <Card
-                      sx={{
-                        position: 'relative',
-                        cursor: 'pointer',
-                        border: `2px solid ${
-                          field.value === plan.id || selectedPlan === plan.id
-                            ? colorTokens.brand
-                            : colorTokens.border
-                        }`,
-                        bgcolor:
-                          field.value === plan.id || selectedPlan === plan.id
-                            ? `${colorTokens.brand}05`
-                            : colorTokens.surfaceLevel1,
-                        transition: 'all 0.3s ease',
-                        '&:hover': {
-                          borderColor: colorTokens.brand,
-                          transform: 'translateY(-4px)',
-                          boxShadow: `0 8px 24px ${colorTokens.glow}`
-                        },
-                        height: '100%'
-                      }}
-                      onClick={() => {
-                        field.onChange(plan.id);
-                        setSelectedPlan(plan.id);
-                      }}
-                    >
-                      {/* Badge recomendado */}
-                      {plan.recommended && (
-                        <Chip
-                          label="Recomendado"
-                          size="small"
-                          sx={{
-                            position: 'absolute',
-                            top: 16,
-                            right: 16,
-                            bgcolor: colorTokens.brand,
-                            color: colorTokens.black,
-                            fontWeight: 700,
-                            fontSize: '0.75rem'
-                          }}
-                        />
-                      )}
-
-                      <CardContent sx={{ p: 3 }}>
-                        <Box sx={{ display: 'flex', alignItems: 'flex-start', mb: 2 }}>
-                          <FormControlLabel
-                            value={plan.id}
-                            control={
-                              <Radio
-                                sx={{
-                                  color: colorTokens.textMuted,
-                                  '&.Mui-checked': {
-                                    color: colorTokens.brand
-                                  }
-                                }}
-                              />
-                            }
-                            label=""
-                            sx={{ m: 0, mr: 2 }}
-                          />
-                          <Box sx={{ flex: 1 }}>
-                            <Typography
-                              variant="h6"
-                              sx={{
-                                fontWeight: 700,
-                                color: colorTokens.textPrimary,
-                                mb: 0.5
-                              }}
-                            >
-                              {plan.name}
-                            </Typography>
-                            <Typography
-                              variant="body2"
-                              sx={{ color: colorTokens.textSecondary, mb: 2 }}
-                            >
-                              {plan.description}
-                            </Typography>
-                          </Box>
-                        </Box>
-
-                        <Divider sx={{ my: 2, borderColor: colorTokens.border }} />
-
-                        {/* Precio */}
-                        <Box sx={{ mb: 3 }}>
-                          <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 1 }}>
-                            <Typography
-                              variant="h4"
-                              sx={{
-                                fontWeight: 800,
-                                color: colorTokens.brand
-                              }}
-                            >
-                              {formatPrice(plan.price)}
-                            </Typography>
-                            <Typography
-                              variant="body2"
-                              sx={{ color: colorTokens.textMuted }}
-                            >
-                              / {formatDuration(plan.duration_days)}
-                            </Typography>
-                          </Box>
-                        </Box>
-
-                        {/* Características */}
-                        {plan.features && plan.features.length > 0 && (
-                          <Box>
-                            <Typography
-                              variant="body2"
-                              sx={{
-                                fontWeight: 600,
-                                color: colorTokens.textSecondary,
-                                mb: 1.5
-                              }}
-                            >
-                              Incluye:
-                            </Typography>
-                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                              {plan.features.map((feature, index) => (
-                                <Box
-                                  key={index}
-                                  sx={{ display: 'flex', alignItems: 'center', gap: 1 }}
-                                >
-                                  <CheckCircleIcon
-                                    sx={{
-                                      fontSize: 18,
-                                      color: colorTokens.success
-                                    }}
-                                  />
-                                  <Typography
-                                    variant="body2"
-                                    sx={{ color: colorTokens.textPrimary }}
-                                  >
-                                    {feature}
-                                  </Typography>
-                                </Box>
-                              ))}
-                            </Box>
-                          </Box>
-                        )}
-                      </CardContent>
-                    </Card>
-                  </Grid>
-                ))}
-              </Grid>
-            </RadioGroup>
+              <MenuItem value="">Selecciona una opción</MenuItem>
+              <MenuItem value="Redes sociales">Redes sociales</MenuItem>
+              <MenuItem value="Recomendación">Recomendación</MenuItem>
+              <MenuItem value="Google">Google</MenuItem>
+              <MenuItem value="Volantes">Volantes</MenuItem>
+              <MenuItem value="Pasé por el lugar">Pasé por el lugar</MenuItem>
+              <MenuItem value="Otro">Otro</MenuItem>
+            </TextField>
           )}
         />
-      )}
 
-      {/* Error de validación */}
-      {errors.membershipTypeId && (
-        <Alert
-          severity="error"
-          sx={{
-            mt: 3,
-            bgcolor: `${colorTokens.error}15`,
-            color: colorTokens.error,
-            border: `1px solid ${colorTokens.error}30`
-          }}
-        >
-          {errors.membershipTypeId.message}
-        </Alert>
-      )}
+        {/* Principal motivación para entrenar */}
+        <Controller
+          name="mainMotivation"
+          control={control}
+          rules={{ required: 'Este campo es obligatorio' }}
+          render={({ field }) => (
+            <TextField
+              {...field}
+              select
+              label="Principal motivación para entrenar"
+              error={!!errors.mainMotivation}
+              helperText={errors.mainMotivation?.message}
+              required
+              fullWidth
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  bgcolor: colorTokens.surfaceLevel1,
+                  '& fieldset': {
+                    borderColor: colorTokens.border
+                  },
+                  '&:hover fieldset': {
+                    borderColor: colorTokens.brand
+                  },
+                  '&.Mui-focused fieldset': {
+                    borderColor: colorTokens.brand
+                  }
+                },
+                '& .MuiInputLabel-root': {
+                  color: colorTokens.textSecondary,
+                  '&.Mui-focused': {
+                    color: colorTokens.brand
+                  }
+                },
+                '& .MuiInputBase-input': {
+                  color: colorTokens.textPrimary
+                }
+              }}
+            >
+              <MenuItem value="">Selecciona una opción</MenuItem>
+              <MenuItem value="Bajar de peso">Bajar de peso</MenuItem>
+              <MenuItem value="Aumentar masa muscular">Aumentar masa muscular</MenuItem>
+              <MenuItem value="Mejorar salud">Mejorar salud</MenuItem>
+              <MenuItem value="Rehabilitación">Rehabilitación</MenuItem>
+              <MenuItem value="Recreación">Recreación</MenuItem>
+              <MenuItem value="Competencia">Competencia</MenuItem>
+              <MenuItem value="Otro">Otro</MenuItem>
+            </TextField>
+          )}
+        />
+
+        {/* Nivel de entrenamiento actual */}
+        <Controller
+          name="trainingLevel"
+          control={control}
+          rules={{ required: 'Este campo es obligatorio' }}
+          render={({ field }) => (
+            <TextField
+              {...field}
+              select
+              label="Nivel de entrenamiento actual"
+              error={!!errors.trainingLevel}
+              helperText={errors.trainingLevel?.message}
+              required
+              fullWidth
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  bgcolor: colorTokens.surfaceLevel1,
+                  '& fieldset': {
+                    borderColor: colorTokens.border
+                  },
+                  '&:hover fieldset': {
+                    borderColor: colorTokens.brand
+                  },
+                  '&.Mui-focused fieldset': {
+                    borderColor: colorTokens.brand
+                  }
+                },
+                '& .MuiInputLabel-root': {
+                  color: colorTokens.textSecondary,
+                  '&.Mui-focused': {
+                    color: colorTokens.brand
+                  }
+                },
+                '& .MuiInputBase-input': {
+                  color: colorTokens.textPrimary
+                }
+              }}
+            >
+              <MenuItem value="">Selecciona una opción</MenuItem>
+              <MenuItem value="Principiante">Principiante (menos de 3 meses)</MenuItem>
+              <MenuItem value="Intermedio">Intermedio (3-12 meses)</MenuItem>
+              <MenuItem value="Avanzado">Avanzado (más de 12 meses)</MenuItem>
+              <MenuItem value="Atleta">Atleta competitivo</MenuItem>
+            </TextField>
+          )}
+        />
+
+        {/* Checkbox para recibir planes */}
+        <Controller
+          name="receivePlans"
+          control={control}
+          defaultValue={false}
+          render={({ field }) => (
+            <FormControlLabel
+              control={
+                <Checkbox
+                  {...field}
+                  checked={field.value || false}
+                  sx={{
+                    color: colorTokens.textMuted,
+                    '&.Mui-checked': {
+                      color: colorTokens.brand
+                    }
+                  }}
+                />
+              }
+              label={
+                <Typography variant="body2" sx={{ color: colorTokens.textPrimary }}>
+                  Deseo recibir planes de nutrición y entrenamiento
+                </Typography>
+              }
+            />
+          )}
+        />
+      </Box>
 
       {/* Botones de navegación */}
       <Box
@@ -398,22 +326,16 @@ export const MembershipInfoStepV2: React.FC<MembershipInfoStepV2Props> = ({
           variant="contained"
           endIcon={<ArrowForwardIcon />}
           onClick={onNext}
-          disabled={!selectedPlan && !control._formValues?.membershipTypeId}
           sx={{
             bgcolor: colorTokens.brand,
             color: colorTokens.black,
             px: 4,
             py: 1.5,
             fontWeight: 700,
-            boxShadow: `0 4px 14px ${colorTokens.glow}`,
             '&:hover': {
               bgcolor: colorTokens.brandHover,
               transform: 'translateY(-2px)',
-              boxShadow: `0 6px 20px ${colorTokens.glow}`
-            },
-            '&:disabled': {
-              bgcolor: colorTokens.neutral600,
-              color: colorTokens.textMuted
+              boxShadow: `0 8px 24px ${colorTokens.glow}`
             },
             transition: 'all 0.3s ease'
           }}

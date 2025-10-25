@@ -1,7 +1,7 @@
 // src/components/registro/RegistroWizardV2.tsx
 'use client';
 
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import {
   Box,
   Container,
@@ -17,7 +17,7 @@ import {
   stepConnectorClasses,
   styled
 } from '@mui/material';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
   Person as PersonIcon,
   ContactEmergency as EmergencyIcon,
@@ -25,18 +25,19 @@ import {
   Description as ContractIcon
 } from '@mui/icons-material';
 import Image from 'next/image';
+import { animate, createTimeline } from 'animejs';
 import { colorTokens } from '@/theme';
 import { useRegistrationForm } from '@/hooks/useRegistrationForm';
-import { PersonalDataStepV2 } from './steps/PersonalDataStepV2';
-import { EmergencyContactStepV2 } from './steps/EmergencyContactStepV2';
-import { MembershipInfoStepV2 } from './steps/MembershipInfoStepV2';
-import { ContractSignatureStepV2 } from './steps/ContractSignatureStepV2';
+import { PersonalDataStep } from './steps/PersonalDataStep';
+import { EmergencyContactStep } from './steps/EmergencyContactStep';
+import { MembershipInfoStep } from './steps/MembershipInfoStep';
+import { ContractSignatureStep } from './steps/ContractSignatureStep';
 import SuccessModal from './SuccessModal';
 
 // Custom Connector para el Stepper
 const CustomConnector = styled(StepConnector)(({ theme }) => ({
   [`&.${stepConnectorClasses.alternativeLabel}`]: {
-    top: 22,
+    top: 24,
   },
   [`&.${stepConnectorClasses.active}`]: {
     [`& .${stepConnectorClasses.line}`]: {
@@ -56,20 +57,20 @@ const CustomConnector = styled(StepConnector)(({ theme }) => ({
   },
 }));
 
-// Custom Step Icon
+// Custom Step Icon - Responsive
 const CustomStepIcon = ({ active, completed, icon }: any) => {
   const icons: { [index: string]: React.ReactElement } = {
-    1: <PersonIcon />,
-    2: <EmergencyIcon />,
-    3: <MembershipIcon />,
-    4: <ContractIcon />,
+    1: <PersonIcon sx={{ fontSize: { xs: 22, sm: 24, md: 26 } }} />,
+    2: <EmergencyIcon sx={{ fontSize: { xs: 22, sm: 24, md: 26 } }} />,
+    3: <MembershipIcon sx={{ fontSize: { xs: 22, sm: 24, md: 26 } }} />,
+    4: <ContractIcon sx={{ fontSize: { xs: 22, sm: 24, md: 26 } }} />,
   };
 
   return (
     <Box
       sx={{
-        width: 50,
-        height: 50,
+        width: { xs: 48, sm: 50, md: 56 },
+        height: { xs: 48, sm: 50, md: 56 },
         borderRadius: '50%',
         display: 'flex',
         alignItems: 'center',
@@ -95,13 +96,19 @@ const CustomStepIcon = ({ active, completed, icon }: any) => {
 const steps = [
   { label: 'Datos Personales', description: 'Información básica' },
   { label: 'Contacto de Emergencia', description: 'Por tu seguridad' },
-  { label: 'Membresía', description: 'Selecciona tu plan' },
+  { label: 'Preferencias', description: 'Tus objetivos' },
   { label: 'Contrato', description: 'Firma y acepta' },
 ];
 
 const RegistroWizardV2 = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+
+  // Refs para animaciones
+  const logoRef = useRef<HTMLDivElement>(null);
+  const textRef = useRef<HTMLDivElement>(null);
+  const stepContentRef = useRef<HTMLDivElement>(null);
+  const previousStep = useRef(1);
 
   const {
     step,
@@ -141,11 +148,61 @@ const RegistroWizardV2 = () => {
     validateAge
   } = useRegistrationForm();
 
+  // Animación de entrada del logo (solo al cargar)
+  useEffect(() => {
+    if (logoRef.current) {
+      animate(logoRef.current, {
+        scale: [0, 1.1, 1],
+        opacity: [0, 1],
+        duration: 1000,
+        easing: 'out(elastic(1, .6))',
+      });
+    }
+
+    if (textRef.current) {
+      animate(textRef.current, {
+        opacity: [0, 1],
+        translateY: [20, 0],
+        duration: 800,
+        delay: 300,
+        easing: 'outQuad'
+      });
+    }
+  }, []);
+
+  // Animación del progress bar cuando cambia (usando CSS transitions de MUI)
+  // MUI LinearProgress ya maneja las transiciones internamente
+
+  // Animación de transición entre steps
+  useEffect(() => {
+    if (stepContentRef.current && step !== previousStep.current) {
+      const direction = step > previousStep.current ? 1 : -1;
+
+      // Animar salida del step anterior y entrada del nuevo
+      const timeline = createTimeline();
+
+      timeline.add(stepContentRef.current, {
+        opacity: [1, 0],
+        translateX: [0, -50 * direction],
+        duration: 300,
+        easing: 'outExpo'
+      })
+      .add(stepContentRef.current, {
+        opacity: [0, 1],
+        translateX: [50 * direction, 0],
+        duration: 400,
+        easing: 'outExpo'
+      });
+
+      previousStep.current = step;
+    }
+  }, [step]);
+
   const renderStep = () => {
     switch (step) {
       case 1:
         return (
-          <PersonalDataStepV2
+          <PersonalDataStep
             register={register}
             errors={errors}
             control={control}
@@ -161,7 +218,7 @@ const RegistroWizardV2 = () => {
         );
       case 2:
         return (
-          <EmergencyContactStepV2
+          <EmergencyContactStep
             register={register}
             errors={errors}
             control={control}
@@ -171,17 +228,16 @@ const RegistroWizardV2 = () => {
         );
       case 3:
         return (
-          <MembershipInfoStepV2
+          <MembershipInfoStep
             register={register}
             errors={errors}
-            control={control}
             onNext={goNext}
             onBack={goBack}
           />
         );
       case 4:
         return (
-          <ContractSignatureStepV2
+          <ContractSignatureStep
             register={register}
             errors={errors}
             isSubmitting={isSubmitting}
@@ -211,47 +267,38 @@ const RegistroWizardV2 = () => {
     >
       <Container maxWidth="lg">
         {/* Header con Logo */}
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-        >
-          <Box sx={{ textAlign: 'center', mb: 4 }}>
-            <Box sx={{ position: 'relative', display: 'inline-block', mb: 2 }}>
-              <Image
-                src="/logo.png"
-                alt="Muscle Up Gym"
-                width={120}
-                height={120}
-                priority
-                style={{
-                  filter: 'drop-shadow(0 0 20px rgba(255, 204, 0, 0.3))',
-                  animation: 'pulse 2s ease-in-out infinite'
-                }}
-              />
-            </Box>
-            <Typography
-              variant="h4"
-              sx={{
-                fontWeight: 800,
-                color: colorTokens.textPrimary,
-                mb: 1
-              }}
-            >
-              Únete a <span style={{ color: colorTokens.brand }}>Muscle Up</span>
-            </Typography>
-            <Typography
-              variant="body1"
-              sx={{
-                color: colorTokens.textSecondary,
-                maxWidth: 600,
-                mx: 'auto'
-              }}
-            >
-              Tu salud y bienestar es nuestra misión. Completa tu registro en 4 sencillos pasos.
-            </Typography>
+        <Box sx={{ textAlign: 'center', mb: 5 }}>
+          {/* Logo */}
+          <Box
+            ref={logoRef}
+            sx={{ display: 'flex', justifyContent: 'center', mb: 3, opacity: 0 }}
+          >
+            <Image
+              src="/logo.png"
+              alt="Muscle Up Gym"
+              width={220}
+              height={220}
+              priority
+            />
           </Box>
-        </motion.div>
+
+          {/* Lema */}
+          <Typography
+            ref={textRef}
+            variant="h5"
+            sx={{
+              color: colorTokens.textSecondary,
+              fontWeight: 400,
+              lineHeight: 1.6,
+              fontSize: { xs: '1.125rem', sm: '1.25rem', md: '1.375rem' },
+              maxWidth: 650,
+              mx: 'auto',
+              opacity: 0
+            }}
+          >
+            Tu salud y bienestar son nuestra misión. Completa tu registro en 4 sencillos pasos.
+          </Typography>
+        </Box>
 
         {/* Progress Bar */}
         <motion.div
@@ -284,11 +331,13 @@ const RegistroWizardV2 = () => {
                 height: 8,
                 borderRadius: 4,
                 bgcolor: colorTokens.neutral600,
+                transition: 'all 0.8s cubic-bezier(0.4, 0, 0.2, 1)',
                 '& .MuiLinearProgress-bar': {
                   borderRadius: 4,
                   bgcolor: colorTokens.brand,
                   backgroundImage: `linear-gradient(90deg, ${colorTokens.brand} 0%, ${colorTokens.brandHover} 100%)`,
-                  boxShadow: `0 0 10px ${colorTokens.glow}`
+                  boxShadow: `0 0 10px ${colorTokens.glow}`,
+                  transition: 'transform 0.8s cubic-bezier(0.4, 0, 0.2, 1) !important'
                 }
               }}
             />
@@ -304,7 +353,7 @@ const RegistroWizardV2 = () => {
           <Paper
             elevation={0}
             sx={{
-              p: { xs: 2, md: 4 },
+              p: { xs: 2, sm: 3, md: 4 },
               mb: 4,
               bgcolor: colorTokens.surfaceLevel2,
               border: `1px solid ${colorTokens.border}`,
@@ -313,9 +362,16 @@ const RegistroWizardV2 = () => {
           >
             <Stepper
               activeStep={step - 1}
-              alternativeLabel={!isMobile}
-              orientation={isMobile ? 'vertical' : 'horizontal'}
+              alternativeLabel // Siempre alternativeLabel: ícono arriba, texto abajo
+              orientation="horizontal"
               connector={<CustomConnector />}
+              sx={{
+                width: '100%',
+                '& .MuiStep-root': {
+                  px: { xs: 0, sm: 1 },
+                  flex: 1 // Distribuir uniformemente todo el ancho
+                }
+              }}
             >
               {steps.map((stepItem, index) => (
                 <Step
@@ -336,6 +392,9 @@ const RegistroWizardV2 = () => {
                       '& .MuiStepLabel-label': {
                         color: colorTokens.textSecondary,
                         fontWeight: 500,
+                        fontSize: { xs: '0.75rem', sm: '0.875rem' },
+                        mt: { xs: 1, sm: 1 },
+                        textAlign: 'center',
                         '&.Mui-active': {
                           color: colorTokens.brand,
                           fontWeight: 700
@@ -344,19 +403,14 @@ const RegistroWizardV2 = () => {
                           color: colorTokens.success,
                           fontWeight: 600
                         }
+                      },
+                      '& .MuiStepLabel-iconContainer': {
+                        pr: 0
                       }
                     }}
                   >
-                    <Box>
-                      <Typography variant="body2" sx={{ fontWeight: 'inherit' }}>
-                        {stepItem.label}
-                      </Typography>
-                      {!isMobile && (
-                        <Typography variant="caption" sx={{ color: colorTokens.textMuted, display: 'block' }}>
-                          {stepItem.description}
-                        </Typography>
-                      )}
-                    </Box>
+                    {/* En móvil solo primera palabra, en desktop completo */}
+                    {isMobile ? stepItem.label.split(' ')[0] : stepItem.label}
                   </StepLabel>
                 </Step>
               ))}
@@ -365,17 +419,9 @@ const RegistroWizardV2 = () => {
         </motion.div>
 
         {/* Form Content */}
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={step}
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            exit={{ opacity: 0, x: -20 }}
-            transition={{ duration: 0.3 }}
-          >
-            {renderStep()}
-          </motion.div>
-        </AnimatePresence>
+        <Box ref={stepContentRef}>
+          {renderStep()}
+        </Box>
       </Container>
 
       {/* Success Modal */}
