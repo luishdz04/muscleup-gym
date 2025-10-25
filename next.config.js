@@ -50,7 +50,12 @@ const nextConfig = {
   },
   // 📦 CONFIGURACIÓN DE SALIDA
   output: 'standalone',
-  
+
+  // ⚡ CONFIGURACIÓN DE TURBOPACK (Next.js 16+)
+  turbopack: {
+    // Configuración vacía para habilitar Turbopack sin warnings
+  },
+
   // 🔇 SUPRIMIR WARNINGS DE WEBPACK (OPCIONAL)
   webpack: (config, { isServer }) => {
     // Reducir nivel de logs solo para warnings de caché
