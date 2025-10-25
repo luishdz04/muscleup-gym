@@ -229,7 +229,7 @@ export default function RutinasAdmin() {
   const [currentEditingExercise, setCurrentEditingExercise] = useState<RoutineExercise | null>(null);
   const [editingRoutine, setEditingRoutine] = useState<Routine | null>(null);
 
-  // Estados para tabs
+  // Estados para tabs (3 tabs: Generales, Personalizadas, Asignadas)
   const [activeTab, setActiveTab] = useState(0);
 
   // Estados para asignación de rutinas a usuarios
@@ -319,7 +319,8 @@ export default function RutinasAdmin() {
 
   const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
     setActiveTab(newValue);
-    if (newValue === 1 && assignedRoutines.length === 0) {
+    // Tab 2 = Rutinas Asignadas
+    if (newValue === 2 && assignedRoutines.length === 0) {
       loadAssignedRoutines();
     }
   };
@@ -543,7 +544,7 @@ export default function RutinasAdmin() {
       setSelectedRoutine(null);
 
       // Recargar asignadas si estamos en esa tab
-      if (activeTab === 1) {
+      if (activeTab === 2) {
         loadAssignedRoutines();
       }
     } catch (error: any) {
@@ -668,14 +669,23 @@ export default function RutinasAdmin() {
             </Typography>
           </Box>
           <Typography variant="body1" sx={{ color: colorTokens.textSecondary }}>
-            Crea rutinas con Drag & Drop y asígnalas a tus clientes
+            {activeTab === 0 && 'Rutinas generales disponibles para todos los clientes'}
+            {activeTab === 1 && 'Rutinas personalizadas asignadas a usuarios específicos'}
+            {activeTab === 2 && 'Registro de todas las rutinas asignadas'}
           </Typography>
         </Box>
-        {activeTab === 0 && (
+        {(activeTab === 0 || activeTab === 1) && (
           <Button
             variant="contained"
             startIcon={<AddIcon />}
-            onClick={() => setCreateDialog(true)}
+            onClick={() => {
+              // Configurar is_public según el tab activo
+              setFormData(prev => ({
+                ...prev,
+                is_public: activeTab === 0 // true para Generales, false para Personalizadas
+              }));
+              setCreateDialog(true);
+            }}
             sx={{
               bgcolor: colorTokens.brand,
               color: colorTokens.black,
@@ -684,7 +694,7 @@ export default function RutinasAdmin() {
               '&:hover': { bgcolor: alpha(colorTokens.brand, 0.9) }
             }}
           >
-            Nueva Rutina
+            {activeTab === 0 ? 'Nueva Rutina General' : 'Nueva Rutina Personalizada'}
           </Button>
         )}
       </Box>
@@ -711,15 +721,16 @@ export default function RutinasAdmin() {
             }
           }}
         >
-          <Tab label="Gestión de Rutinas" />
+          <Tab label="Rutinas Generales" />
+          <Tab label="Rutinas Personalizadas" />
           <Tab label="Rutinas Asignadas" />
         </Tabs>
       </Box>
 
-      {/* Tab Panel 0: Gestión de Rutinas */}
+      {/* Tab Panel 0: Rutinas Generales (is_public = true) */}
       {activeTab === 0 && (
         <>
-          {routines.length === 0 ? (
+          {routines.filter(r => r.is_public).length === 0 ? (
             <Paper sx={{
               p: 6,
               textAlign: 'center',
@@ -729,15 +740,15 @@ export default function RutinasAdmin() {
             }}>
               <PlaylistAddIcon sx={{ fontSize: 80, color: colorTokens.textMuted, mb: 2 }} />
               <Typography variant="h6" sx={{ color: colorTokens.textSecondary }}>
-                No hay rutinas creadas
+                No hay rutinas generales creadas
               </Typography>
               <Typography variant="body2" sx={{ color: colorTokens.textMuted, mt: 1 }}>
-                Crea tu primera rutina con el botón "Nueva Rutina"
+                Las rutinas generales están disponibles para todos los clientes
               </Typography>
             </Paper>
           ) : (
             <Grid container spacing={3}>
-              {routines.map((routine) => (
+              {routines.filter(r => r.is_public).map((routine) => (
                 <Grid key={routine.id} size={{ xs: 12, md: 6, lg: 4 }}>
                   <motion.div
                     initial={{ opacity: 0, y: 20 }}
@@ -757,6 +768,15 @@ export default function RutinasAdmin() {
                           {routine.name}
                         </Typography>
                         <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                          <Chip
+                            label="General"
+                            size="small"
+                            sx={{
+                              bgcolor: alpha(colorTokens.success, 0.15),
+                              color: colorTokens.success,
+                              fontWeight: 600
+                            }}
+                          />
                           <Chip
                             label={routine.difficulty_level}
                             size="small"
@@ -845,8 +865,146 @@ export default function RutinasAdmin() {
         </>
       )}
 
-      {/* Tab Panel 1: Rutinas Asignadas */}
+      {/* Tab Panel 1: Rutinas Personalizadas (is_public = false) */}
       {activeTab === 1 && (
+        <>
+          {routines.filter(r => !r.is_public).length === 0 ? (
+            <Paper sx={{
+              p: 6,
+              textAlign: 'center',
+              background: alpha(colorTokens.surfaceLevel2, 0.9),
+              border: `1px solid ${alpha(colorTokens.brand, 0.1)}`,
+              borderRadius: 3
+            }}>
+              <PersonAddIcon sx={{ fontSize: 80, color: colorTokens.textMuted, mb: 2 }} />
+              <Typography variant="h6" sx={{ color: colorTokens.textSecondary }}>
+                No hay rutinas personalizadas creadas
+              </Typography>
+              <Typography variant="body2" sx={{ color: colorTokens.textMuted, mt: 1 }}>
+                Las rutinas personalizadas se asignan a usuarios específicos
+              </Typography>
+            </Paper>
+          ) : (
+            <Grid container spacing={3}>
+              {routines.filter(r => !r.is_public).map((routine) => (
+                <Grid key={routine.id} size={{ xs: 12, md: 6, lg: 4 }}>
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3 }}
+                  >
+                    <Card sx={{
+                      background: `linear-gradient(135deg, ${alpha(colorTokens.surfaceLevel2, 0.9)}, ${alpha(colorTokens.surfaceLevel3, 0.85)})`,
+                      border: `1px solid ${alpha(colorTokens.brand, 0.1)}`,
+                      borderRadius: 3,
+                      height: '100%'
+                    }}>
+                      <CardContent>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+                          <Box sx={{ flex: 1 }}>
+                        <Typography variant="h6" sx={{ fontWeight: 700, color: colorTokens.textPrimary, mb: 1 }}>
+                          {routine.name}
+                        </Typography>
+                        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                          <Chip
+                            label="Personalizada"
+                            size="small"
+                            sx={{
+                              bgcolor: alpha(colorTokens.warning, 0.15),
+                              color: colorTokens.warning,
+                              fontWeight: 600
+                            }}
+                          />
+                          <Chip
+                            label={routine.difficulty_level}
+                            size="small"
+                            sx={{
+                              bgcolor: alpha(colorTokens.info, 0.15),
+                              color: colorTokens.info,
+                              fontWeight: 600
+                            }}
+                          />
+                          {routine.estimated_duration && (
+                            <Chip
+                              icon={<TimerIcon sx={{ fontSize: 14 }} />}
+                              label={`${routine.estimated_duration} min`}
+                              size="small"
+                              sx={{
+                                bgcolor: alpha(colorTokens.warning, 0.15),
+                                color: colorTokens.warning
+                              }}
+                            />
+                          )}
+                          <Chip
+                            label={`${routine.routine_exercises?.length || 0} ejercicios`}
+                            size="small"
+                            sx={{
+                              bgcolor: alpha(colorTokens.brand, 0.15),
+                              color: colorTokens.brand
+                            }}
+                          />
+                        </Box>
+                      </Box>
+                      <Box sx={{ display: 'flex', gap: 1 }}>
+                        <Tooltip title="Asignar a Usuario">
+                          <IconButton
+                            size="small"
+                            onClick={() => handleOpenAssignDialog(routine)}
+                            sx={{
+                              color: colorTokens.success,
+                              bgcolor: alpha(colorTokens.success, 0.1),
+                              '&:hover': { bgcolor: alpha(colorTokens.success, 0.2) }
+                            }}
+                          >
+                            <PersonAddIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Editar">
+                          <IconButton
+                            size="small"
+                            onClick={() => handleEditRoutine(routine)}
+                            sx={{
+                              color: colorTokens.info,
+                              bgcolor: alpha(colorTokens.info, 0.1),
+                              '&:hover': { bgcolor: alpha(colorTokens.info, 0.2) }
+                            }}
+                          >
+                            <EditIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Eliminar">
+                          <IconButton
+                            size="small"
+                            onClick={() => handleDeleteRoutine(routine.id!)}
+                            sx={{
+                              color: colorTokens.danger,
+                              bgcolor: alpha(colorTokens.danger, 0.1),
+                              '&:hover': { bgcolor: alpha(colorTokens.danger, 0.2) }
+                            }}
+                          >
+                            <DeleteIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                      </Box>
+                    </Box>
+
+                    {routine.description && (
+                      <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
+                        {routine.description}
+                      </Typography>
+                    )}
+                  </CardContent>
+                </Card>
+              </motion.div>
+            </Grid>
+          ))}
+        </Grid>
+      )}
+        </>
+      )}
+
+      {/* Tab Panel 2: Rutinas Asignadas */}
+      {activeTab === 2 && (
         <>
           {loadingAssigned ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
@@ -1029,9 +1187,14 @@ export default function RutinasAdmin() {
           alignItems: 'center',
           borderBottom: `1px solid ${alpha(colorTokens.brand, 0.2)}`
         }}>
-          <Typography variant="h5" sx={{ fontWeight: 700, color: colorTokens.textPrimary }}>
-            {editingRoutine ? 'Editar Rutina' : 'Nueva Rutina'}
-          </Typography>
+          <Box>
+            <Typography variant="h5" sx={{ fontWeight: 700, color: colorTokens.textPrimary }}>
+              {editingRoutine ? 'Editar Rutina' : formData.is_public ? 'Nueva Rutina General' : 'Nueva Rutina Personalizada'}
+            </Typography>
+            <Typography variant="body2" sx={{ color: colorTokens.textSecondary, mt: 0.5 }}>
+              {formData.is_public ? 'Estará disponible para todos los clientes' : 'Solo para usuarios asignados'}
+            </Typography>
+          </Box>
           <IconButton onClick={handleCloseDialog} sx={{ color: colorTokens.textSecondary }}>
             <CloseIcon />
           </IconButton>
