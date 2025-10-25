@@ -103,9 +103,12 @@ const Main = styled('main', { shouldForwardProp: (prop) => prop !== 'open' })<{
   color: colorTokens.textPrimary,
   maxWidth: '100vw',
   overflowX: 'hidden',
-  // Mobile - espacio para bottom nav
+  overflowY: 'auto', // ✅ PERMITIR SCROLL VERTICAL
+  // Mobile - espacio para bottom nav y scroll
   [theme.breakpoints.down('sm')]: {
     paddingBottom: '80px',
+    height: '100vh', // ✅ ALTURA FIJA EN MÓVIL
+    overflowY: 'auto', // ✅ SCROLL VERTICAL EN MÓVIL
   },
   ...(open && {
     transition: theme.transitions.create('margin', {
