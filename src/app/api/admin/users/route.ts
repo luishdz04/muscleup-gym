@@ -7,27 +7,51 @@ export async function GET(request: NextRequest) {
     console.log('📊 [API-USERS] Obteniendo usuarios con datos relacionados...');
 
     const supabaseAdmin = createAdminSupabaseClient();
-    const { data: users, error } = await supabaseAdmin
+    const searchParams = request.nextUrl.searchParams;
+
+    // Obtener parámetros de filtro
+    const rol = searchParams.get('rol');
+    const limit = searchParams.get('limit');
+
+    // Construir query base
+    let query = supabaseAdmin
       .from('Users')
       .select(`
         *,
         addresses(*),
         emergency_contacts(*),
         membership_info(*)
-      `)
-      .order('createdAt', { ascending: false });
+      `);
+
+    // Filtrar por rol si se proporciona
+    if (rol) {
+      query = query.eq('rol', rol);
+      console.log(`🔍 [API-USERS] Filtrando por rol: ${rol}`);
+    }
+
+    // Aplicar límite si se proporciona
+    if (limit) {
+      const limitNum = parseInt(limit, 10);
+      query = query.limit(limitNum);
+      console.log(`📏 [API-USERS] Aplicando límite: ${limitNum}`);
+    }
+
+    // Ordenar por fecha de creación
+    query = query.order('createdAt', { ascending: false });
+
+    const { data: users, error } = await query;
 
     if (error) {
       console.error('❌ [API-USERS] Error en query:', error);
       return NextResponse.json(
-        { message: 'Error al obtener usuarios: ' + error.message },
+        { error: 'Error al obtener usuarios: ' + error.message },
         { status: 500 }
       );
     }
 
     console.log(`✅ [API-USERS] ${users?.length || 0} usuarios obtenidos exitosamente`);
 
-    return NextResponse.json(users);
+    return NextResponse.json({ users });
 
   } catch (error: any) {
     console.error('❌ [API-USERS] Error en API:', error);

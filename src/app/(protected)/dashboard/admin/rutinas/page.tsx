@@ -24,14 +24,16 @@ import {
   CircularProgress,
   Divider,
   Tooltip,
-  Tabs,
-  Tab,
   Table,
   TableBody,
   TableCell,
   TableContainer,
   TableHead,
-  TableRow
+  TableRow,
+  TablePagination,
+  ToggleButtonGroup,
+  ToggleButton,
+  Collapse
 } from '@mui/material';
 import { Grid } from '@mui/material';
 import {
@@ -46,15 +48,26 @@ import {
   Timer as TimerIcon,
   RepeatOne as RepsIcon,
   Hotel as RestIcon,
-  PlaylistAdd as PlaylistAddIcon,
-  PersonAdd as PersonAddIcon
+  Download as DownloadIcon,
+  ContentCopy as CopyIcon,
+  Visibility as ViewIcon,
+  GridView as GridViewIcon,
+  TableRows as TableViewIcon,
+  BarChart as ChartIcon,
+  ExpandMore as ExpandMoreIcon,
+  FileDownload as ExcelIcon,
+  TrendingUp as TrendingUpIcon,
+  CalendarMonth as CalendarIcon,
+  PersonAdd as PersonAddIcon,
+  People as PeopleIcon
 } from '@mui/icons-material';
 import { colorTokens } from '@/theme';
 import { alpha } from '@mui/material/styles';
 import { useHydrated } from '@/hooks/useHydrated';
 import { showSuccess, showError, showDeleteConfirmation } from '@/lib/notifications/MySwal';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { formatDateForDisplay } from '@/utils/dateUtils';
+import { RutineDetailModal, RutineAnalyticsCharts, AssignRoutineModal, AssignedUsersModal } from '@/components/rutinas';
 import {
   DndContext,
   closestCenter,
@@ -85,6 +98,10 @@ interface Exercise {
   level: string;
   material: string;
   primary_muscles: string[];
+  secondary_muscles: string[];
+  initial_position: string;
+  execution_eccentric: string;
+  execution_concentric: string;
   video_url?: string;
   image_url?: string;
   muscle_group?: MuscleGroup | null;
@@ -110,6 +127,20 @@ interface Routine {
   muscle_group_focus?: string;
   is_public: boolean;
   routine_exercises: RoutineExercise[];
+  created_at?: string;
+}
+
+interface AnalyticsData {
+  totalRoutines: number;
+  generalCount: number;
+  personalizedCount: number;
+  levelDistribution: Record<string, number>;
+  durationDistribution: Record<string, number>;
+  avgExercisesPerRoutine: number;
+  topUsedRoutines: Array<{ name: string; usage_count: number }>;
+  unusedRoutinesCount: number;
+  activeAssignments: number;
+  totalExercisesInRoutines: number;
 }
 
 // Componente de ejercicio sortable
@@ -139,12 +170,12 @@ function SortableExerciseItem({ exercise, onEdit, onRemove }: {
       style={style}
       sx={{
         mb: 2,
-        background: `linear-gradient(135deg, ${alpha(colorTokens.surfaceLevel2, 0.9)}, ${alpha(colorTokens.surfaceLevel3, 0.85)})`,
-        border: `1px solid ${alpha(colorTokens.brand, 0.1)}`,
+        bgcolor: colorTokens.neutral200,
+        border: `1px solid ${colorTokens.border}`,
         borderRadius: 2,
         cursor: isDragging ? 'grabbing' : 'default',
         '&:hover': {
-          borderColor: alpha(colorTokens.brand, 0.3)
+          borderColor: colorTokens.brand
         }
       }}
     >
@@ -164,7 +195,7 @@ function SortableExerciseItem({ exercise, onEdit, onRemove }: {
                 label={`${exercise.sets} sets × ${exercise.reps} reps`}
                 size="small"
                 sx={{
-                  bgcolor: alpha(colorTokens.info, 0.15),
+                  bgcolor: `${colorTokens.info}20`,
                   color: colorTokens.info,
                   fontWeight: 600,
                   fontSize: '0.75rem'
@@ -175,7 +206,7 @@ function SortableExerciseItem({ exercise, onEdit, onRemove }: {
                 label={`${exercise.rest_seconds}s`}
                 size="small"
                 sx={{
-                  bgcolor: alpha(colorTokens.warning, 0.15),
+                  bgcolor: `${colorTokens.warning}20`,
                   color: colorTokens.warning,
                   fontSize: '0.75rem'
                 }}
@@ -194,8 +225,8 @@ function SortableExerciseItem({ exercise, onEdit, onRemove }: {
               onClick={() => onEdit(exercise)}
               sx={{
                 color: colorTokens.info,
-                bgcolor: alpha(colorTokens.info, 0.1),
-                '&:hover': { bgcolor: alpha(colorTokens.info, 0.2) }
+                bgcolor: `${colorTokens.info}20`,
+                '&:hover': { bgcolor: `${colorTokens.info}30` }
               }}
             >
               <EditIcon fontSize="small" />
@@ -205,8 +236,8 @@ function SortableExerciseItem({ exercise, onEdit, onRemove }: {
               onClick={() => onRemove(exercise.exercise_id)}
               sx={{
                 color: colorTokens.danger,
-                bgcolor: alpha(colorTokens.danger, 0.1),
-                '&:hover': { bgcolor: alpha(colorTokens.danger, 0.2) }
+                bgcolor: `${colorTokens.danger}20`,
+                '&:hover': { bgcolor: `${colorTokens.danger}30` }
               }}
             >
               <DeleteIcon fontSize="small" />
@@ -222,6 +253,7 @@ export default function RutinasAdmin() {
   const hydrated = useHydrated();
   const [routines, setRoutines] = useState<Routine[]>([]);
   const [exercises, setExercises] = useState<Exercise[]>([]);
+  const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [createDialog, setCreateDialog] = useState(false);
@@ -229,29 +261,20 @@ export default function RutinasAdmin() {
   const [currentEditingExercise, setCurrentEditingExercise] = useState<RoutineExercise | null>(null);
   const [editingRoutine, setEditingRoutine] = useState<Routine | null>(null);
 
-  // Estados para tabs (3 tabs: Generales, Personalizadas, Asignadas)
-  const [activeTab, setActiveTab] = useState(0);
-
-  // Estados para asignación de rutinas a usuarios
-  const [assignDialog, setAssignDialog] = useState(false);
-  const [selectedRoutine, setSelectedRoutine] = useState<Routine | null>(null);
-  const [users, setUsers] = useState<any[]>([]);
-  const [selectedUserId, setSelectedUserId] = useState('');
-  const [assignNotes, setAssignNotes] = useState('');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
-
-  // Estados para rutinas asignadas
-  const [assignedRoutines, setAssignedRoutines] = useState<any[]>([]);
-  const [loadingAssigned, setLoadingAssigned] = useState(false);
-
-  // Estados para edición de asignación
-  const [editAssignmentDialog, setEditAssignmentDialog] = useState(false);
-  const [editingAssignment, setEditingAssignment] = useState<any | null>(null);
-  const [editStartDate, setEditStartDate] = useState('');
-  const [editEndDate, setEditEndDate] = useState('');
-  const [editNotes, setEditNotes] = useState('');
-  const [editStatus, setEditStatus] = useState<'active' | 'completed' | 'paused'>('active');
+  // Estados para vista enterprise
+  const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
+  const [page, setPage] = useState(0);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [levelFilter, setLevelFilter] = useState<string>('all');
+  const [typeFilter, setTypeFilter] = useState<string>('all');
+  const [durationFilter, setDurationFilter] = useState<string>('all');
+  const [showAnalytics, setShowAnalytics] = useState(false);
+  const [detailRoutine, setDetailRoutine] = useState<Routine | null>(null);
+  const [detailModalOpen, setDetailModalOpen] = useState(false);
+  const [assignRoutine, setAssignRoutine] = useState<Routine | null>(null);
+  const [assignModalOpen, setAssignModalOpen] = useState(false);
+  const [assignedUsersRoutine, setAssignedUsersRoutine] = useState<Routine | null>(null);
+  const [assignedUsersModalOpen, setAssignedUsersModalOpen] = useState(false);
 
   const [formData, setFormData] = useState<Routine>({
     name: '',
@@ -259,7 +282,7 @@ export default function RutinasAdmin() {
     difficulty_level: 'Intermedio',
     estimated_duration: 60,
     muscle_group_focus: '',
-    is_public: false,
+    is_public: true,
     routine_exercises: []
   });
 
@@ -274,6 +297,7 @@ export default function RutinasAdmin() {
     if (hydrated) {
       loadRoutines();
       loadExercises();
+      loadAnalytics();
     }
   }, [hydrated]);
 
@@ -302,26 +326,14 @@ export default function RutinasAdmin() {
     }
   };
 
-  const loadAssignedRoutines = async () => {
+  const loadAnalytics = async () => {
     try {
-      setLoadingAssigned(true);
-      const response = await fetch('/api/user-routines');
-      if (!response.ok) throw new Error('Error al cargar rutinas asignadas');
+      const response = await fetch('/api/routines/analytics');
+      if (!response.ok) throw new Error('Error al cargar analytics');
       const data = await response.json();
-      setAssignedRoutines(data.userRoutines || []);
-      console.log('✅ Rutinas asignadas cargadas:', data.userRoutines?.length || 0);
+      setAnalytics(data);
     } catch (error) {
-      console.error('Error loading assigned routines:', error);
-    } finally {
-      setLoadingAssigned(false);
-    }
-  };
-
-  const handleTabChange = (event: React.SyntheticEvent, newValue: number) => {
-    setActiveTab(newValue);
-    // Tab 2 = Rutinas Asignadas
-    if (newValue === 2 && assignedRoutines.length === 0) {
-      loadAssignedRoutines();
+      console.error('Error loading analytics:', error);
     }
   };
 
@@ -427,6 +439,7 @@ export default function RutinasAdmin() {
       );
 
       await loadRoutines();
+      await loadAnalytics();
       handleCloseDialog();
     } catch (error) {
       console.error('Error saving routine:', error);
@@ -443,14 +456,13 @@ export default function RutinasAdmin() {
       difficulty_level: 'Intermedio',
       estimated_duration: 60,
       muscle_group_focus: '',
-      is_public: false,
+      is_public: true,
       routine_exercises: []
     });
   };
 
   const handleEditRoutine = (routine: Routine) => {
     setEditingRoutine(routine);
-    // Asegurar que cada ejercicio tenga un exercise_id único
     const processedExercises = (routine.routine_exercises || []).map((ex, idx) => ({
       ...ex,
       exercise_id: ex.exercise_id || `temp-${idx}-${Date.now()}`,
@@ -478,154 +490,69 @@ export default function RutinasAdmin() {
 
       showSuccess('Rutina Eliminada', 'La rutina ha sido eliminada exitosamente');
       await loadRoutines();
+      await loadAnalytics();
     } catch (error) {
       console.error('Error deleting routine:', error);
       showError('Error', 'No se pudo eliminar la rutina. Intenta de nuevo.');
     }
   };
 
-  // Función para abrir modal de asignación
-  const handleOpenAssignDialog = async (routine: Routine) => {
-    setSelectedRoutine(routine);
-    setAssignDialog(true);
-
-    // Cargar usuarios (clientes)
+  const handleDuplicateRoutine = async (routineId: string) => {
     try {
-      const response = await fetch('/api/admin/clients');
-      if (response.ok) {
-        const data = await response.json();
-        setUsers(data.users || []);
-        console.log('✅ Clientes cargados:', data.users?.length || 0);
-      } else {
-        throw new Error('Error al cargar clientes');
-      }
+      const response = await fetch(`/api/routines/${routineId}/duplicate`, {
+        method: 'POST'
+      });
+
+      if (!response.ok) throw new Error('Error al duplicar rutina');
+
+      const data = await response.json();
+      showSuccess('Rutina Duplicada', data.message || 'Rutina duplicada exitosamente');
+
+      await loadRoutines();
+      await loadAnalytics();
     } catch (error) {
-      console.error('Error loading clients:', error);
-      showError('Error', 'No se pudieron cargar los clientes');
+      console.error('Error duplicating routine:', error);
+      showError('Error', 'No se pudo duplicar la rutina. Intenta de nuevo.');
     }
   };
 
-  // Función para asignar rutina a usuario
-  const handleAssignRoutine = async () => {
-    if (!selectedUserId || !selectedRoutine) {
-      showError('Validación', 'Debes seleccionar un usuario');
-      return;
-    }
-
+  const handleExportExcel = async () => {
     try {
-      const response = await fetch('/api/user-routines', {
+      const filters = {
+        search: searchTerm,
+        level: levelFilter !== 'all' ? levelFilter : undefined,
+        type: typeFilter !== 'all' ? typeFilter : undefined,
+        duration: durationFilter !== 'all' ? durationFilter : undefined
+      };
+
+      const response = await fetch('/api/routines/export', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          user_id: selectedUserId,
-          routine_id: selectedRoutine.id,
-          start_date: startDate || undefined,
-          end_date: endDate || undefined,
-          notes: assignNotes || undefined
-        })
+        body: JSON.stringify({ filters })
       });
 
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Error al asignar rutina');
-      }
+      if (!response.ok) throw new Error('Error al exportar');
 
-      showSuccess(
-        'Rutina Asignada',
-        `La rutina "${selectedRoutine.name}" ha sido asignada exitosamente`
-      );
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `rutinas-${new Date().toISOString().split('T')[0]}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
 
-      // Limpiar y cerrar
-      setAssignDialog(false);
-      setSelectedUserId('');
-      setAssignNotes('');
-      setStartDate('');
-      setEndDate('');
-      setSelectedRoutine(null);
-
-      // Recargar asignadas si estamos en esa tab
-      if (activeTab === 2) {
-        loadAssignedRoutines();
-      }
-    } catch (error: any) {
-      console.error('Error assigning routine:', error);
-      showError('Error', error.message || 'No se pudo asignar la rutina');
+      showSuccess('Exportación Exitosa', 'Las rutinas han sido exportadas a Excel');
+    } catch (error) {
+      console.error('Error exporting to Excel:', error);
+      showError('Error', 'No se pudo exportar a Excel. Intenta de nuevo.');
     }
   };
 
-  // Función para eliminar asignación de rutina
-  const handleDeleteAssignment = async (assignmentId: string, routineName: string, userName: string) => {
-    const result = await showDeleteConfirmation(
-      `Asignación de "${routineName}" a ${userName}`
-    );
-
-    if (!result.isConfirmed) return;
-
-    try {
-      const response = await fetch(`/api/user-routines/${assignmentId}`, {
-        method: 'DELETE'
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Error al eliminar asignación');
-      }
-
-      showSuccess('Asignación Eliminada', 'La rutina ha sido desasignada exitosamente');
-      loadAssignedRoutines();
-    } catch (error: any) {
-      console.error('Error deleting assignment:', error);
-      showError('Error', error.message || 'No se pudo eliminar la asignación');
-    }
-  };
-
-  // Función para abrir el diálogo de edición de asignación
-  const handleOpenEditAssignment = (assignment: any) => {
-    setEditingAssignment(assignment);
-    setEditStartDate(assignment.start_date || '');
-    setEditEndDate(assignment.end_date || '');
-    setEditNotes(assignment.notes || '');
-    setEditStatus(assignment.status || 'active');
-    setEditAssignmentDialog(true);
-  };
-
-  // Función para guardar cambios de asignación
-  const handleSaveAssignmentEdit = async () => {
-    if (!editingAssignment) return;
-
-    try {
-      const response = await fetch(`/api/user-routines/${editingAssignment.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          start_date: editStartDate || undefined,
-          end_date: editEndDate || undefined,
-          notes: editNotes || undefined,
-          status: editStatus
-        })
-      });
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || 'Error al actualizar asignación');
-      }
-
-      showSuccess('Asignación Actualizada', 'Los cambios han sido guardados exitosamente');
-
-      // Cerrar y limpiar
-      setEditAssignmentDialog(false);
-      setEditingAssignment(null);
-      setEditStartDate('');
-      setEditEndDate('');
-      setEditNotes('');
-      setEditStatus('active');
-
-      // Recargar lista
-      loadAssignedRoutines();
-    } catch (error: any) {
-      console.error('Error updating assignment:', error);
-      showError('Error', error.message || 'No se pudo actualizar la asignación');
-    }
+  const handleViewDetails = (routine: Routine) => {
+    setDetailRoutine(routine);
+    setDetailModalOpen(true);
   };
 
   if (!hydrated || loading) {
@@ -640,10 +567,39 @@ export default function RutinasAdmin() {
     ex.name.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  // Filtrado de rutinas
+  let filteredRoutines = routines.filter(r => {
+    const matchesSearch = r.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                          r.description?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesLevel = levelFilter === 'all' || r.difficulty_level === levelFilter;
+    const matchesType = typeFilter === 'all' ||
+                       (typeFilter === 'general' && r.is_public) ||
+                       (typeFilter === 'personalizada' && !r.is_public);
+
+    let matchesDuration = true;
+    if (durationFilter !== 'all') {
+      const duration = r.estimated_duration || 0;
+      if (durationFilter === '0-30') matchesDuration = duration <= 30;
+      else if (durationFilter === '31-60') matchesDuration = duration > 30 && duration <= 60;
+      else if (durationFilter === '61-90') matchesDuration = duration > 60 && duration <= 90;
+      else if (durationFilter === '90+') matchesDuration = duration > 90;
+    }
+
+    return matchesSearch && matchesLevel && matchesType && matchesDuration;
+  });
+
+  const getDifficultyColor = (level: string) => {
+    if (level?.toLowerCase().includes('principiante')) return colorTokens.success;
+    if (level?.toLowerCase().includes('avanzado')) return colorTokens.danger;
+    return colorTokens.warning;
+  };
+
+  const paginatedRoutines = filteredRoutines.slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage);
+
   return (
     <Box sx={{ pb: { xs: 10, lg: 4 } }}>
       {/* Header */}
-      <Box sx={{ mb: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
+      <Box sx={{ mb: 4, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
         <Box>
           <Box sx={{ mb: 1 }}>
             <Typography
@@ -669,180 +625,472 @@ export default function RutinasAdmin() {
             </Typography>
           </Box>
           <Typography variant="body1" sx={{ color: colorTokens.textSecondary }}>
-            {activeTab === 0 && 'Rutinas generales disponibles para todos los clientes'}
-            {activeTab === 1 && 'Rutinas personalizadas asignadas a usuarios específicos'}
-            {activeTab === 2 && 'Registro de todas las rutinas asignadas'}
+            Sistema completo de gestión de rutinas de entrenamiento
           </Typography>
         </Box>
-        {(activeTab === 0 || activeTab === 1) && (
-          <Button
-            variant="contained"
-            startIcon={<AddIcon />}
-            onClick={() => {
-              // Configurar is_public según el tab activo
-              setFormData(prev => ({
-                ...prev,
-                is_public: activeTab === 0 // true para Generales, false para Personalizadas
-              }));
-              setCreateDialog(true);
-            }}
-            sx={{
-              bgcolor: colorTokens.brand,
-              color: colorTokens.black,
-              fontWeight: 700,
-              px: 3,
-              '&:hover': { bgcolor: alpha(colorTokens.brand, 0.9) }
-            }}
-          >
-            {activeTab === 0 ? 'Nueva Rutina General' : 'Nueva Rutina Personalizada'}
-          </Button>
-        )}
-      </Box>
-
-      {/* Tabs */}
-      <Box sx={{ borderBottom: 1, borderColor: alpha(colorTokens.brand, 0.2), mb: 3 }}>
-        <Tabs
-          value={activeTab}
-          onChange={handleTabChange}
+        <Button
+          variant="contained"
+          startIcon={<AddIcon />}
+          onClick={() => setCreateDialog(true)}
           sx={{
-            '& .MuiTab-root': {
-              color: colorTokens.textSecondary,
-              fontWeight: 600,
-              fontSize: '0.95rem',
-              textTransform: 'none',
-              minHeight: 48,
-              '&.Mui-selected': {
-                color: colorTokens.brand
-              }
-            },
-            '& .MuiTabs-indicator': {
-              backgroundColor: colorTokens.brand,
-              height: 3
-            }
+            bgcolor: colorTokens.brand,
+            color: colorTokens.neutral300,
+            fontWeight: 700,
+            px: 3,
+            '&:hover': { bgcolor: colorTokens.warning }
           }}
         >
-          <Tab label="Rutinas Generales" />
-          <Tab label="Rutinas Personalizadas" />
-          <Tab label="Rutinas Asignadas" />
-        </Tabs>
+          Nueva Rutina
+        </Button>
       </Box>
 
-      {/* Tab Panel 0: Rutinas Generales (is_public = true) */}
-      {activeTab === 0 && (
-        <>
-          {routines.filter(r => r.is_public).length === 0 ? (
-            <Paper sx={{
-              p: 6,
-              textAlign: 'center',
-              background: alpha(colorTokens.surfaceLevel2, 0.9),
-              border: `1px solid ${alpha(colorTokens.brand, 0.1)}`,
-              borderRadius: 3
-            }}>
-              <PlaylistAddIcon sx={{ fontSize: 80, color: colorTokens.textMuted, mb: 2 }} />
-              <Typography variant="h6" sx={{ color: colorTokens.textSecondary }}>
-                No hay rutinas generales creadas
-              </Typography>
-              <Typography variant="body2" sx={{ color: colorTokens.textMuted, mt: 1 }}>
-                Las rutinas generales están disponibles para todos los clientes
-              </Typography>
-            </Paper>
-          ) : (
-            <Grid container spacing={3}>
-              {routines.filter(r => r.is_public).map((routine) => (
-                <Grid key={routine.id} size={{ xs: 12, md: 6, lg: 4 }}>
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3 }}
-                  >
-                    <Card sx={{
-                      background: `linear-gradient(135deg, ${alpha(colorTokens.surfaceLevel2, 0.9)}, ${alpha(colorTokens.surfaceLevel3, 0.85)})`,
-                      border: `1px solid ${alpha(colorTokens.brand, 0.1)}`,
-                      borderRadius: 3,
-                      height: '100%'
+      {/* Stats Cards */}
+      {analytics && (
+        <Grid container spacing={{ xs: 2, sm: 2.5, md: 3 }} sx={{ mb: 4 }}>
+          <Grid size={{ xs: 6, sm: 6, md: 3 }}>
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
+              <Card sx={{ bgcolor: colorTokens.neutral300, border: `1px solid ${colorTokens.border}`, height: '100%' }}>
+                <CardContent>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                    <Box sx={{
+                      p: 1.5,
+                      borderRadius: 2,
+                      bgcolor: `${colorTokens.success}20`,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
                     }}>
-                      <CardContent>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
-                          <Box sx={{ flex: 1 }}>
+                      <FitnessCenterIcon sx={{ color: colorTokens.success, fontSize: 28 }} />
+                    </Box>
+                    <Box>
+                      <Typography variant="caption" sx={{ color: colorTokens.textMuted, fontWeight: 600 }}>
+                        Rutinas Generales
+                      </Typography>
+                      <Typography variant="h4" sx={{ color: colorTokens.success, fontWeight: 700 }}>
+                        {analytics.generalCount}
+                      </Typography>
+                    </Box>
+                  </Box>
+                </CardContent>
+              </Card>
+            </motion.div>
+          </Grid>
+
+          <Grid size={{ xs: 6, sm: 6, md: 3 }}>
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: 0.1 }}>
+              <Card sx={{ bgcolor: colorTokens.neutral300, border: `1px solid ${colorTokens.border}`, height: '100%' }}>
+                <CardContent>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                    <Box sx={{
+                      p: 1.5,
+                      borderRadius: 2,
+                      bgcolor: `${colorTokens.warning}20`,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}>
+                      <FitnessCenterIcon sx={{ color: colorTokens.warning, fontSize: 28 }} />
+                    </Box>
+                    <Box>
+                      <Typography variant="caption" sx={{ color: colorTokens.textMuted, fontWeight: 600 }}>
+                        Personalizadas
+                      </Typography>
+                      <Typography variant="h4" sx={{ color: colorTokens.warning, fontWeight: 700 }}>
+                        {analytics.personalizedCount}
+                      </Typography>
+                    </Box>
+                  </Box>
+                </CardContent>
+              </Card>
+            </motion.div>
+          </Grid>
+
+          <Grid size={{ xs: 6, sm: 6, md: 3 }}>
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: 0.2 }}>
+              <Card sx={{ bgcolor: colorTokens.neutral300, border: `1px solid ${colorTokens.border}`, height: '100%' }}>
+                <CardContent>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                    <Box sx={{
+                      p: 1.5,
+                      borderRadius: 2,
+                      bgcolor: `${colorTokens.info}20`,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}>
+                      <CalendarIcon sx={{ color: colorTokens.info, fontSize: 28 }} />
+                    </Box>
+                    <Box>
+                      <Typography variant="caption" sx={{ color: colorTokens.textMuted, fontWeight: 600 }}>
+                        Asignaciones Activas
+                      </Typography>
+                      <Typography variant="h4" sx={{ color: colorTokens.info, fontWeight: 700 }}>
+                        {analytics.activeAssignments}
+                      </Typography>
+                    </Box>
+                  </Box>
+                </CardContent>
+              </Card>
+            </motion.div>
+          </Grid>
+
+          <Grid size={{ xs: 6, sm: 6, md: 3 }}>
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: 0.3 }}>
+              <Card sx={{ bgcolor: colorTokens.neutral300, border: `1px solid ${colorTokens.border}`, height: '100%' }}>
+                <CardContent>
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                    <Box sx={{
+                      p: 1.5,
+                      borderRadius: 2,
+                      bgcolor: `${colorTokens.brand}20`,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center'
+                    }}>
+                      <TrendingUpIcon sx={{ color: colorTokens.brand, fontSize: 28 }} />
+                    </Box>
+                    <Box>
+                      <Typography variant="caption" sx={{ color: colorTokens.textMuted, fontWeight: 600 }}>
+                        Promedio Ejercicios
+                      </Typography>
+                      <Typography variant="h4" sx={{ color: colorTokens.brand, fontWeight: 700 }}>
+                        {analytics.avgExercisesPerRoutine}
+                      </Typography>
+                    </Box>
+                  </Box>
+                </CardContent>
+              </Card>
+            </motion.div>
+          </Grid>
+        </Grid>
+      )}
+
+      {/* Analytics Section - Collapsible */}
+      {analytics && (
+        <Box sx={{ mb: 3 }}>
+          <Button
+            variant="outlined"
+            startIcon={<ChartIcon />}
+            endIcon={<ExpandMoreIcon sx={{ transform: showAnalytics ? 'rotate(180deg)' : 'none', transition: '0.3s' }} />}
+            onClick={() => setShowAnalytics(!showAnalytics)}
+            sx={{
+              borderColor: colorTokens.brand,
+              color: colorTokens.brand,
+              fontWeight: 700,
+              mb: 2,
+              '&:hover': {
+                borderColor: colorTokens.brand,
+                bgcolor: `${colorTokens.brand}20`
+              }
+            }}
+          >
+            {showAnalytics ? 'Ocultar Analytics' : 'Mostrar Analytics'}
+          </Button>
+
+          <Collapse in={showAnalytics}>
+            <RutineAnalyticsCharts data={analytics} />
+          </Collapse>
+        </Box>
+      )}
+
+      {/* Filters and View Controls */}
+      <Box sx={{
+        mb: 3,
+        p: { xs: 2, sm: 3 },
+        bgcolor: colorTokens.neutral300,
+        border: `1px solid ${colorTokens.border}`,
+        borderRadius: 2
+      }}>
+        <Grid container spacing={{ xs: 2, md: 2.5 }} sx={{ alignItems: 'flex-end' }}>
+          <Grid size={{ xs: 12, md: 3 }}>
+            <TextField
+              fullWidth
+              placeholder="Buscar rutinas..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon sx={{ color: colorTokens.textSecondary }} />
+                  </InputAdornment>
+                )
+              }}
+              sx={{
+                '& .MuiInputBase-root': {
+                  bgcolor: colorTokens.neutral200
+                }
+              }}
+            />
+          </Grid>
+
+          <Grid size={{ xs: 12, sm: 4, md: 2 }}>
+            <FormControl fullWidth>
+              <InputLabel>Nivel</InputLabel>
+              <Select
+                value={levelFilter}
+                onChange={(e) => setLevelFilter(e.target.value)}
+                label="Nivel"
+                sx={{ bgcolor: colorTokens.neutral200 }}
+              >
+                <MenuItem value="all">Todos los niveles</MenuItem>
+                <MenuItem value="Principiante">Principiante</MenuItem>
+                <MenuItem value="Intermedio">Intermedio</MenuItem>
+                <MenuItem value="Avanzado">Avanzado</MenuItem>
+              </Select>
+            </FormControl>
+          </Grid>
+
+          <Grid size={{ xs: 12, sm: 4, md: 2 }}>
+            <FormControl fullWidth>
+              <InputLabel>Tipo</InputLabel>
+              <Select
+                value={typeFilter}
+                onChange={(e) => setTypeFilter(e.target.value)}
+                label="Tipo"
+                sx={{ bgcolor: colorTokens.neutral200 }}
+              >
+                <MenuItem value="all">Todos los tipos</MenuItem>
+                <MenuItem value="general">General</MenuItem>
+                <MenuItem value="personalizada">Personalizada</MenuItem>
+              </Select>
+            </FormControl>
+          </Grid>
+
+          <Grid size={{ xs: 12, sm: 4, md: 2 }}>
+            <FormControl fullWidth>
+              <InputLabel>Duración</InputLabel>
+              <Select
+                value={durationFilter}
+                onChange={(e) => setDurationFilter(e.target.value)}
+                label="Duración"
+                sx={{ bgcolor: colorTokens.neutral200 }}
+              >
+                <MenuItem value="all">Todas</MenuItem>
+                <MenuItem value="0-30">0-30 min</MenuItem>
+                <MenuItem value="31-60">31-60 min</MenuItem>
+                <MenuItem value="61-90">61-90 min</MenuItem>
+                <MenuItem value="90+">90+ min</MenuItem>
+              </Select>
+            </FormControl>
+          </Grid>
+
+          <Grid size={{ xs: 6, md: 1.5 }}>
+            <Button
+              variant="outlined"
+              fullWidth
+              startIcon={<ExcelIcon />}
+              onClick={handleExportExcel}
+              sx={{
+                borderColor: colorTokens.success,
+                color: colorTokens.success,
+                fontWeight: 600,
+                '&:hover': {
+                  borderColor: colorTokens.success,
+                  bgcolor: `${colorTokens.success}20`
+                }
+              }}
+            >
+              Excel
+            </Button>
+          </Grid>
+
+          <Grid size={{ xs: 6, md: 1.5 }}>
+            <ToggleButtonGroup
+              value={viewMode}
+              exclusive
+              onChange={(e, newValue) => newValue && setViewMode(newValue)}
+              fullWidth
+              sx={{
+                bgcolor: colorTokens.neutral200,
+                '& .MuiToggleButton-root': {
+                  color: colorTokens.textSecondary,
+                  borderColor: colorTokens.border,
+                  '&.Mui-selected': {
+                    bgcolor: colorTokens.brand,
+                    color: colorTokens.neutral300,
+                    '&:hover': {
+                      bgcolor: colorTokens.warning
+                    }
+                  }
+                }
+              }}
+            >
+              <ToggleButton value="grid">
+                <GridViewIcon />
+              </ToggleButton>
+              <ToggleButton value="table">
+                <TableViewIcon />
+              </ToggleButton>
+            </ToggleButtonGroup>
+          </Grid>
+        </Grid>
+      </Box>
+
+      {/* Grid View */}
+      {viewMode === 'grid' && (
+        <Grid container spacing={3}>
+          {filteredRoutines.map((routine) => (
+            <Grid key={routine.id} size={{ xs: 12, md: 6, lg: 4 }}>
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.3 }}
+              >
+                <Card sx={{
+                  bgcolor: colorTokens.neutral300,
+                  border: `1px solid ${colorTokens.border}`,
+                  borderRadius: 3,
+                  height: '100%',
+                  '&:hover': {
+                    borderColor: colorTokens.brand,
+                    transform: 'translateY(-4px)',
+                    transition: 'all 0.3s'
+                  }
+                }}>
+                  <CardContent>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+                      <Box sx={{ flex: 1 }}>
                         <Typography variant="h6" sx={{ fontWeight: 700, color: colorTokens.textPrimary, mb: 1 }}>
                           {routine.name}
                         </Typography>
                         <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
                           <Chip
-                            label="General"
+                            label={routine.is_public ? 'General' : 'Personalizada'}
                             size="small"
                             sx={{
-                              bgcolor: alpha(colorTokens.success, 0.15),
-                              color: colorTokens.success,
-                              fontWeight: 600
+                              bgcolor: routine.is_public ? `${colorTokens.success}20` : `${colorTokens.warning}20`,
+                              color: routine.is_public ? colorTokens.success : colorTokens.warning,
+                              fontWeight: 700,
+                              fontSize: '0.7rem'
                             }}
                           />
                           <Chip
                             label={routine.difficulty_level}
                             size="small"
                             sx={{
-                              bgcolor: alpha(colorTokens.info, 0.15),
-                              color: colorTokens.info,
-                              fontWeight: 600
+                              bgcolor: `${getDifficultyColor(routine.difficulty_level)}20`,
+                              color: getDifficultyColor(routine.difficulty_level),
+                              fontWeight: 600,
+                              fontSize: '0.7rem'
                             }}
                           />
-                          {routine.estimated_duration && (
-                            <Chip
-                              icon={<TimerIcon sx={{ fontSize: 14 }} />}
-                              label={`${routine.estimated_duration} min`}
-                              size="small"
-                              sx={{
-                                bgcolor: alpha(colorTokens.warning, 0.15),
-                                color: colorTokens.warning
-                              }}
-                            />
-                          )}
+                          <Chip
+                            icon={<TimerIcon sx={{ fontSize: 12 }} />}
+                            label={`${routine.estimated_duration || 0} min`}
+                            size="small"
+                            sx={{
+                              bgcolor: `${colorTokens.info}20`,
+                              color: colorTokens.info,
+                              fontSize: '0.7rem'
+                            }}
+                          />
                           <Chip
                             label={`${routine.routine_exercises?.length || 0} ejercicios`}
                             size="small"
                             sx={{
-                              bgcolor: alpha(colorTokens.brand, 0.15),
-                              color: colorTokens.brand
+                              bgcolor: `${colorTokens.brand}20`,
+                              color: colorTokens.brand,
+                              fontSize: '0.7rem'
                             }}
                           />
                         </Box>
                       </Box>
-                      <Box sx={{ display: 'flex', gap: 1 }}>
-                        {/* Rutinas Generales NO necesitan asignación - están disponibles para todos */}
-                        <Tooltip title="Editar">
-                          <IconButton
-                            size="small"
-                            onClick={() => handleEditRoutine(routine)}
-                            sx={{
-                              color: colorTokens.info,
-                              bgcolor: alpha(colorTokens.info, 0.1),
-                              '&:hover': { bgcolor: alpha(colorTokens.info, 0.2) }
-                            }}
-                          >
-                            <EditIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                        <Tooltip title="Eliminar">
-                          <IconButton
-                            size="small"
-                            onClick={() => handleDeleteRoutine(routine.id!)}
-                            sx={{
-                              color: colorTokens.danger,
-                              bgcolor: alpha(colorTokens.danger, 0.1),
-                              '&:hover': { bgcolor: alpha(colorTokens.danger, 0.2) }
-                            }}
-                          >
-                            <DeleteIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
-                      </Box>
                     </Box>
 
                     {routine.description && (
-                      <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
-                        {routine.description}
+                      <Typography variant="body2" sx={{ color: colorTokens.textSecondary, mb: 2 }}>
+                        {routine.description.substring(0, 100)}{routine.description.length > 100 ? '...' : ''}
                       </Typography>
                     )}
+
+                    <Divider sx={{ borderColor: colorTokens.border, my: 2 }} />
+
+                    <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                      <Tooltip title="Ver Detalles">
+                        <IconButton
+                          size="small"
+                          onClick={() => handleViewDetails(routine)}
+                          sx={{
+                            color: colorTokens.brand,
+                            bgcolor: `${colorTokens.brand}20`,
+                            '&:hover': { bgcolor: `${colorTokens.brand}30` }
+                          }}
+                        >
+                          <ViewIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Editar">
+                        <IconButton
+                          size="small"
+                          onClick={() => handleEditRoutine(routine)}
+                          sx={{
+                            color: colorTokens.info,
+                            bgcolor: `${colorTokens.info}20`,
+                            '&:hover': { bgcolor: `${colorTokens.info}30` }
+                          }}
+                        >
+                          <EditIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Duplicar">
+                        <IconButton
+                          size="small"
+                          onClick={() => handleDuplicateRoutine(routine.id!)}
+                          sx={{
+                            color: colorTokens.success,
+                            bgcolor: `${colorTokens.success}20`,
+                            '&:hover': { bgcolor: `${colorTokens.success}30` }
+                          }}
+                        >
+                          <CopyIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Asignar a Usuario">
+                        <IconButton
+                          size="small"
+                          onClick={() => {
+                            setAssignRoutine(routine);
+                            setAssignModalOpen(true);
+                          }}
+                          sx={{
+                            color: colorTokens.warning,
+                            bgcolor: `${colorTokens.warning}20`,
+                            '&:hover': { bgcolor: `${colorTokens.warning}30` }
+                          }}
+                        >
+                          <PersonAddIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Ver Usuarios Asignados">
+                        <IconButton
+                          size="small"
+                          onClick={() => {
+                            setAssignedUsersRoutine(routine);
+                            setAssignedUsersModalOpen(true);
+                          }}
+                          sx={{
+                            color: '#9C27B0',
+                            bgcolor: 'rgba(156, 39, 176, 0.1)',
+                            '&:hover': { bgcolor: 'rgba(156, 39, 176, 0.2)' }
+                          }}
+                        >
+                          <PeopleIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                      <Tooltip title="Eliminar">
+                        <IconButton
+                          size="small"
+                          onClick={() => handleDeleteRoutine(routine.id!)}
+                          sx={{
+                            color: colorTokens.danger,
+                            bgcolor: `${colorTokens.danger}20`,
+                            '&:hover': { bgcolor: `${colorTokens.danger}30` }
+                          }}
+                        >
+                          <DeleteIcon fontSize="small" />
+                        </IconButton>
+                      </Tooltip>
+                    </Box>
                   </CardContent>
                 </Card>
               </motion.div>
@@ -850,114 +1098,160 @@ export default function RutinasAdmin() {
           ))}
         </Grid>
       )}
-        </>
-      )}
 
-      {/* Tab Panel 1: Rutinas Personalizadas (is_public = false) */}
-      {activeTab === 1 && (
-        <>
-          {routines.filter(r => !r.is_public).length === 0 ? (
-            <Paper sx={{
-              p: 6,
-              textAlign: 'center',
-              background: alpha(colorTokens.surfaceLevel2, 0.9),
-              border: `1px solid ${alpha(colorTokens.brand, 0.1)}`,
-              borderRadius: 3
-            }}>
-              <PersonAddIcon sx={{ fontSize: 80, color: colorTokens.textMuted, mb: 2 }} />
-              <Typography variant="h6" sx={{ color: colorTokens.textSecondary }}>
-                No hay rutinas personalizadas creadas
-              </Typography>
-              <Typography variant="body2" sx={{ color: colorTokens.textMuted, mt: 1 }}>
-                Las rutinas personalizadas se asignan a usuarios específicos
-              </Typography>
-            </Paper>
-          ) : (
-            <Grid container spacing={3}>
-              {routines.filter(r => !r.is_public).map((routine) => (
-                <Grid key={routine.id} size={{ xs: 12, md: 6, lg: 4 }}>
-                  <motion.div
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3 }}
+      {/* Table View */}
+      {viewMode === 'table' && (
+        <Box>
+          <TableContainer
+            component={Paper}
+            sx={{
+              bgcolor: colorTokens.neutral300,
+              border: `1px solid ${colorTokens.border}`,
+              borderRadius: 2,
+              mb: 2
+            }}
+          >
+            <Table>
+              <TableHead>
+                <TableRow sx={{ bgcolor: colorTokens.neutral200 }}>
+                  <TableCell sx={{ color: colorTokens.textPrimary, fontWeight: 700 }}>Rutina</TableCell>
+                  <TableCell sx={{ color: colorTokens.textPrimary, fontWeight: 700 }}>Tipo</TableCell>
+                  <TableCell sx={{ color: colorTokens.textPrimary, fontWeight: 700 }}>Nivel</TableCell>
+                  <TableCell sx={{ color: colorTokens.textPrimary, fontWeight: 700 }} align="center">Duración</TableCell>
+                  <TableCell sx={{ color: colorTokens.textPrimary, fontWeight: 700 }} align="center">Ejercicios</TableCell>
+                  <TableCell sx={{ color: colorTokens.textPrimary, fontWeight: 700 }} align="right">Acciones</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {paginatedRoutines.map((routine) => (
+                  <TableRow
+                    key={routine.id}
+                    sx={{
+                      '&:hover': { bgcolor: `${colorTokens.brand}10` },
+                      transition: 'background-color 0.2s'
+                    }}
                   >
-                    <Card sx={{
-                      background: `linear-gradient(135deg, ${alpha(colorTokens.surfaceLevel2, 0.9)}, ${alpha(colorTokens.surfaceLevel3, 0.85)})`,
-                      border: `1px solid ${alpha(colorTokens.brand, 0.1)}`,
-                      borderRadius: 3,
-                      height: '100%'
-                    }}>
-                      <CardContent>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
-                          <Box sx={{ flex: 1 }}>
-                        <Typography variant="h6" sx={{ fontWeight: 700, color: colorTokens.textPrimary, mb: 1 }}>
-                          {routine.name}
+                    <TableCell>
+                      <Typography variant="body2" sx={{ color: colorTokens.textPrimary, fontWeight: 600 }}>
+                        {routine.name}
+                      </Typography>
+                      {routine.description && (
+                        <Typography variant="caption" sx={{ color: colorTokens.textMuted }}>
+                          {routine.description.substring(0, 60)}{routine.description.length > 60 ? '...' : ''}
                         </Typography>
-                        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                          <Chip
-                            label="Personalizada"
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Chip
+                        label={routine.is_public ? 'General' : 'Personalizada'}
+                        size="small"
+                        sx={{
+                          bgcolor: routine.is_public ? `${colorTokens.success}20` : `${colorTokens.warning}20`,
+                          color: routine.is_public ? colorTokens.success : colorTokens.warning,
+                          fontWeight: 700,
+                          fontSize: '0.7rem'
+                        }}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Chip
+                        label={routine.difficulty_level}
+                        size="small"
+                        sx={{
+                          bgcolor: `${getDifficultyColor(routine.difficulty_level)}20`,
+                          color: getDifficultyColor(routine.difficulty_level),
+                          fontWeight: 600,
+                          fontSize: '0.7rem'
+                        }}
+                      />
+                    </TableCell>
+                    <TableCell align="center">
+                      <Typography variant="body2" sx={{ color: colorTokens.textPrimary, fontWeight: 600 }}>
+                        {routine.estimated_duration || 0} min
+                      </Typography>
+                    </TableCell>
+                    <TableCell align="center">
+                      <Chip
+                        label={routine.routine_exercises?.length || 0}
+                        size="small"
+                        sx={{
+                          bgcolor: `${colorTokens.brand}20`,
+                          color: colorTokens.brand,
+                          fontWeight: 700
+                        }}
+                      />
+                    </TableCell>
+                    <TableCell align="right">
+                      <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'flex-end' }}>
+                        <Tooltip title="Ver">
+                          <IconButton
                             size="small"
+                            onClick={() => handleViewDetails(routine)}
                             sx={{
-                              bgcolor: alpha(colorTokens.warning, 0.15),
-                              color: colorTokens.warning,
-                              fontWeight: 600
+                              color: colorTokens.brand,
+                              bgcolor: `${colorTokens.brand}20`,
+                              '&:hover': { bgcolor: `${colorTokens.brand}30` }
                             }}
-                          />
-                          <Chip
-                            label={routine.difficulty_level}
+                          >
+                            <ViewIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Editar">
+                          <IconButton
                             size="small"
+                            onClick={() => handleEditRoutine(routine)}
                             sx={{
-                              bgcolor: alpha(colorTokens.info, 0.15),
                               color: colorTokens.info,
-                              fontWeight: 600
+                              bgcolor: `${colorTokens.info}20`,
+                              '&:hover': { bgcolor: `${colorTokens.info}30` }
                             }}
-                          />
-                          {routine.estimated_duration && (
-                            <Chip
-                              icon={<TimerIcon sx={{ fontSize: 14 }} />}
-                              label={`${routine.estimated_duration} min`}
-                              size="small"
-                              sx={{
-                                bgcolor: alpha(colorTokens.warning, 0.15),
-                                color: colorTokens.warning
-                              }}
-                            />
-                          )}
-                          <Chip
-                            label={`${routine.routine_exercises?.length || 0} ejercicios`}
+                          >
+                            <EditIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Duplicar">
+                          <IconButton
                             size="small"
+                            onClick={() => handleDuplicateRoutine(routine.id!)}
                             sx={{
-                              bgcolor: alpha(colorTokens.brand, 0.15),
-                              color: colorTokens.brand
+                              color: colorTokens.success,
+                              bgcolor: `${colorTokens.success}20`,
+                              '&:hover': { bgcolor: `${colorTokens.success}30` }
                             }}
-                          />
-                        </Box>
-                      </Box>
-                      <Box sx={{ display: 'flex', gap: 1 }}>
+                          >
+                            <CopyIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
                         <Tooltip title="Asignar a Usuario">
                           <IconButton
                             size="small"
-                            onClick={() => handleOpenAssignDialog(routine)}
+                            onClick={() => {
+                              setAssignRoutine(routine);
+                              setAssignModalOpen(true);
+                            }}
                             sx={{
-                              color: colorTokens.success,
-                              bgcolor: alpha(colorTokens.success, 0.1),
-                              '&:hover': { bgcolor: alpha(colorTokens.success, 0.2) }
+                              color: colorTokens.warning,
+                              bgcolor: `${colorTokens.warning}20`,
+                              '&:hover': { bgcolor: `${colorTokens.warning}30` }
                             }}
                           >
                             <PersonAddIcon fontSize="small" />
                           </IconButton>
                         </Tooltip>
-                        <Tooltip title="Editar">
+                        <Tooltip title="Ver Usuarios Asignados">
                           <IconButton
                             size="small"
-                            onClick={() => handleEditRoutine(routine)}
+                            onClick={() => {
+                              setAssignedUsersRoutine(routine);
+                              setAssignedUsersModalOpen(true);
+                            }}
                             sx={{
-                              color: colorTokens.info,
-                              bgcolor: alpha(colorTokens.info, 0.1),
-                              '&:hover': { bgcolor: alpha(colorTokens.info, 0.2) }
+                              color: '#9C27B0',
+                              bgcolor: 'rgba(156, 39, 176, 0.1)',
+                              '&:hover': { bgcolor: 'rgba(156, 39, 176, 0.2)' }
                             }}
                           >
-                            <EditIcon fontSize="small" />
+                            <PeopleIcon fontSize="small" />
                           </IconButton>
                         </Tooltip>
                         <Tooltip title="Eliminar">
@@ -966,206 +1260,120 @@ export default function RutinasAdmin() {
                             onClick={() => handleDeleteRoutine(routine.id!)}
                             sx={{
                               color: colorTokens.danger,
-                              bgcolor: alpha(colorTokens.danger, 0.1),
-                              '&:hover': { bgcolor: alpha(colorTokens.danger, 0.2) }
+                              bgcolor: `${colorTokens.danger}20`,
+                              '&:hover': { bgcolor: `${colorTokens.danger}30` }
                             }}
                           >
                             <DeleteIcon fontSize="small" />
                           </IconButton>
                         </Tooltip>
                       </Box>
-                    </Box>
-
-                    {routine.description && (
-                      <Typography variant="body2" sx={{ color: colorTokens.textSecondary }}>
-                        {routine.description}
-                      </Typography>
-                    )}
-                  </CardContent>
-                </Card>
-              </motion.div>
-            </Grid>
-          ))}
-        </Grid>
-      )}
-        </>
-      )}
-
-      {/* Tab Panel 2: Rutinas Asignadas */}
-      {activeTab === 2 && (
-        <>
-          {loadingAssigned ? (
-            <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
-              <CircularProgress sx={{ color: colorTokens.brand }} />
-            </Box>
-          ) : assignedRoutines.length === 0 ? (
-            <Paper sx={{
-              p: 6,
-              textAlign: 'center',
-              background: alpha(colorTokens.surfaceLevel2, 0.9),
-              border: `1px solid ${alpha(colorTokens.brand, 0.1)}`,
-              borderRadius: 3
-            }}>
-              <PersonAddIcon sx={{ fontSize: 80, color: colorTokens.textMuted, mb: 2 }} />
-              <Typography variant="h6" sx={{ color: colorTokens.textSecondary }}>
-                No hay rutinas asignadas
-              </Typography>
-              <Typography variant="body2" sx={{ color: colorTokens.textMuted, mt: 1 }}>
-                Las rutinas asignadas a usuarios aparecerán aquí
-              </Typography>
-            </Paper>
-          ) : (
-            <TableContainer
-              component={Paper}
-              sx={{
-                background: alpha(colorTokens.surfaceLevel2, 0.9),
-                border: `1px solid ${alpha(colorTokens.brand, 0.1)}`,
-                borderRadius: 3
-              }}
-            >
-              <Table>
-                <TableHead>
-                  <TableRow sx={{ bgcolor: alpha(colorTokens.surfaceLevel3, 0.5) }}>
-                    <TableCell sx={{ color: colorTokens.textPrimary, fontWeight: 700 }}>
-                      Rutina
-                    </TableCell>
-                    <TableCell sx={{ color: colorTokens.textPrimary, fontWeight: 700 }}>
-                      Usuario
-                    </TableCell>
-                    <TableCell sx={{ color: colorTokens.textPrimary, fontWeight: 700 }}>
-                      Asignado por
-                    </TableCell>
-                    <TableCell sx={{ color: colorTokens.textPrimary, fontWeight: 700 }}>
-                      Fecha Inicio
-                    </TableCell>
-                    <TableCell sx={{ color: colorTokens.textPrimary, fontWeight: 700 }}>
-                      Fecha Fin
-                    </TableCell>
-                    <TableCell sx={{ color: colorTokens.textPrimary, fontWeight: 700 }}>
-                      Estado
-                    </TableCell>
-                    <TableCell sx={{ color: colorTokens.textPrimary, fontWeight: 700 }} align="right">
-                      Acciones
                     </TableCell>
                   </TableRow>
-                </TableHead>
-                <TableBody>
-                  {assignedRoutines.map((assignment) => (
-                    <TableRow
-                      key={assignment.id}
-                      sx={{
-                        '&:hover': { bgcolor: alpha(colorTokens.brand, 0.05) },
-                        transition: 'background-color 0.2s'
-                      }}
-                    >
-                      <TableCell sx={{ color: colorTokens.textPrimary }}>
-                        <Typography variant="body2" sx={{ fontWeight: 600 }}>
-                          {assignment.routine?.name || 'N/A'}
-                        </Typography>
-                        {assignment.routine?.difficulty_level && (
-                          <Chip
-                            label={assignment.routine.difficulty_level}
-                            size="small"
-                            sx={{
-                              mt: 0.5,
-                              bgcolor: alpha(colorTokens.info, 0.15),
-                              color: colorTokens.info,
-                              fontSize: '0.7rem'
-                            }}
-                          />
-                        )}
-                      </TableCell>
-                      <TableCell sx={{ color: colorTokens.textSecondary }}>
-                        <Typography variant="body2">
-                          {assignment.user?.firstName} {assignment.user?.lastName}
-                        </Typography>
-                        <Typography variant="caption" sx={{ color: colorTokens.textMuted }}>
-                          {assignment.user?.email}
-                        </Typography>
-                      </TableCell>
-                      <TableCell sx={{ color: colorTokens.textSecondary }}>
-                        {assignment.assigned_by_user?.firstName} {assignment.assigned_by_user?.lastName}
-                      </TableCell>
-                      <TableCell sx={{ color: colorTokens.textSecondary }}>
-                        {assignment.start_date ? formatDateForDisplay(assignment.start_date) : '-'}
-                      </TableCell>
-                      <TableCell sx={{ color: colorTokens.textSecondary }}>
-                        {assignment.end_date ? formatDateForDisplay(assignment.end_date) : '-'}
-                      </TableCell>
-                      <TableCell>
-                        <Chip
-                          label={assignment.status === 'active' ? 'Activa' : assignment.status === 'completed' ? 'Completada' : 'Pausada'}
-                          size="small"
-                          sx={{
-                            bgcolor: assignment.status === 'active'
-                              ? alpha(colorTokens.success, 0.15)
-                              : assignment.status === 'completed'
-                              ? alpha(colorTokens.info, 0.15)
-                              : alpha(colorTokens.warning, 0.15),
-                            color: assignment.status === 'active'
-                              ? colorTokens.success
-                              : assignment.status === 'completed'
-                              ? colorTokens.info
-                              : colorTokens.warning,
-                            fontWeight: 600
-                          }}
-                        />
-                      </TableCell>
-                      <TableCell align="right">
-                        <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
-                          <Tooltip title="Editar Asignación">
-                            <IconButton
-                              size="small"
-                              onClick={() => handleOpenEditAssignment(assignment)}
-                              sx={{
-                                color: colorTokens.info,
-                                bgcolor: alpha(colorTokens.info, 0.1),
-                                '&:hover': { bgcolor: alpha(colorTokens.info, 0.2) }
-                              }}
-                            >
-                              <EditIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
-                          <Tooltip title="Eliminar Asignación">
-                            <IconButton
-                              size="small"
-                              onClick={() => handleDeleteAssignment(
-                                assignment.id,
-                                assignment.routine?.name || 'rutina',
-                                `${assignment.user?.firstName} ${assignment.user?.lastName}`
-                              )}
-                              sx={{
-                                color: colorTokens.danger,
-                                bgcolor: alpha(colorTokens.danger, 0.1),
-                                '&:hover': { bgcolor: alpha(colorTokens.danger, 0.2) }
-                              }}
-                            >
-                              <DeleteIcon fontSize="small" />
-                            </IconButton>
-                          </Tooltip>
-                        </Box>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </TableContainer>
-          )}
-        </>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+
+          <TablePagination
+            component="div"
+            count={filteredRoutines.length}
+            page={page}
+            onPageChange={(e, newPage) => setPage(newPage)}
+            rowsPerPage={rowsPerPage}
+            onRowsPerPageChange={(e) => {
+              setRowsPerPage(parseInt(e.target.value, 10));
+              setPage(0);
+            }}
+            labelRowsPerPage="Filas por página:"
+            labelDisplayedRows={({ from, to, count }) => `${from}-${to} de ${count}`}
+            sx={{
+              color: colorTokens.textPrimary,
+              bgcolor: colorTokens.neutral300,
+              border: `1px solid ${colorTokens.border}`,
+              borderRadius: 2,
+              '& .MuiTablePagination-select': {
+                color: colorTokens.textPrimary
+              },
+              '& .MuiTablePagination-selectIcon': {
+                color: colorTokens.textPrimary
+              }
+            }}
+          />
+        </Box>
       )}
 
-      {/* Dialog de creación - DISEÑO DE 2 COLUMNAS */}
+      {/* Empty State */}
+      {filteredRoutines.length === 0 && (
+        <Paper sx={{
+          p: 6,
+          textAlign: 'center',
+          bgcolor: colorTokens.neutral300,
+          border: `1px solid ${colorTokens.border}`,
+          borderRadius: 3
+        }}>
+          <FitnessCenterIcon sx={{ fontSize: 80, color: colorTokens.textMuted, mb: 2 }} />
+          <Typography variant="h6" sx={{ color: colorTokens.textSecondary }}>
+            No se encontraron rutinas
+          </Typography>
+          <Typography variant="body2" sx={{ color: colorTokens.textMuted, mt: 1 }}>
+            {searchTerm || levelFilter !== 'all' || typeFilter !== 'all' || durationFilter !== 'all'
+              ? 'Intenta ajustar los filtros'
+              : 'Crea tu primera rutina para comenzar'}
+          </Typography>
+        </Paper>
+      )}
+
+      {/* Detail Modal */}
+      <RutineDetailModal
+        open={detailModalOpen}
+        routine={detailRoutine}
+        onClose={() => {
+          setDetailModalOpen(false);
+          setDetailRoutine(null);
+        }}
+        onDuplicate={handleDuplicateRoutine}
+      />
+
+      {/* Assign Routine Modal */}
+      <AssignRoutineModal
+        open={assignModalOpen}
+        routine={assignRoutine}
+        onClose={() => {
+          setAssignModalOpen(false);
+          setAssignRoutine(null);
+        }}
+        onAssigned={() => {
+          loadRoutines(); // Refresh routines
+          loadAnalytics(); // Refresh analytics to update assignment counter
+        }}
+      />
+
+      {/* Assigned Users Modal */}
+      <AssignedUsersModal
+        open={assignedUsersModalOpen}
+        routine={assignedUsersRoutine}
+        onClose={() => {
+          setAssignedUsersModalOpen(false);
+          setAssignedUsersRoutine(null);
+        }}
+      />
+
+      {/* Dialog de creación - DISEÑO DE 2 COLUMNAS (MANTENER INTACTO) */}
       <Dialog
         open={createDialog}
         onClose={handleCloseDialog}
         maxWidth="xl"
         fullWidth
-        PaperProps={{
-          sx: {
-            background: colorTokens.surfaceLevel2,
-            borderRadius: 3,
-            maxHeight: '90vh',
-            height: '90vh'
+        slotProps={{
+          paper: {
+            sx: {
+              bgcolor: colorTokens.neutral300,
+              border: `1px solid ${colorTokens.border}`,
+              borderRadius: 3,
+              maxHeight: '90vh',
+              height: '90vh'
+            }
           }
         }}
       >
@@ -1173,14 +1381,14 @@ export default function RutinasAdmin() {
           display: 'flex',
           justifyContent: 'space-between',
           alignItems: 'center',
-          borderBottom: `1px solid ${alpha(colorTokens.brand, 0.2)}`
+          borderBottom: `1px solid ${colorTokens.border}`
         }}>
           <Box>
             <Typography variant="h5" sx={{ fontWeight: 700, color: colorTokens.textPrimary }}>
-              {editingRoutine ? 'Editar Rutina' : formData.is_public ? 'Nueva Rutina General' : 'Nueva Rutina Personalizada'}
+              {editingRoutine ? 'Editar Rutina' : 'Nueva Rutina'}
             </Typography>
             <Typography variant="body2" sx={{ color: colorTokens.textSecondary, mt: 0.5 }}>
-              {formData.is_public ? 'Estará disponible para todos los clientes' : 'Solo para usuarios asignados'}
+              Configura los ejercicios y parámetros de la rutina
             </Typography>
           </Box>
           <IconButton onClick={handleCloseDialog} sx={{ color: colorTokens.textSecondary }}>
@@ -1198,6 +1406,9 @@ export default function RutinasAdmin() {
                 value={formData.name}
                 onChange={(e) => setFormData({ ...formData, name: e.target.value })}
                 required
+                sx={{
+                  '& .MuiInputBase-root': { bgcolor: colorTokens.neutral200 }
+                }}
               />
             </Grid>
             <Grid size={12}>
@@ -1208,15 +1419,33 @@ export default function RutinasAdmin() {
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 multiline
                 rows={2}
+                sx={{
+                  '& .MuiInputBase-root': { bgcolor: colorTokens.neutral200 }
+                }}
               />
             </Grid>
-            <Grid size={{ xs: 12, sm: 6 }}>
+            <Grid size={{ xs: 12, sm: 4 }}>
+              <FormControl fullWidth>
+                <InputLabel>Tipo</InputLabel>
+                <Select
+                  value={formData.is_public ? 'general' : 'personalizada'}
+                  onChange={(e) => setFormData({ ...formData, is_public: e.target.value === 'general' })}
+                  label="Tipo"
+                  sx={{ bgcolor: colorTokens.neutral200 }}
+                >
+                  <MenuItem value="general">General</MenuItem>
+                  <MenuItem value="personalizada">Personalizada</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+            <Grid size={{ xs: 12, sm: 4 }}>
               <FormControl fullWidth>
                 <InputLabel>Dificultad</InputLabel>
                 <Select
                   value={formData.difficulty_level}
                   onChange={(e) => setFormData({ ...formData, difficulty_level: e.target.value })}
                   label="Dificultad"
+                  sx={{ bgcolor: colorTokens.neutral200 }}
                 >
                   <MenuItem value="Principiante">Principiante</MenuItem>
                   <MenuItem value="Intermedio">Intermedio</MenuItem>
@@ -1224,18 +1453,21 @@ export default function RutinasAdmin() {
                 </Select>
               </FormControl>
             </Grid>
-            <Grid size={{ xs: 12, sm: 6 }}>
+            <Grid size={{ xs: 12, sm: 4 }}>
               <TextField
                 fullWidth
                 label="Duración Estimada (min)"
                 type="number"
                 value={formData.estimated_duration || ''}
                 onChange={(e) => setFormData({ ...formData, estimated_duration: parseInt(e.target.value) || 0 })}
+                sx={{
+                  '& .MuiInputBase-root': { bgcolor: colorTokens.neutral200 }
+                }}
               />
             </Grid>
           </Grid>
 
-          <Divider sx={{ my: 3, borderColor: alpha(colorTokens.brand, 0.2) }} />
+          <Divider sx={{ my: 3, borderColor: colorTokens.border }} />
 
           {/* DISEÑO DE 2 COLUMNAS */}
           <Grid container spacing={3}>
@@ -1243,11 +1475,12 @@ export default function RutinasAdmin() {
             <Grid size={{ xs: 12, md: 6 }}>
               <Box sx={{
                 p: 2,
-                bgcolor: alpha(colorTokens.surfaceLevel3, 0.5),
+                bgcolor: colorTokens.neutral200,
                 borderRadius: 2,
                 height: '500px',
                 display: 'flex',
-                flexDirection: 'column'
+                flexDirection: 'column',
+                border: `1px solid ${colorTokens.border}`
               }}>
                 <Typography variant="subtitle1" sx={{ fontWeight: 700, color: colorTokens.brand, mb: 2 }}>
                   Ejercicios Disponibles
@@ -1275,12 +1508,12 @@ export default function RutinasAdmin() {
                         p: 2,
                         mb: 1.5,
                         cursor: 'pointer',
-                        background: alpha(colorTokens.surfaceLevel2, 0.8),
-                        border: `1px solid ${alpha(colorTokens.brand, 0.1)}`,
+                        bgcolor: colorTokens.neutral300,
+                        border: `1px solid ${colorTokens.border}`,
                         borderRadius: 2,
                         transition: 'all 0.2s ease',
                         '&:hover': {
-                          background: alpha(colorTokens.brand, 0.1),
+                          bgcolor: `${colorTokens.brand}20`,
                           borderColor: colorTokens.brand,
                           transform: 'translateX(4px)'
                         }
@@ -1303,11 +1536,12 @@ export default function RutinasAdmin() {
             <Grid size={{ xs: 12, md: 6 }}>
               <Box sx={{
                 p: 2,
-                bgcolor: alpha(colorTokens.brand, 0.05),
+                bgcolor: `${colorTokens.brand}10`,
                 borderRadius: 2,
                 height: '500px',
                 display: 'flex',
-                flexDirection: 'column'
+                flexDirection: 'column',
+                border: `1px solid ${colorTokens.brand}30`
               }}>
                 <Typography variant="subtitle1" sx={{ fontWeight: 700, color: colorTokens.brand, mb: 2 }}>
                   Ejercicios de la Rutina ({formData.routine_exercises.length})
@@ -1345,7 +1579,7 @@ export default function RutinasAdmin() {
           </Grid>
         </DialogContent>
 
-        <DialogActions sx={{ p: 3, borderTop: `1px solid ${alpha(colorTokens.brand, 0.2)}` }}>
+        <DialogActions sx={{ p: 3, borderTop: `1px solid ${colorTokens.border}` }}>
           <Button onClick={handleCloseDialog} sx={{ color: colorTokens.textSecondary }}>
             Cancelar
           </Button>
@@ -1355,9 +1589,9 @@ export default function RutinasAdmin() {
             onClick={handleSaveRoutine}
             sx={{
               bgcolor: colorTokens.brand,
-              color: colorTokens.black,
+              color: colorTokens.neutral300,
               fontWeight: 700,
-              '&:hover': { bgcolor: alpha(colorTokens.brand, 0.9) }
+              '&:hover': { bgcolor: colorTokens.warning }
             }}
           >
             {editingRoutine ? 'Actualizar Rutina' : 'Guardar Rutina'}
@@ -1371,17 +1605,22 @@ export default function RutinasAdmin() {
         onClose={() => setExerciseEditDialog(false)}
         maxWidth="xs"
         fullWidth
-        PaperProps={{
-          sx: {
-            background: colorTokens.surfaceLevel2,
-            borderRadius: 3
+        slotProps={{
+          paper: {
+            sx: {
+              bgcolor: colorTokens.neutral300,
+              border: `1px solid ${colorTokens.border}`,
+              borderRadius: 3
+            }
           }
         }}
       >
-        <DialogTitle>Editar Parámetros</DialogTitle>
-        <DialogContent>
+        <DialogTitle sx={{ borderBottom: `1px solid ${colorTokens.border}` }}>
+          Editar Parámetros
+        </DialogTitle>
+        <DialogContent sx={{ mt: 2 }}>
           {currentEditingExercise && (
-            <Grid container spacing={2} sx={{ mt: 1 }}>
+            <Grid container spacing={2}>
               <Grid size={6}>
                 <TextField
                   fullWidth
@@ -1392,6 +1631,7 @@ export default function RutinasAdmin() {
                     ...currentEditingExercise,
                     sets: parseInt(e.target.value) || 1
                   })}
+                  sx={{ '& .MuiInputBase-root': { bgcolor: colorTokens.neutral200 } }}
                 />
               </Grid>
               <Grid size={6}>
@@ -1404,6 +1644,7 @@ export default function RutinasAdmin() {
                     reps: e.target.value
                   })}
                   placeholder="10-12"
+                  sx={{ '& .MuiInputBase-root': { bgcolor: colorTokens.neutral200 } }}
                 />
               </Grid>
               <Grid size={12}>
@@ -1416,6 +1657,7 @@ export default function RutinasAdmin() {
                     ...currentEditingExercise,
                     rest_seconds: parseInt(e.target.value) || 0
                   })}
+                  sx={{ '& .MuiInputBase-root': { bgcolor: colorTokens.neutral200 } }}
                 />
               </Grid>
               <Grid size={12}>
@@ -1429,353 +1671,27 @@ export default function RutinasAdmin() {
                     ...currentEditingExercise,
                     notes: e.target.value
                   })}
+                  sx={{ '& .MuiInputBase-root': { bgcolor: colorTokens.neutral200 } }}
                 />
               </Grid>
             </Grid>
           )}
         </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setExerciseEditDialog(false)}>Cancelar</Button>
+        <DialogActions sx={{ p: 2, borderTop: `1px solid ${colorTokens.border}` }}>
+          <Button onClick={() => setExerciseEditDialog(false)} sx={{ color: colorTokens.textSecondary }}>
+            Cancelar
+          </Button>
           <Button
             variant="contained"
             onClick={handleSaveExerciseParams}
             sx={{
               bgcolor: colorTokens.brand,
-              color: colorTokens.black,
-              '&:hover': { bgcolor: alpha(colorTokens.brand, 0.9) }
+              color: colorTokens.neutral300,
+              fontWeight: 700,
+              '&:hover': { bgcolor: colorTokens.warning }
             }}
           >
             Guardar
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Dialog de Asignación a Usuario */}
-      <Dialog
-        open={assignDialog}
-        onClose={() => setAssignDialog(false)}
-        maxWidth="sm"
-        fullWidth
-        PaperProps={{
-          sx: {
-            bgcolor: colorTokens.surfaceLevel1,
-            backgroundImage: 'none',
-            borderRadius: 3,
-            border: `1px solid ${alpha(colorTokens.brand, 0.2)}`
-          }
-        }}
-      >
-        <DialogTitle sx={{
-          borderBottom: `1px solid ${alpha(colorTokens.brand, 0.1)}`,
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center'
-        }}>
-          <Box>
-            <Typography variant="h6" sx={{ fontWeight: 700, color: colorTokens.textPrimary }}>
-              Asignar Rutina a Usuario
-            </Typography>
-            {selectedRoutine && (
-              <Typography variant="body2" sx={{ color: colorTokens.textSecondary, mt: 0.5 }}>
-                {selectedRoutine.name}
-              </Typography>
-            )}
-          </Box>
-          <IconButton onClick={() => setAssignDialog(false)} sx={{ color: colorTokens.textSecondary }}>
-            <CloseIcon />
-          </IconButton>
-        </DialogTitle>
-
-        <DialogContent sx={{ mt: 3 }}>
-          <Grid container spacing={3}>
-            <Grid size={12}>
-              <FormControl fullWidth>
-                <InputLabel sx={{ color: colorTokens.textSecondary }}>
-                  Usuario *
-                </InputLabel>
-                <Select
-                  value={selectedUserId}
-                  onChange={(e) => setSelectedUserId(e.target.value)}
-                  label="Usuario *"
-                  sx={{
-                    bgcolor: alpha(colorTokens.surfaceLevel2, 0.5),
-                    '& .MuiOutlinedInput-notchedOutline': {
-                      borderColor: alpha(colorTokens.brand, 0.2)
-                    },
-                    '&:hover .MuiOutlinedInput-notchedOutline': {
-                      borderColor: alpha(colorTokens.brand, 0.4)
-                    },
-                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
-                      borderColor: colorTokens.brand
-                    }
-                  }}
-                >
-                  {users.map((user) => (
-                    <MenuItem key={user.id} value={user.id}>
-                      {user.firstName} {user.lastName} - {user.email}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
-
-            <Grid size={{ xs: 12, sm: 6 }}>
-              <TextField
-                label="Fecha de Inicio"
-                type="date"
-                fullWidth
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                InputLabelProps={{ shrink: true }}
-                sx={{
-                  '& .MuiInputBase-root': {
-                    bgcolor: alpha(colorTokens.surfaceLevel2, 0.5),
-                    color: colorTokens.textPrimary
-                  },
-                  '& .MuiOutlinedInput-notchedOutline': {
-                    borderColor: alpha(colorTokens.brand, 0.2)
-                  },
-                  '& input[type="date"]::-webkit-calendar-picker-indicator': {
-                    filter: 'invert(1)',
-                    cursor: 'pointer'
-                  },
-                  '& input[type="date"]': {
-                    colorScheme: 'dark'
-                  }
-                }}
-              />
-            </Grid>
-
-            <Grid size={{ xs: 12, sm: 6 }}>
-              <TextField
-                label="Fecha de Fin"
-                type="date"
-                fullWidth
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                InputLabelProps={{ shrink: true }}
-                sx={{
-                  '& .MuiInputBase-root': {
-                    bgcolor: alpha(colorTokens.surfaceLevel2, 0.5),
-                    color: colorTokens.textPrimary
-                  },
-                  '& .MuiOutlinedInput-notchedOutline': {
-                    borderColor: alpha(colorTokens.brand, 0.2)
-                  },
-                  '& input[type="date"]::-webkit-calendar-picker-indicator': {
-                    filter: 'invert(1)',
-                    cursor: 'pointer'
-                  },
-                  '& input[type="date"]': {
-                    colorScheme: 'dark'
-                  }
-                }}
-              />
-            </Grid>
-
-            <Grid size={12}>
-              <TextField
-                label="Notas para el cliente"
-                multiline
-                rows={4}
-                fullWidth
-                value={assignNotes}
-                onChange={(e) => setAssignNotes(e.target.value)}
-                placeholder="Instrucciones especiales, recomendaciones, objetivos..."
-                sx={{
-                  '& .MuiInputBase-root': {
-                    bgcolor: alpha(colorTokens.surfaceLevel2, 0.5)
-                  },
-                  '& .MuiOutlinedInput-notchedOutline': {
-                    borderColor: alpha(colorTokens.brand, 0.2)
-                  }
-                }}
-              />
-            </Grid>
-          </Grid>
-        </DialogContent>
-
-        <DialogActions sx={{ p: 3, borderTop: `1px solid ${alpha(colorTokens.brand, 0.1)}` }}>
-          <Button
-            onClick={() => setAssignDialog(false)}
-            sx={{ color: colorTokens.textSecondary }}
-          >
-            Cancelar
-          </Button>
-          <Button
-            onClick={handleAssignRoutine}
-            variant="contained"
-            sx={{
-              bgcolor: colorTokens.brand,
-              color: colorTokens.black,
-              fontWeight: 600,
-              '&:hover': { bgcolor: alpha(colorTokens.brand, 0.9) }
-            }}
-          >
-            Asignar Rutina
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* Dialog de edición de asignación */}
-      <Dialog
-        open={editAssignmentDialog}
-        onClose={() => setEditAssignmentDialog(false)}
-        maxWidth="sm"
-        fullWidth
-        PaperProps={{
-          sx: {
-            background: colorTokens.surfaceLevel2,
-            borderRadius: 3
-          }
-        }}
-      >
-        <DialogTitle sx={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          borderBottom: `1px solid ${alpha(colorTokens.brand, 0.2)}`
-        }}>
-          <Box>
-            <Typography variant="h6" sx={{ fontWeight: 700, color: colorTokens.textPrimary }}>
-              Editar Asignación de Rutina
-            </Typography>
-            {editingAssignment && (
-              <Typography variant="body2" sx={{ color: colorTokens.textSecondary, mt: 0.5 }}>
-                {editingAssignment.routine?.name} - {editingAssignment.user?.firstName} {editingAssignment.user?.lastName}
-              </Typography>
-            )}
-          </Box>
-          <IconButton
-            onClick={() => setEditAssignmentDialog(false)}
-            sx={{ color: colorTokens.textSecondary }}
-          >
-            <CloseIcon />
-          </IconButton>
-        </DialogTitle>
-
-        <DialogContent sx={{ mt: 3 }}>
-          <Grid container spacing={3}>
-            <Grid size={12}>
-              <FormControl fullWidth>
-                <InputLabel sx={{ color: colorTokens.textSecondary }}>
-                  Estado
-                </InputLabel>
-                <Select
-                  value={editStatus}
-                  onChange={(e) => setEditStatus(e.target.value as 'active' | 'completed' | 'paused')}
-                  label="Estado"
-                  sx={{
-                    bgcolor: alpha(colorTokens.surfaceLevel2, 0.5),
-                    color: colorTokens.textPrimary
-                  }}
-                >
-                  <MenuItem value="active">Activa</MenuItem>
-                  <MenuItem value="paused">Pausada</MenuItem>
-                  <MenuItem value="completed">Completada</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
-
-            <Grid size={{ xs: 12, sm: 6 }}>
-              <TextField
-                label="Fecha de Inicio"
-                type="date"
-                fullWidth
-                value={editStartDate}
-                onChange={(e) => setEditStartDate(e.target.value)}
-                InputLabelProps={{ shrink: true }}
-                sx={{
-                  '& .MuiInputBase-root': {
-                    bgcolor: alpha(colorTokens.surfaceLevel2, 0.5),
-                    color: colorTokens.textPrimary
-                  },
-                  '& .MuiInputLabel-root': {
-                    color: colorTokens.textSecondary
-                  },
-                  '& input[type="date"]::-webkit-calendar-picker-indicator': {
-                    filter: 'invert(1)',
-                    cursor: 'pointer'
-                  },
-                  '& input[type="date"]': {
-                    colorScheme: 'dark'
-                  }
-                }}
-              />
-            </Grid>
-
-            <Grid size={{ xs: 12, sm: 6 }}>
-              <TextField
-                label="Fecha de Fin"
-                type="date"
-                fullWidth
-                value={editEndDate}
-                onChange={(e) => setEditEndDate(e.target.value)}
-                InputLabelProps={{ shrink: true }}
-                sx={{
-                  '& .MuiInputBase-root': {
-                    bgcolor: alpha(colorTokens.surfaceLevel2, 0.5),
-                    color: colorTokens.textPrimary
-                  },
-                  '& .MuiInputLabel-root': {
-                    color: colorTokens.textSecondary
-                  },
-                  '& input[type="date"]::-webkit-calendar-picker-indicator': {
-                    filter: 'invert(1)',
-                    cursor: 'pointer'
-                  },
-                  '& input[type="date"]': {
-                    colorScheme: 'dark'
-                  }
-                }}
-              />
-            </Grid>
-
-            <Grid size={12}>
-              <TextField
-                label="Notas del Entrenador"
-                multiline
-                rows={4}
-                fullWidth
-                value={editNotes}
-                onChange={(e) => setEditNotes(e.target.value)}
-                placeholder="Notas adicionales sobre la asignación..."
-                sx={{
-                  '& .MuiInputBase-root': {
-                    bgcolor: alpha(colorTokens.surfaceLevel2, 0.5),
-                    color: colorTokens.textPrimary
-                  },
-                  '& .MuiInputLabel-root': {
-                    color: colorTokens.textSecondary
-                  }
-                }}
-              />
-            </Grid>
-          </Grid>
-        </DialogContent>
-
-        <DialogActions sx={{ p: 3, borderTop: `1px solid ${alpha(colorTokens.brand, 0.2)}` }}>
-          <Button
-            onClick={() => setEditAssignmentDialog(false)}
-            sx={{
-              color: colorTokens.textSecondary,
-              '&:hover': { bgcolor: alpha(colorTokens.neutral300, 0.1) }
-            }}
-          >
-            Cancelar
-          </Button>
-          <Button
-            onClick={handleSaveAssignmentEdit}
-            variant="contained"
-            startIcon={<SaveIcon />}
-            sx={{
-              bgcolor: colorTokens.brand,
-              color: colorTokens.black,
-              fontWeight: 600,
-              '&:hover': { bgcolor: alpha(colorTokens.brand, 0.9) }
-            }}
-          >
-            Guardar Cambios
           </Button>
         </DialogActions>
       </Dialog>

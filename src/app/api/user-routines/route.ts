@@ -8,6 +8,7 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
 
     const userId = searchParams.get('userId');
+    const routineId = searchParams.get('routine_id');
     const status = searchParams.get('status');
 
     // Construir query base
@@ -57,6 +58,11 @@ export async function GET(request: NextRequest) {
     // Filtrar por userId si se proporciona
     if (userId) {
       query = query.eq('user_id', userId);
+    }
+
+    // Filtrar por routine_id si se proporciona
+    if (routineId) {
+      query = query.eq('routine_id', routineId);
     }
 
     // Filtrar por status si se proporciona

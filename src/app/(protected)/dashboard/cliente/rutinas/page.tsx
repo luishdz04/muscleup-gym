@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Box,
   Typography,
@@ -36,9 +36,9 @@ import {
   Warning as WarningIcon
 } from '@mui/icons-material';
 import { colorTokens } from '@/theme';
-import { alpha } from '@mui/material/styles';
 import { useHydrated } from '@/hooks/useHydrated';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
+import { RutineFilters, RutineStatsCards, type RutineFiltersState } from '@/components/cliente/rutinas';
 
 interface Exercise {
   id: string;
@@ -96,8 +96,14 @@ interface UserRoutine {
 
 export default function RutinasCliente() {
   const hydrated = useHydrated();
-  const [routines, setRoutines] = useState<Routine[]>([]);
+  const [routines, setRoutines] = useState<UserRoutine[]>([]);
   const [loading, setLoading] = useState(true);
+  const [filters, setFilters] = useState<RutineFiltersState>({
+    search: '',
+    difficultyLevel: '',
+    status: '',
+    muscleGroup: ''
+  });
   const [error, setError] = useState<string | null>(null);
   const [expandedRoutine, setExpandedRoutine] = useState<string | null>(null);
   const [selectedExercise, setSelectedExercise] = useState<RoutineExercise | null>(null);
@@ -113,12 +119,12 @@ export default function RutinasCliente() {
     try {
       setLoading(true);
 
-      // Cargar todas las rutinas públicas/generales
-      const response = await fetch('/api/routines');
+      // Cargar rutinas asignadas al usuario (obtiene userId del contexto de sesión)
+      const response = await fetch('/api/user-routines');
       if (!response.ok) throw new Error('Error al cargar rutinas');
 
       const data = await response.json();
-      setRoutines(data.routines || []);
+      setRoutines(data.userRoutines || []);
       setError(null);
     } catch (err) {
       console.error('Error loading routines:', err);
@@ -126,6 +132,61 @@ export default function RutinasCliente() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Filtrar rutinas
+  const filteredRoutines = useMemo(() => {
+    return routines.filter((userRoutine) => {
+      const routine = userRoutine.routine;
+
+      // Search filter
+      if (filters.search) {
+        const searchLower = filters.search.toLowerCase();
+        const matchesName = routine.name.toLowerCase().includes(searchLower);
+        const matchesDescription = routine.description?.toLowerCase().includes(searchLower);
+        if (!matchesName && !matchesDescription) return false;
+      }
+
+      // Difficulty filter
+      if (filters.difficultyLevel && routine.difficulty_level !== filters.difficultyLevel) {
+        return false;
+      }
+
+      // Status filter
+      if (filters.status && userRoutine.status !== filters.status) {
+        return false;
+      }
+
+      // Muscle group filter
+      if (filters.muscleGroup && routine.muscle_group_focus !== filters.muscleGroup) {
+        return false;
+      }
+
+      return true;
+    });
+  }, [routines, filters]);
+
+  // Calcular estadísticas
+  const stats = useMemo(() => {
+    const totalExercises = routines.reduce((sum, ur) => {
+      return sum + (ur.routine.routine_exercises?.length || 0);
+    }, 0);
+
+    return {
+      totalRoutines: routines.length,
+      activeRoutines: routines.filter(ur => ur.status === 'active').length,
+      completedRoutines: routines.filter(ur => ur.status === 'completed').length,
+      totalExercises
+    };
+  }, [routines]);
+
+  const handleClearFilters = () => {
+    setFilters({
+      search: '',
+      difficultyLevel: '',
+      status: '',
+      muscleGroup: ''
+    });
   };
 
   const handleShowExerciseDetail = (exercise: RoutineExercise) => {
@@ -159,137 +220,249 @@ export default function RutinasCliente() {
   return (
     <Box sx={{ pb: { xs: 10, lg: 4 } }}>
       {/* Header */}
-      <Box sx={{ mb: 4 }}>
-        <Box sx={{ mb: 1 }}>
-          <Typography
-            component="h3"
-            sx={{
-              fontWeight: 800,
-              color: colorTokens.textPrimary,
-              fontSize: { xs: '1.75rem', sm: '2.5rem' },
-              display: 'inline'
-            }}
-          >
-            Rutinas{' '}
-          </Typography>
-          <Typography
-            component="span"
-            sx={{
-              fontWeight: 800,
-              color: colorTokens.brand,
-              fontSize: { xs: '1.75rem', sm: '2.5rem' }
-            }}
-          >
-            Disponibles
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+      >
+        <Box sx={{ mb: 4 }}>
+          <Box sx={{ mb: 1 }}>
+            <Typography
+              component="h3"
+              sx={{
+                fontWeight: 800,
+                color: colorTokens.textPrimary,
+                fontSize: { xs: '1.75rem', sm: '2.5rem' },
+                display: 'inline'
+              }}
+            >
+              Mis{' '}
+            </Typography>
+            <Typography
+              component="span"
+              sx={{
+                fontWeight: 800,
+                color: colorTokens.brand,
+                fontSize: { xs: '1.75rem', sm: '2.5rem' }
+              }}
+            >
+              Rutinas
+            </Typography>
+          </Box>
+          <Typography variant="body1" sx={{ color: colorTokens.textSecondary }}>
+            Rutinas de entrenamiento asignadas por tu entrenador
           </Typography>
         </Box>
-        <Typography variant="body1" sx={{ color: colorTokens.textSecondary }}>
-          Explora las rutinas de entrenamiento disponibles en el gimnasio
-        </Typography>
-      </Box>
+      </motion.div>
 
-      {/* Lista de rutinas disponibles */}
-      {routines.length === 0 ? (
+      {/* Stats Cards */}
+      <RutineStatsCards stats={stats} loading={loading} />
+
+      {/* Filters */}
+      <RutineFilters
+        filters={filters}
+        onFilterChange={setFilters}
+        onClearFilters={handleClearFilters}
+      />
+
+      {/* Lista de rutinas asignadas */}
+      {filteredRoutines.length === 0 ? (
         <Paper sx={{
           p: 6,
           textAlign: 'center',
-          background: alpha(colorTokens.surfaceLevel2, 0.9),
-          border: `1px solid ${alpha(colorTokens.brand, 0.1)}`,
+          bgcolor: colorTokens.neutral300,
+          border: `1px solid ${colorTokens.border}`,
           borderRadius: 3
         }}>
           <FitnessCenterIcon sx={{ fontSize: 80, color: colorTokens.textMuted, mb: 2 }} />
           <Typography variant="h6" sx={{ color: colorTokens.textSecondary }}>
-            No hay rutinas disponibles
+            {routines.length === 0 ? 'No tienes rutinas asignadas' : 'No hay rutinas que coincidan con los filtros'}
           </Typography>
           <Typography variant="body2" sx={{ color: colorTokens.textMuted, mt: 1 }}>
-            El gimnasio aún no ha creado rutinas de entrenamiento
+            {routines.length === 0
+              ? 'Consulta con tu entrenador para que te asigne una rutina personalizada'
+              : 'Intenta ajustar los filtros para ver más resultados'
+            }
           </Typography>
         </Paper>
       ) : (
-        <Grid container spacing={3}>
-          {routines.map((routine) => (
-            <Grid key={routine.id} size={{ xs: 12 }}>
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.3 }}
-              >
-                <Card sx={{
-                  background: `linear-gradient(135deg, ${alpha(colorTokens.surfaceLevel2, 0.9)}, ${alpha(colorTokens.surfaceLevel3, 0.85)})`,
-                  border: `1px solid ${alpha(colorTokens.brand, 0.1)}`,
-                  borderRadius: 3
-                }}>
-                  <CardContent>
-                    {/* Header de la rutina */}
-                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
-                      <Box sx={{ flex: 1 }}>
-                        <Typography variant="h5" sx={{ fontWeight: 700, color: colorTokens.textPrimary, mb: 1 }}>
-                          {routine.name}
-                        </Typography>
-                        <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 1 }}>
-                          <Chip
-                            label={routine.difficulty_level}
+        <AnimatePresence mode="popLayout">
+          <Grid container spacing={{ xs: 2, sm: 2.5, md: 3 }}>
+            {filteredRoutines.map((userRoutine, index) => {
+              const routine = userRoutine.routine;
+              const isExpanded = expandedRoutine === userRoutine.id;
+
+              return (
+                <Grid key={userRoutine.id} size={{ xs: 12 }}>
+                  <motion.div
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    transition={{ delay: index * 0.05, duration: 0.3 }}
+                    whileHover={{ y: -4 }}
+                  >
+                    <Card
+                      sx={{
+                        bgcolor: colorTokens.neutral300,
+                        border: `1px solid ${colorTokens.border}`,
+                        borderRadius: 3,
+                        overflow: 'hidden',
+                        transition: 'all 0.3s ease',
+                        '&:hover': {
+                          borderColor: colorTokens.brand,
+                          boxShadow: `0 8px 24px ${colorTokens.brand}15`
+                        }
+                      }}
+                    >
+                    <CardContent sx={{ p: { xs: 2, sm: 2.5, md: 3 } }}>
+                      {/* Header de la rutina */}
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 2 }}>
+                        <Box sx={{ flex: 1 }}>
+                          <Typography
+                            variant="h5"
                             sx={{
-                              bgcolor: alpha(getDifficultyColor(routine.difficulty_level), 0.15),
-                              color: getDifficultyColor(routine.difficulty_level),
-                              fontWeight: 600
+                              fontWeight: 700,
+                              color: colorTokens.textPrimary,
+                              mb: 1,
+                              fontSize: { xs: '1.25rem', sm: '1.5rem' }
                             }}
-                          />
-                          {routine.estimated_duration && (
+                          >
+                            {routine.name}
+                          </Typography>
+
+                          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 1.5 }}>
+                            {/* Status Chip */}
                             <Chip
-                              icon={<TimerIcon sx={{ fontSize: 16 }} />}
-                              label={`${routine.estimated_duration} minutos`}
+                              label={
+                                userRoutine.status === 'active' ? 'Activa' :
+                                userRoutine.status === 'completed' ? 'Completada' :
+                                userRoutine.status === 'paused' ? 'Pausada' : userRoutine.status
+                              }
+                              size="small"
                               sx={{
-                                bgcolor: alpha(colorTokens.info, 0.15),
-                                color: colorTokens.info
+                                bgcolor:
+                                  userRoutine.status === 'active' ? colorTokens.success + '20' :
+                                  userRoutine.status === 'completed' ? colorTokens.info + '20' :
+                                  userRoutine.status === 'paused' ? colorTokens.warning + '20' :
+                                  colorTokens.neutral200,
+                                color:
+                                  userRoutine.status === 'active' ? colorTokens.success :
+                                  userRoutine.status === 'completed' ? colorTokens.info :
+                                  userRoutine.status === 'paused' ? colorTokens.warning :
+                                  colorTokens.textSecondary,
+                                fontWeight: 600,
+                                border: 'none'
                               }}
                             />
-                          )}
-                          <Chip
-                            label={`${routine.routine_exercises?.length || 0} ejercicios`}
-                            sx={{
-                              bgcolor: alpha(colorTokens.brand, 0.15),
-                              color: colorTokens.brand,
-                              fontWeight: 600
-                            }}
-                          />
-                        </Box>
-                        {routine.description && (
-                          <Typography variant="body2" sx={{ color: colorTokens.textSecondary, mb: 1 }}>
-                            {routine.description}
-                          </Typography>
-                        )}
-                      </Box>
-                      <IconButton
-                        onClick={() => setExpandedRoutine(expandedRoutine === routine.id ? null : routine.id)}
-                        sx={{ color: colorTokens.brand }}
-                      >
-                        {expandedRoutine === routine.id ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-                      </IconButton>
-                    </Box>
 
-                    {/* Lista expandible de ejercicios */}
-                    <Collapse in={expandedRoutine === routine.id}>
-                      <Divider sx={{ my: 2, borderColor: alpha(colorTokens.brand, 0.2) }} />
-                      <Typography variant="subtitle1" sx={{ fontWeight: 700, color: colorTokens.brand, mb: 2 }}>
-                        Ejercicios de la Rutina:
-                      </Typography>
-
-                      <Grid container spacing={2}>
-                        {routine.routine_exercises?.map((routineEx, index) => (
-                          <Grid key={routineEx.id} size={{ xs: 12, sm: 6, md: 4 }}>
-                            <Paper
-                              onClick={() => handleShowExerciseDetail(routineEx)}
+                            {/* Difficulty Chip */}
+                            <Chip
+                              label={routine.difficulty_level}
+                              size="small"
                               sx={{
-                                p: 2,
-                                background: alpha(colorTokens.surfaceLevel3, 0.5),
-                                border: `1px solid ${alpha(colorTokens.brand, 0.1)}`,
-                                borderRadius: 2,
-                                cursor: 'pointer',
-                                transition: 'all 0.3s ease',
+                                bgcolor: getDifficultyColor(routine.difficulty_level) + '20',
+                                color: getDifficultyColor(routine.difficulty_level),
+                                fontWeight: 600,
+                                border: 'none'
+                              }}
+                            />
+
+                            {/* Duration Chip */}
+                            {routine.estimated_duration && (
+                              <Chip
+                                icon={<TimerIcon sx={{ fontSize: 16 }} />}
+                                label={`${routine.estimated_duration} min`}
+                                size="small"
+                                sx={{
+                                  bgcolor: colorTokens.info + '20',
+                                  color: colorTokens.info,
+                                  border: 'none'
+                                }}
+                              />
+                            )}
+
+                            {/* Exercises Count Chip */}
+                            <Chip
+                              label={`${routine.routine_exercises?.length || 0} ejercicios`}
+                              size="small"
+                              sx={{
+                                bgcolor: colorTokens.brand + '20',
+                                color: colorTokens.brand,
+                                fontWeight: 600,
+                                border: 'none'
+                              }}
+                            />
+                          </Box>
+
+                          {routine.description && (
+                            <Typography
+                              variant="body2"
+                              sx={{
+                                color: colorTokens.textSecondary,
+                                mb: 1,
+                                fontSize: { xs: '0.875rem', sm: '0.938rem' }
+                              }}
+                            >
+                              {routine.description}
+                            </Typography>
+                          )}
+
+                          {/* Assignment Info */}
+                          {userRoutine.assigned_by_user && (
+                            <Typography
+                              variant="caption"
+                              sx={{
+                                color: colorTokens.textMuted,
+                                display: 'block',
+                                mt: 0.5
+                              }}
+                            >
+                              Asignada por: {userRoutine.assigned_by_user.firstName} {userRoutine.assigned_by_user.lastName}
+                            </Typography>
+                          )}
+                        </Box>
+
+                        <IconButton
+                          onClick={() => setExpandedRoutine(isExpanded ? null : userRoutine.id)}
+                          sx={{
+                            color: colorTokens.brand,
+                            '&:hover': { bgcolor: colorTokens.brand + '15' }
+                          }}
+                        >
+                          {isExpanded ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                        </IconButton>
+                      </Box>
+
+                      {/* Lista expandible de ejercicios */}
+                      <Collapse in={isExpanded}>
+                        <Divider sx={{ my: 2, borderColor: colorTokens.border }} />
+                        <Typography
+                          variant="subtitle1"
+                          sx={{
+                            fontWeight: 700,
+                            color: colorTokens.brand,
+                            mb: 2,
+                            fontSize: { xs: '1rem', sm: '1.125rem' }
+                          }}
+                        >
+                          Ejercicios de la Rutina:
+                        </Typography>
+
+                        <Grid container spacing={{ xs: 1.5, sm: 2 }}>
+                          {routine.routine_exercises?.map((routineEx, index) => (
+                            <Grid key={routineEx.id} size={{ xs: 12, sm: 6, md: 4 }}>
+                              <Paper
+                                onClick={() => handleShowExerciseDetail(routineEx)}
+                                sx={{
+                                  p: { xs: 1.5, sm: 2 },
+                                  bgcolor: colorTokens.neutral200,
+                                  border: `1px solid ${colorTokens.border}`,
+                                  borderRadius: 2,
+                                  cursor: 'pointer',
+                                  transition: 'all 0.3s ease',
                                 '&:hover': {
                                   borderColor: colorTokens.brand,
-                                  boxShadow: `0 4px 12px ${alpha(colorTokens.brand, 0.2)}`,
+                                  boxShadow: `0 4px 12px ${colorTokens.brand}33`,
                                   transform: 'translateY(-2px)'
                                 }
                               }}
@@ -299,7 +472,7 @@ export default function RutinasCliente() {
                                   width: 32,
                                   height: 32,
                                   borderRadius: 1,
-                                  background: `linear-gradient(135deg, ${alpha(colorTokens.brand, 0.3)}, ${alpha(colorTokens.brand, 0.1)})`,
+                                  background: `linear-gradient(135deg, ${colorTokens.brand}4D, ${colorTokens.brand}1A)`,
                                   display: 'flex',
                                   alignItems: 'center',
                                   justifyContent: 'center',
@@ -322,7 +495,7 @@ export default function RutinasCliente() {
                                         sx={{
                                           height: 18,
                                           fontSize: '0.65rem',
-                                          bgcolor: alpha(colorTokens.info, 0.15),
+                                          bgcolor: colorTokens.info + '26',
                                           color: colorTokens.info,
                                           '& .MuiChip-icon': { color: colorTokens.info }
                                         }}
@@ -336,7 +509,7 @@ export default function RutinasCliente() {
                                         sx={{
                                           height: 18,
                                           fontSize: '0.65rem',
-                                          bgcolor: alpha(colorTokens.success, 0.15),
+                                          bgcolor: colorTokens.success + '26',
                                           color: colorTokens.success,
                                           '& .MuiChip-icon': { color: colorTokens.success }
                                         }}
@@ -387,8 +560,10 @@ export default function RutinasCliente() {
                 </Card>
               </motion.div>
             </Grid>
-          ))}
-        </Grid>
+          );
+        })}
+          </Grid>
+        </AnimatePresence>
       )}
 
       {/* Dialog de detalles del ejercicio */}
@@ -399,7 +574,9 @@ export default function RutinasCliente() {
         fullWidth
         PaperProps={{
           sx: {
-            background: colorTokens.surfaceLevel2,
+            bgcolor: colorTokens.neutral300,
+            backgroundImage: 'none',
+            border: `1px solid ${colorTokens.border}`,
             borderRadius: 3,
             maxHeight: '90vh'
           }
@@ -411,7 +588,8 @@ export default function RutinasCliente() {
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'flex-start',
-              borderBottom: `1px solid ${alpha(colorTokens.brand, 0.2)}`,
+              bgcolor: colorTokens.neutral200,
+              borderBottom: `1px solid ${colorTokens.border}`,
               pb: 2
             }}>
               <Box sx={{ flex: 1 }}>
@@ -419,18 +597,18 @@ export default function RutinasCliente() {
                   {selectedExercise.exercise.name}
                 </Typography>
                 <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 1.5 }}>
-                  <Chip label={`${selectedExercise.sets} sets`} sx={{ bgcolor: alpha(colorTokens.info, 0.15), color: colorTokens.info, fontWeight: 600 }} />
-                  <Chip label={`${selectedExercise.reps} reps`} sx={{ bgcolor: alpha(colorTokens.success, 0.15), color: colorTokens.success, fontWeight: 600 }} />
-                  <Chip label={`${selectedExercise.rest_seconds}s descanso`} sx={{ bgcolor: alpha(colorTokens.warning, 0.15), color: colorTokens.warning, fontWeight: 600 }} />
+                  <Chip label={`${selectedExercise.sets} sets`} sx={{ bgcolor: colorTokens.info + '26', color: colorTokens.info, fontWeight: 600 }} />
+                  <Chip label={`${selectedExercise.reps} reps`} sx={{ bgcolor: colorTokens.success + '26', color: colorTokens.success, fontWeight: 600 }} />
+                  <Chip label={`${selectedExercise.rest_seconds}s descanso`} sx={{ bgcolor: colorTokens.warning + '26', color: colorTokens.warning, fontWeight: 600 }} />
                 </Box>
                 <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
-                  <Chip label={selectedExercise.exercise.level} size="small" sx={{ bgcolor: alpha(getDifficultyColor(selectedExercise.exercise.level), 0.15), color: getDifficultyColor(selectedExercise.exercise.level), fontWeight: 600 }} />
-                  <Chip label={selectedExercise.exercise.type} size="small" sx={{ bgcolor: alpha(colorTokens.info, 0.1), color: colorTokens.info }} />
+                  <Chip label={selectedExercise.exercise.level} size="small" sx={{ bgcolor: getDifficultyColor(selectedExercise.exercise.level) + '26', color: getDifficultyColor(selectedExercise.exercise.level), fontWeight: 600 }} />
+                  <Chip label={selectedExercise.exercise.type} size="small" sx={{ bgcolor: colorTokens.info + '1A', color: colorTokens.info }} />
                   {selectedExercise.exercise.muscle_group && (
-                    <Chip label={selectedExercise.exercise.muscle_group.name} size="small" sx={{ bgcolor: alpha(colorTokens.brand, 0.15), color: colorTokens.brand, fontWeight: 600 }} />
+                    <Chip label={selectedExercise.exercise.muscle_group.name} size="small" sx={{ bgcolor: colorTokens.brand + '26', color: colorTokens.brand, fontWeight: 600 }} />
                   )}
                   {selectedExercise.exercise.material && (
-                    <Chip label={`Material: ${selectedExercise.exercise.material}`} size="small" sx={{ bgcolor: alpha(colorTokens.textSecondary, 0.1), color: colorTokens.textSecondary }} />
+                    <Chip label={`Material: ${selectedExercise.exercise.material}`} size="small" sx={{ bgcolor: colorTokens.textSecondary + '1A', color: colorTokens.textSecondary }} />
                   )}
                 </Box>
               </Box>
@@ -443,7 +621,12 @@ export default function RutinasCliente() {
               <Grid container spacing={3}>
                 {/* Información General */}
                 <Grid size={12}>
-                  <Box sx={{ p: 2.5, bgcolor: alpha(colorTokens.brand, 0.05), borderRadius: 2 }}>
+                  <Box sx={{
+                    p: 2.5,
+                    bgcolor: colorTokens.neutral200,
+                    border: `1px solid ${colorTokens.border}`,
+                    borderRadius: 2
+                  }}>
                     <Typography variant="subtitle1" sx={{ fontWeight: 700, color: colorTokens.brand, mb: 2 }}>
                       Información General
                     </Typography>
@@ -476,7 +659,12 @@ export default function RutinasCliente() {
 
                 {/* Posición inicial */}
                 <Grid size={12}>
-                  <Box sx={{ p: 2.5, bgcolor: alpha(colorTokens.success, 0.05), borderRadius: 2 }}>
+                  <Box sx={{
+                    p: 2.5,
+                    bgcolor: colorTokens.neutral200,
+                    border: `1px solid ${colorTokens.border}`,
+                    borderRadius: 2
+                  }}>
                     <Typography variant="subtitle1" sx={{
                       fontWeight: 700,
                       color: colorTokens.success,
@@ -495,7 +683,12 @@ export default function RutinasCliente() {
 
                 {/* Ejecución */}
                 <Grid size={12}>
-                  <Box sx={{ p: 2.5, bgcolor: alpha(colorTokens.info, 0.05), borderRadius: 2 }}>
+                  <Box sx={{
+                    p: 2.5,
+                    bgcolor: colorTokens.neutral200,
+                    border: `1px solid ${colorTokens.border}`,
+                    borderRadius: 2
+                  }}>
                     <Typography variant="subtitle1" sx={{
                       fontWeight: 700,
                       color: colorTokens.info,
@@ -539,8 +732,8 @@ export default function RutinasCliente() {
                       severity="warning"
                       icon={<WarningIcon />}
                       sx={{
-                        bgcolor: alpha(colorTokens.warning, 0.05),
-                        border: `1px solid ${alpha(colorTokens.warning, 0.2)}`,
+                        bgcolor: colorTokens.warning + '15',
+                        border: `1px solid ${colorTokens.warning}40`,
                         '& .MuiAlert-icon': { color: colorTokens.warning }
                       }}
                     >
@@ -571,8 +764,8 @@ export default function RutinasCliente() {
                       severity="error"
                       icon={<InfoIcon />}
                       sx={{
-                        bgcolor: alpha(colorTokens.danger, 0.05),
-                        border: `1px solid ${alpha(colorTokens.danger, 0.2)}`,
+                        bgcolor: colorTokens.danger + '15',
+                        border: `1px solid ${colorTokens.danger}40`,
                         '& .MuiAlert-icon': { color: colorTokens.danger }
                       }}
                     >
@@ -599,17 +792,26 @@ export default function RutinasCliente() {
                 {/* Multimedia */}
                 {(selectedExercise.exercise.video_url || selectedExercise.exercise.image_url) && (
                   <Grid size={12}>
-                    <Box sx={{ p: 2.5, bgcolor: alpha(colorTokens.brand, 0.05), borderRadius: 2 }}>
+                    <Box sx={{
+                      p: 2.5,
+                      bgcolor: colorTokens.neutral200,
+                      border: `1px solid ${colorTokens.border}`,
+                      borderRadius: 2
+                    }}>
                       <Typography variant="subtitle1" sx={{ fontWeight: 700, color: colorTokens.brand, mb: 2 }}>
                         Recursos
                       </Typography>
-                      <Box sx={{ display: 'flex', gap: 2 }}>
+                      <Box sx={{ display: 'flex', gap: 2, flexWrap: 'wrap' }}>
                         {selectedExercise.exercise.video_url && (
                           <Button
                             variant="contained"
                             startIcon={<PlayIcon />}
                             onClick={() => window.open(selectedExercise.exercise.video_url, '_blank')}
-                            sx={{ bgcolor: colorTokens.info, color: '#fff' }}
+                            sx={{
+                              bgcolor: colorTokens.info,
+                              color: '#fff',
+                              '&:hover': { bgcolor: colorTokens.info, filter: 'brightness(1.1)' }
+                            }}
                           >
                             Ver Video
                           </Button>
@@ -619,7 +821,14 @@ export default function RutinasCliente() {
                             variant="outlined"
                             startIcon={<ImageIcon />}
                             onClick={() => window.open(selectedExercise.exercise.image_url, '_blank')}
-                            sx={{ borderColor: colorTokens.success, color: colorTokens.success }}
+                            sx={{
+                              borderColor: colorTokens.success,
+                              color: colorTokens.success,
+                              '&:hover': {
+                                borderColor: colorTokens.success,
+                                bgcolor: colorTokens.success + '15'
+                              }
+                            }}
                           >
                             Ver Imagen
                           </Button>
@@ -631,15 +840,20 @@ export default function RutinasCliente() {
               </Grid>
             </DialogContent>
 
-            <DialogActions sx={{ p: 3, borderTop: `1px solid ${alpha(colorTokens.brand, 0.2)}` }}>
+            <DialogActions sx={{
+              p: 3,
+              bgcolor: colorTokens.neutral200,
+              borderTop: `1px solid ${colorTokens.border}`
+            }}>
               <Button
                 onClick={() => setDetailDialog(false)}
                 variant="contained"
                 sx={{
                   bgcolor: colorTokens.brand,
-                  color: colorTokens.black,
+                  color: '#000',
                   fontWeight: 700,
-                  px: 4
+                  px: 4,
+                  '&:hover': { bgcolor: colorTokens.brand, filter: 'brightness(1.1)' }
                 }}
               >
                 Cerrar
