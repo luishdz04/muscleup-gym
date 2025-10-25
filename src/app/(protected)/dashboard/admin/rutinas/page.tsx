@@ -808,19 +808,7 @@ export default function RutinasAdmin() {
                         </Box>
                       </Box>
                       <Box sx={{ display: 'flex', gap: 1 }}>
-                        <Tooltip title="Asignar a Usuario">
-                          <IconButton
-                            size="small"
-                            onClick={() => handleOpenAssignDialog(routine)}
-                            sx={{
-                              color: colorTokens.success,
-                              bgcolor: alpha(colorTokens.success, 0.1),
-                              '&:hover': { bgcolor: alpha(colorTokens.success, 0.2) }
-                            }}
-                          >
-                            <PersonAddIcon fontSize="small" />
-                          </IconButton>
-                        </Tooltip>
+                        {/* Rutinas Generales NO necesitan asignación - están disponibles para todos */}
                         <Tooltip title="Editar">
                           <IconButton
                             size="small"
