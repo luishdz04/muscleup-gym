@@ -33,7 +33,9 @@ import {
   Image as ImageIcon,
   CheckCircle as CheckIcon,
   Info as InfoIcon,
-  Warning as WarningIcon
+  Warning as WarningIcon,
+  People as PeopleIcon,
+  Person as PersonIcon
 } from '@mui/icons-material';
 import { colorTokens } from '@/theme';
 import { useHydrated } from '@/hooks/useHydrated';
@@ -92,6 +94,7 @@ interface UserRoutine {
     firstName: string;
     lastName: string;
   } | null;
+  is_public_routine?: boolean; // Flag para identificar rutinas públicas generales
 }
 
 export default function RutinasCliente() {
@@ -172,11 +175,16 @@ export default function RutinasCliente() {
       return sum + (ur.routine.routine_exercises?.length || 0);
     }, 0);
 
+    const generalRoutines = routines.filter(ur => ur.is_public_routine).length;
+    const personalizedRoutines = routines.filter(ur => !ur.is_public_routine).length;
+
     return {
       totalRoutines: routines.length,
       activeRoutines: routines.filter(ur => ur.status === 'active').length,
       completedRoutines: routines.filter(ur => ur.status === 'completed').length,
-      totalExercises
+      totalExercises,
+      generalRoutines,
+      personalizedRoutines
     };
   }, [routines]);
 
@@ -250,7 +258,7 @@ export default function RutinasCliente() {
             </Typography>
           </Box>
           <Typography variant="body1" sx={{ color: colorTokens.textSecondary }}>
-            Rutinas de entrenamiento asignadas por tu entrenador
+            Rutinas generales y personalizadas disponibles para ti
           </Typography>
         </Box>
       </motion.div>
@@ -276,11 +284,11 @@ export default function RutinasCliente() {
         }}>
           <FitnessCenterIcon sx={{ fontSize: 80, color: colorTokens.textMuted, mb: 2 }} />
           <Typography variant="h6" sx={{ color: colorTokens.textSecondary }}>
-            {routines.length === 0 ? 'No tienes rutinas asignadas' : 'No hay rutinas que coincidan con los filtros'}
+            {routines.length === 0 ? 'No hay rutinas disponibles' : 'No hay rutinas que coincidan con los filtros'}
           </Typography>
           <Typography variant="body2" sx={{ color: colorTokens.textMuted, mt: 1 }}>
             {routines.length === 0
-              ? 'Consulta con tu entrenador para que te asigne una rutina personalizada'
+              ? 'Actualmente no hay rutinas generales ni personalizadas disponibles. Consulta con tu entrenador.'
               : 'Intenta ajustar los filtros para ver más resultados'
             }
           </Typography>
@@ -331,6 +339,33 @@ export default function RutinasCliente() {
                           </Typography>
 
                           <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mb: 1.5 }}>
+                            {/* Indicador de rutina general o personalizada */}
+                            {userRoutine.is_public_routine ? (
+                              <Chip
+                                label="Rutina General"
+                                size="small"
+                                icon={<PeopleIcon sx={{ fontSize: 14 }} />}
+                                sx={{
+                                  bgcolor: colorTokens.brand + '20',
+                                  color: colorTokens.brand,
+                                  fontWeight: 700,
+                                  border: `1px solid ${colorTokens.brand}40`
+                                }}
+                              />
+                            ) : (
+                              <Chip
+                                label="Rutina Personalizada"
+                                size="small"
+                                icon={<PersonIcon sx={{ fontSize: 14 }} />}
+                                sx={{
+                                  bgcolor: colorTokens.warning + '20',
+                                  color: colorTokens.warning,
+                                  fontWeight: 700,
+                                  border: `1px solid ${colorTokens.warning}40`
+                                }}
+                              />
+                            )}
+
                             {/* Status Chip */}
                             <Chip
                               label={
@@ -408,7 +443,19 @@ export default function RutinasCliente() {
                           )}
 
                           {/* Assignment Info */}
-                          {userRoutine.assigned_by_user && (
+                          {userRoutine.is_public_routine ? (
+                            <Typography
+                              variant="caption"
+                              sx={{
+                                color: colorTokens.textMuted,
+                                display: 'block',
+                                mt: 0.5,
+                                fontStyle: 'italic'
+                              }}
+                            >
+                              Disponible para todos los usuarios
+                            </Typography>
+                          ) : userRoutine.assigned_by_user && (
                             <Typography
                               variant="caption"
                               sx={{

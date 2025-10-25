@@ -41,6 +41,12 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-title" content="Muscle Up GYM" />
         <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
         <link rel="apple-touch-icon" href="/icons/icon-192x192.png" />
+        {/* Google Maps API */}
+        <script
+          async
+          defer
+          src={`https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&libraries=places&language=es&region=MX`}
+        />
       </head>
       <body className="relative flex flex-col min-h-screen bg-black text-white">
         <MUIThemeProvider>

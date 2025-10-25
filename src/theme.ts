@@ -29,6 +29,7 @@ const colorTokens = {
   // Colores Semánticos (del PDF)
   success: '#22C55E',
   danger: '#EF4444', 
+  error: '#EF4444',  // Alias para danger
   info: '#38BDF8',
   warning: '#FFCC00', // Usa el brand como warning
 
@@ -36,6 +37,7 @@ const colorTokens = {
   brandHover: '#E6B800',        // Versión más oscura del amarillo
   brandActive: '#CCA300',       // Versión aún más oscura
   successHover: '#16A34A',
+  successGlow: 'rgba(34, 197, 94, 0.3)',  // Glow verde para success
   dangerHover: '#DC2626',
   infoHover: '#0EA5E9',
 

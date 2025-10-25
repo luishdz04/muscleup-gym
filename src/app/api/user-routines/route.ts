@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 
-// GET - Obtener rutinas asignadas a un usuario (o todas si no se especifica userId)
+// GET - Obtener rutinas del usuario (asignadas + generales públicas)
 export async function GET(request: NextRequest) {
   try {
     const supabase = createServerSupabaseClient();
@@ -11,8 +11,21 @@ export async function GET(request: NextRequest) {
     const routineId = searchParams.get('routine_id');
     const status = searchParams.get('status');
 
-    // Construir query base
-    let query = supabase
+    // Si no se especifica userId, obtener el del usuario autenticado
+    let targetUserId = userId;
+    if (!targetUserId) {
+      const { data: { user }, error: authError } = await supabase.auth.getUser();
+      if (authError || !user) {
+        return NextResponse.json(
+          { error: 'No autenticado' },
+          { status: 401 }
+        );
+      }
+      targetUserId = user.id;
+    }
+
+    // 1. Obtener rutinas ASIGNADAS específicamente al usuario
+    let assignedQuery = supabase
       .from('user_routines')
       .select(`
         *,
@@ -23,6 +36,7 @@ export async function GET(request: NextRequest) {
           difficulty_level,
           estimated_duration,
           muscle_group_focus,
+          is_public,
           routine_exercises(
             id,
             order_index,
@@ -53,35 +67,114 @@ export async function GET(request: NextRequest) {
         user:user_id(id, firstName, lastName, email),
         assigned_by_user:assigned_by(id, firstName, lastName)
       `)
+      .eq('user_id', targetUserId)
       .order('assigned_date', { ascending: false });
-
-    // Filtrar por userId si se proporciona
-    if (userId) {
-      query = query.eq('user_id', userId);
-    }
 
     // Filtrar por routine_id si se proporciona
     if (routineId) {
-      query = query.eq('routine_id', routineId);
+      assignedQuery = assignedQuery.eq('routine_id', routineId);
     }
 
     // Filtrar por status si se proporciona
     if (status) {
-      query = query.eq('status', status);
+      assignedQuery = assignedQuery.eq('status', status);
     }
 
-    const { data: userRoutines, error } = await query;
+    const { data: assignedRoutines, error: assignedError } = await assignedQuery;
 
-    if (error) {
-      console.error('❌ [API] Error fetching user routines:', error);
+    if (assignedError) {
+      console.error('❌ [API] Error fetching assigned routines:', assignedError);
       return NextResponse.json(
-        { error: 'Error al obtener rutinas del usuario', details: error.message },
+        { error: 'Error al obtener rutinas asignadas', details: assignedError.message },
         { status: 500 }
       );
     }
 
-    // Ordenar ejercicios dentro de cada rutina
-    const sortedUserRoutines = userRoutines?.map(ur => ({
+    // 2. Obtener rutinas GENERALES (is_public = true) que NO estén ya asignadas
+    const assignedRoutineIds = assignedRoutines?.map(ur => ur.routine_id) || [];
+    
+    let publicQuery = supabase
+      .from('workout_routines')
+      .select(`
+        id,
+        name,
+        description,
+        difficulty_level,
+        estimated_duration,
+        muscle_group_focus,
+        is_public,
+        created_at,
+        routine_exercises(
+          id,
+          order_index,
+          sets,
+          reps,
+          rest_seconds,
+          notes,
+          exercise:exercise_id(
+            id,
+            name,
+            type,
+            level,
+            material,
+            primary_muscles,
+            secondary_muscles,
+            initial_position,
+            execution_eccentric,
+            execution_isometric,
+            execution_concentric,
+            common_errors,
+            contraindications,
+            video_url,
+            image_url,
+            muscle_group:muscle_group_id(id, name)
+          )
+        )
+      `)
+      .eq('is_public', true)
+      .eq('is_active', true)
+      .order('created_at', { ascending: false });
+
+    // Si hay rutinas asignadas, excluirlas de las públicas para evitar duplicados
+    if (assignedRoutineIds.length > 0) {
+      publicQuery = publicQuery.not('id', 'in', `(${assignedRoutineIds.join(',')})`);
+    }
+
+    const { data: publicRoutines, error: publicError } = await publicQuery;
+
+    if (publicError) {
+      console.error('❌ [API] Error fetching public routines:', publicError);
+      return NextResponse.json(
+        { error: 'Error al obtener rutinas públicas', details: publicError.message },
+        { status: 500 }
+      );
+    }
+
+    // 3. Formatear rutinas públicas para que tengan la misma estructura que las asignadas
+    const formattedPublicRoutines = publicRoutines?.map(routine => ({
+      id: `public-${routine.id}`, // ID único para evitar colisiones
+      routine_id: routine.id,
+      user_id: targetUserId,
+      assigned_date: routine.created_at, // Usar fecha de creación como referencia
+      start_date: routine.created_at,
+      end_date: null,
+      status: 'active', // Las rutinas públicas siempre están activas
+      notes: 'Rutina general disponible para todos',
+      assigned_by: null,
+      routine: routine,
+      user: null,
+      assigned_by_user: null,
+      is_public_routine: true // Flag para identificar rutinas públicas
+    })) || [];
+
+    // 4. Combinar ambos conjuntos de rutinas
+    const allRoutines = [
+      ...(assignedRoutines || []).map(ur => ({ ...ur, is_public_routine: false })),
+      ...formattedPublicRoutines
+    ];
+
+    // 5. Ordenar ejercicios dentro de cada rutina
+    const sortedUserRoutines = allRoutines.map(ur => ({
       ...ur,
       routine: ur.routine ? {
         ...ur.routine,
@@ -89,7 +182,7 @@ export async function GET(request: NextRequest) {
       } : null
     }));
 
-    console.log(`✅ [API] ${sortedUserRoutines?.length || 0} rutinas asignadas al usuario ${userId}`);
+    console.log(`✅ [API] Usuario ${targetUserId}: ${assignedRoutines?.length || 0} asignadas + ${formattedPublicRoutines.length} generales = ${sortedUserRoutines.length} total`);
 
     return NextResponse.json({
       userRoutines: sortedUserRoutines || []

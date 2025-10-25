@@ -12,8 +12,8 @@ async function updateSession(request: NextRequest) {
   const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
   if (!supabaseUrl || !supabaseAnonKey) {
-    console.error('❌ Middleware - Missing Supabase credentials');
-    return response;
+    console.error('❌ Proxy - Missing Supabase credentials');
+    return { response, supabase: null };
   }
 
   const supabase = createServerClient(
@@ -52,8 +52,13 @@ async function updateSession(request: NextRequest) {
   return { response, supabase };
 }
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { response, supabase } = await updateSession(request);
+
+  // Si no hay supabase, retornar respuesta sin autenticación
+  if (!supabase) {
+    return response;
+  }
 
   const { data: { user } } = await supabase.auth.getUser();
   
@@ -68,25 +73,25 @@ export async function middleware(request: NextRequest) {
   const isAdminRoute = adminRoutes.some(route => pathname.startsWith(route));
   const isProtectedRoute = protectedRoutes.some(route => pathname.startsWith(route));
 
-  console.log('🛡️ Middleware - Path:', pathname);
-  console.log('🛡️ Middleware - User:', user ? `Autenticado (ID: ${user.id})` : 'No autenticado');
+  console.log('🛡️ Proxy - Path:', pathname);
+  console.log('🛡️ Proxy - User:', user ? `Autenticado (ID: ${user.id})` : 'No autenticado');
 
   // 🚨 BLOQUEO CRÍTICO: Sin usuario en cualquier ruta protegida
   if (!user && (isProtectedRoute || isAdminRoute)) {
-    console.log(`🚨 Middleware - ACCESO DENEGADO a ruta protegida (${pathname}) sin sesión.`);
+    console.log(`🚨 Proxy - ACCESO DENEGADO a ruta protegida (${pathname}) sin sesión.`);
     return NextResponse.redirect(new URL('/', request.url));
   }
 
   // 🔒 VERIFICACIÓN DE ROL PARA RUTAS ADMIN
   if (user && isAdminRoute) {
-    console.log('🔍 Middleware - Verificando acceso ADMIN...');
+    console.log('🔍 Proxy - Verificando acceso ADMIN...');
     
     // ✅ LEER ROL DESDE METADATA (más rápido, no requiere query adicional)
     const userRole = user.user_metadata?.role || 'cliente';
-    console.log('🔍 Middleware - Rol desde metadata:', userRole);
+    console.log('🔍 Proxy - Rol desde metadata:', userRole);
     
     if (userRole !== 'admin' && userRole !== 'empleado') {
-      console.log(`🚨 Middleware - ACCESO DENEGADO a ruta admin. Rol: ${userRole}`);
+      console.log(`🚨 Proxy - ACCESO DENEGADO a ruta admin. Rol: ${userRole}`);
       return NextResponse.redirect(new URL('/dashboard/cliente', request.url));
     }
   }
@@ -95,7 +100,7 @@ export async function middleware(request: NextRequest) {
   if (user && isPublicRoute && pathname !== '/') {
     // Excluir páginas del proceso de registro
     if (pathname !== '/bienvenido' && pathname !== '/registro-pendiente') {
-      console.log(`🔄 Middleware - Usuario logueado en ruta pública (${pathname}). Redirigiendo a dashboard.`);
+      console.log(`🔄 Proxy - Usuario logueado en ruta pública (${pathname}). Redirigiendo a dashboard.`);
       return NextResponse.redirect(new URL('/dashboard', request.url));
     }
   }
@@ -104,7 +109,7 @@ export async function middleware(request: NextRequest) {
   if (user && pathname === '/dashboard') {
     // ✅ LEER ROL DESDE METADATA
     const userRole = user.user_metadata?.role || 'cliente';
-    console.log('🎯 Middleware - Redirigiendo según rol:', userRole);
+    console.log('🎯 Proxy - Redirigiendo según rol:', userRole);
     
     switch (userRole) {
       case 'admin':
@@ -116,7 +121,7 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  console.log('✅ Middleware - Acceso permitido');
+  console.log('✅ Proxy - Acceso permitido');
   return response;
 }
 

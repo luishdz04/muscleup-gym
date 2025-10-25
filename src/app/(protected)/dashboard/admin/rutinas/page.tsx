@@ -59,7 +59,8 @@ import {
   TrendingUp as TrendingUpIcon,
   CalendarMonth as CalendarIcon,
   PersonAdd as PersonAddIcon,
-  People as PeopleIcon
+  People as PeopleIcon,
+  Info as InfoIcon
 } from '@mui/icons-material';
 import { colorTokens } from '@/theme';
 import { alpha } from '@mui/material/styles';
@@ -107,7 +108,8 @@ interface Exercise {
   muscle_group?: MuscleGroup | null;
 }
 
-interface RoutineExercise {
+// Interfaz para ejercicios en el formulario (id opcional)
+interface RoutineExerciseForm {
   id?: string;
   exercise_id: string;
   exercise?: Exercise;
@@ -118,7 +120,20 @@ interface RoutineExercise {
   notes?: string;
 }
 
-interface Routine {
+// Interfaz para ejercicios existentes (id requerido, exercise requerido)
+interface RoutineExercise {
+  id: string;
+  exercise_id: string;
+  exercise: Exercise;  // Requerido en rutinas existentes
+  order_index: number;
+  sets: number;
+  reps: string;
+  rest_seconds: number;
+  notes?: string;
+}
+
+// Interfaz para rutinas en el formulario (id opcional para creación)
+interface RoutineForm {
   id?: string;
   name: string;
   description?: string;
@@ -126,8 +141,21 @@ interface Routine {
   estimated_duration?: number;
   muscle_group_focus?: string;
   is_public: boolean;
-  routine_exercises: RoutineExercise[];
+  routine_exercises: RoutineExerciseForm[];
   created_at?: string;
+}
+
+// Interfaz para rutinas existentes (id requerido)
+interface Routine {
+  id: string;
+  name: string;
+  description?: string;
+  difficulty_level: string;
+  estimated_duration: number;
+  muscle_group_focus?: string;
+  is_public: boolean;
+  routine_exercises: RoutineExercise[];
+  created_at: string;
 }
 
 interface AnalyticsData {
@@ -145,8 +173,8 @@ interface AnalyticsData {
 
 // Componente de ejercicio sortable
 function SortableExerciseItem({ exercise, onEdit, onRemove }: {
-  exercise: RoutineExercise;
-  onEdit: (exercise: RoutineExercise) => void;
+  exercise: RoutineExerciseForm;
+  onEdit: (exercise: RoutineExerciseForm) => void;
   onRemove: (id: string) => void;
 }) {
   const {
@@ -258,7 +286,7 @@ export default function RutinasAdmin() {
   const [searchTerm, setSearchTerm] = useState('');
   const [createDialog, setCreateDialog] = useState(false);
   const [exerciseEditDialog, setExerciseEditDialog] = useState(false);
-  const [currentEditingExercise, setCurrentEditingExercise] = useState<RoutineExercise | null>(null);
+  const [currentEditingExercise, setCurrentEditingExercise] = useState<RoutineExerciseForm | null>(null);
   const [editingRoutine, setEditingRoutine] = useState<Routine | null>(null);
 
   // Estados para vista enterprise
@@ -276,7 +304,7 @@ export default function RutinasAdmin() {
   const [assignedUsersRoutine, setAssignedUsersRoutine] = useState<Routine | null>(null);
   const [assignedUsersModalOpen, setAssignedUsersModalOpen] = useState(false);
 
-  const [formData, setFormData] = useState<Routine>({
+  const [formData, setFormData] = useState<RoutineForm>({
     name: '',
     description: '',
     difficulty_level: 'Intermedio',
@@ -360,7 +388,7 @@ export default function RutinasAdmin() {
       return;
     }
 
-    const newRoutineExercise: RoutineExercise = {
+    const newRoutineExercise: RoutineExerciseForm = {
       exercise_id: exercise.id,
       exercise: exercise,
       order_index: formData.routine_exercises.length,
@@ -385,7 +413,7 @@ export default function RutinasAdmin() {
     }));
   };
 
-  const handleEditExerciseParams = (exercise: RoutineExercise) => {
+  const handleEditExerciseParams = (exercise: RoutineExerciseForm) => {
     setCurrentEditingExercise({ ...exercise });
     setExerciseEditDialog(true);
   };
@@ -625,7 +653,7 @@ export default function RutinasAdmin() {
             </Typography>
           </Box>
           <Typography variant="body1" sx={{ color: colorTokens.textSecondary }}>
-            Sistema completo de gestión de rutinas de entrenamiento
+            Rutinas generales (visibles para todos) y personalizadas (asignables individualmente)
           </Typography>
         </Box>
         <Button
@@ -1433,8 +1461,22 @@ export default function RutinasAdmin() {
                   label="Tipo"
                   sx={{ bgcolor: colorTokens.neutral200 }}
                 >
-                  <MenuItem value="general">General</MenuItem>
-                  <MenuItem value="personalizada">Personalizada</MenuItem>
+                  <MenuItem value="general">
+                    <Box>
+                      <Typography variant="body2" sx={{ fontWeight: 600 }}>General</Typography>
+                      <Typography variant="caption" sx={{ color: colorTokens.textMuted }}>
+                        Visible para todos los usuarios
+                      </Typography>
+                    </Box>
+                  </MenuItem>
+                  <MenuItem value="personalizada">
+                    <Box>
+                      <Typography variant="body2" sx={{ fontWeight: 600 }}>Personalizada</Typography>
+                      <Typography variant="caption" sx={{ color: colorTokens.textMuted }}>
+                        Solo visible al asignarla a usuarios específicos
+                      </Typography>
+                    </Box>
+                  </MenuItem>
                 </Select>
               </FormControl>
             </Grid>
@@ -1466,6 +1508,28 @@ export default function RutinasAdmin() {
               />
             </Grid>
           </Grid>
+
+          {/* Nota informativa sobre el tipo de rutina */}
+          <Alert
+            severity="info"
+            icon={<InfoIcon />}
+            sx={{
+              mt: 2,
+              bgcolor: colorTokens.info + '15',
+              border: `1px solid ${colorTokens.info}40`,
+              '& .MuiAlert-icon': { color: colorTokens.info }
+            }}
+          >
+            <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
+              💡 Diferencia entre tipos de rutina:
+            </Typography>
+            <Typography variant="caption" sx={{ display: 'block' }}>
+              <strong>• General:</strong> Aparece automáticamente para todos los usuarios en su panel.
+            </Typography>
+            <Typography variant="caption" sx={{ display: 'block' }}>
+              <strong>• Personalizada:</strong> Solo aparece a usuarios específicos cuando la asignes manualmente usando el botón "Asignar a Usuario".
+            </Typography>
+          </Alert>
 
           <Divider sx={{ my: 3, borderColor: colorTokens.border }} />
 
