@@ -40,9 +40,9 @@ export const PersonalDataStep: React.FC<PersonalDataStepProps> = ({
   clearPhoto,
   onNext
 }) => {
-  const autocompleteInputRef = useRef<HTMLInputElement>(null);
+  const autocompleteRef = useRef<HTMLDivElement>(null);
   const emailInputRef = useRef<HTMLInputElement>(null);
-  const [autocomplete, setAutocomplete] = useState<google.maps.places.Autocomplete | null>(null);
+  const [autocompleteElement, setAutocompleteElement] = useState<google.maps.places.PlaceAutocompleteElement | null>(null);
   const [searchValue, setSearchValue] = useState('');
   const [showAddressFields, setShowAddressFields] = useState(false);
   const [emailSuggestions, setEmailSuggestions] = useState<string[]>([]);
@@ -63,33 +63,45 @@ export const PersonalDataStep: React.FC<PersonalDataStepProps> = ({
     console.log('🔄 [STATE] showAddressFields changed to:', showAddressFields);
   }, [showAddressFields]);
 
-  // Initialize Google Places Autocomplete
+  // Initialize Google Places Autocomplete Element (nueva API)
   useEffect(() => {
     console.log('🔍 [AUTOCOMPLETE] useEffect triggered');
     console.log('🔍 [AUTOCOMPLETE] window.google:', typeof window !== 'undefined' ? !!window.google : 'server');
-    console.log('🔍 [AUTOCOMPLETE] autocompleteInputRef.current:', !!autocompleteInputRef.current);
+    console.log('🔍 [AUTOCOMPLETE] autocompleteRef.current:', !!autocompleteRef.current);
     console.log('🔍 [AUTOCOMPLETE] setValue:', !!setValue);
 
-    if (typeof window !== 'undefined' && window.google && autocompleteInputRef.current && setValue) {
-      console.log('✅ [AUTOCOMPLETE] Initializing Google Maps Autocomplete...');
+    if (typeof window !== 'undefined' && window.google && autocompleteRef.current && setValue) {
+      console.log('✅ [AUTOCOMPLETE] Initializing Google Maps PlaceAutocompleteElement...');
 
-      const autocompleteInstance = new window.google.maps.places.Autocomplete(
-        autocompleteInputRef.current,
-        {
-          componentRestrictions: { country: 'mx' },
-          fields: ['address_components', 'formatted_address'],
-          types: ['address']
-        }
-      );
+      // Crear el nuevo elemento PlaceAutocompleteElement
+      const autocompleteInstance = new window.google.maps.places.PlaceAutocompleteElement({
+        componentRestrictions: { country: 'mx' },
+        types: ['address']
+      });
 
-      autocompleteInstance.addListener('place_changed', () => {
-        console.log('🎯 [AUTOCOMPLETE] place_changed event fired!');
-        const place = autocompleteInstance.getPlace();
+      // Configurar el elemento
+      autocompleteInstance.id = 'address-autocomplete';
 
+      // Agregar al contenedor
+      if (autocompleteRef.current) {
+        autocompleteRef.current.innerHTML = '';
+        autocompleteRef.current.appendChild(autocompleteInstance);
+      }
+
+      // Listener para cuando se selecciona un lugar
+      autocompleteInstance.addEventListener('gmp-placeselect', async (event: any) => {
+        console.log('🎯 [AUTOCOMPLETE] gmp-placeselect event fired!');
+
+        const place = event.place;
         console.log('📍 [AUTOCOMPLETE] Place object:', place);
 
-        if (place.address_components) {
-          console.log('✅ [AUTOCOMPLETE] Place has address_components');
+        // Obtener detalles del lugar
+        await place.fetchFields({
+          fields: ['addressComponents', 'formattedAddress']
+        });
+
+        if (place.addressComponents) {
+          console.log('✅ [AUTOCOMPLETE] Place has addressComponents');
 
           // Extract address components
           let street = '';
@@ -99,26 +111,26 @@ export const PersonalDataStep: React.FC<PersonalDataStepProps> = ({
           let state = '';
           let postalCode = '';
 
-          place.address_components.forEach((component) => {
+          place.addressComponents.forEach((component: any) => {
             const types = component.types;
 
             if (types.includes('route')) {
-              street = component.long_name;
+              street = component.longText;
             }
             if (types.includes('street_number')) {
-              number = component.long_name;
+              number = component.longText;
             }
             if (types.includes('sublocality_level_1') || types.includes('sublocality') || types.includes('neighborhood')) {
-              neighborhood = component.long_name;
+              neighborhood = component.longText;
             }
             if (types.includes('locality')) {
-              city = component.long_name;
+              city = component.longText;
             }
             if (types.includes('administrative_area_level_1')) {
-              state = component.long_name;
+              state = component.longText;
             }
             if (types.includes('postal_code')) {
-              postalCode = component.long_name;
+              postalCode = component.longText;
             }
           });
 
@@ -138,12 +150,12 @@ export const PersonalDataStep: React.FC<PersonalDataStepProps> = ({
           setShowAddressFields(true);
           console.log('✅ [AUTOCOMPLETE] State updated!');
         } else {
-          console.log('⚠️ [AUTOCOMPLETE] Place has NO address_components');
+          console.log('⚠️ [AUTOCOMPLETE] Place has NO addressComponents');
         }
       });
 
-      setAutocomplete(autocompleteInstance);
-      console.log('✅ [AUTOCOMPLETE] Autocomplete instance created and listener added');
+      setAutocompleteElement(autocompleteInstance);
+      console.log('✅ [AUTOCOMPLETE] PlaceAutocompleteElement created and listener added');
     } else {
       console.log('❌ [AUTOCOMPLETE] Cannot initialize - missing dependencies');
     }
@@ -407,13 +419,11 @@ export const PersonalDataStep: React.FC<PersonalDataStepProps> = ({
               </svg>
               Busca tu dirección
             </label>
-            <input
-              ref={autocompleteInputRef}
-              type="text"
-              value={searchValue}
-              onChange={(e) => setSearchValue(e.target.value)}
-              className={`${styles.input} border-yellow-400`}
-              placeholder="Escribe tu dirección completa (calle, número, colonia, ciudad)..."
+            {/* Contenedor para el nuevo PlaceAutocompleteElement */}
+            <div
+              ref={autocompleteRef}
+              className="w-full"
+              style={{ minHeight: '44px' }}
             />
             <p className="text-xs text-gray-400 mt-2">
               💡 Tip: Escribe tu dirección y selecciona de las sugerencias. Aparecerán los campos para que puedas verificar o ajustar la información.

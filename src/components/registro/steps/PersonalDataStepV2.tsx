@@ -69,32 +69,40 @@ export const PersonalDataStepV2: React.FC<PersonalDataStepV2Props> = ({
 }) => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const addressInputRef = useRef<HTMLInputElement>(null);
-  const [autocomplete, setAutocomplete] = useState<google.maps.places.Autocomplete | null>(null);
+  const autocompleteRef = useRef<HTMLDivElement>(null);
+  const [autocompleteElement, setAutocompleteElement] = useState<google.maps.places.PlaceAutocompleteElement | null>(null);
 
   const password = watch('password');
 
-  // Initialize Google Places Autocomplete
+  // Initialize Google Places Autocomplete Element (nueva API)
   useEffect(() => {
     // Check if Google Maps script is loaded
-    if (typeof window !== 'undefined' && window.google && addressInputRef.current) {
-      const autocompleteInstance = new window.google.maps.places.Autocomplete(
-        addressInputRef.current,
-        {
-          componentRestrictions: { country: 'mx' },
-          fields: ['address_components', 'formatted_address', 'geometry'],
-          types: ['address']
-        }
-      );
+    if (typeof window !== 'undefined' && window.google && autocompleteRef.current) {
+      const autocompleteInstance = new window.google.maps.places.PlaceAutocompleteElement({
+        componentRestrictions: { country: 'mx' },
+        types: ['address']
+      });
 
-      autocompleteInstance.addListener('place_changed', () => {
-        const place = autocompleteInstance.getPlace();
-        if (place.formatted_address) {
-          setValue('address', place.formatted_address, { shouldValidate: true });
+      autocompleteInstance.id = 'address-autocomplete-v2';
+
+      if (autocompleteRef.current) {
+        autocompleteRef.current.innerHTML = '';
+        autocompleteRef.current.appendChild(autocompleteInstance);
+      }
+
+      autocompleteInstance.addEventListener('gmp-placeselect', async (event: any) => {
+        const place = event.place;
+
+        await place.fetchFields({
+          fields: ['formattedAddress', 'addressComponents']
+        });
+
+        if (place.formattedAddress) {
+          setValue('address', place.formattedAddress, { shouldValidate: true });
         }
       });
 
-      setAutocomplete(autocompleteInstance);
+      setAutocompleteElement(autocompleteInstance);
     }
   }, [setValue]);
 
@@ -385,33 +393,54 @@ export const PersonalDataStepV2: React.FC<PersonalDataStepV2Props> = ({
           />
         </Grid>
 
-        {/* Address with Google Places */}
+        {/* Address with Google Places - Nuevo PlaceAutocompleteElement */}
         <Grid size={{ xs: 12 }}>
-          <TextField
-            fullWidth
-            label="Dirección"
-            placeholder="Comienza a escribir tu dirección..."
-            inputRef={addressInputRef}
-            {...register('address', {
-              required: 'La dirección es requerida'
-            })}
-            error={!!errors.address}
-            helperText={errors.address?.message || 'Comienza a escribir y selecciona de las sugerencias'}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <LocationIcon sx={{ color: colorTokens.brand }} />
-                </InputAdornment>
-              ),
-              endAdornment: (
-                <InputAdornment position="end">
-                  <Tooltip title="Usa el autocompletado de Google para mayor precisión" arrow>
-                    <InfoIcon sx={{ color: colorTokens.textMuted, fontSize: 20 }} />
-                  </Tooltip>
-                </InputAdornment>
-              )
-            }}
-          />
+          <Box sx={{ mb: 2 }}>
+            <Typography
+              variant="body2"
+              sx={{
+                mb: 1,
+                color: colorTokens.textSecondary,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 1
+              }}
+            >
+              <LocationIcon sx={{ color: colorTokens.brand, fontSize: 20 }} />
+              Dirección
+            </Typography>
+            {/* Contenedor para el nuevo PlaceAutocompleteElement */}
+            <div
+              ref={autocompleteRef}
+              style={{ minHeight: '56px' }}
+            />
+            <Typography
+              variant="caption"
+              sx={{
+                mt: 1,
+                color: errors.address ? colorTokens.danger : colorTokens.textMuted,
+                display: 'flex',
+                alignItems: 'center',
+                gap: 0.5
+              }}
+            >
+              {errors.address ? (
+                errors.address.message
+              ) : (
+                <>
+                  <InfoIcon sx={{ fontSize: 16 }} />
+                  Comienza a escribir y selecciona de las sugerencias
+                </>
+              )}
+            </Typography>
+            {/* Campo oculto para validación del formulario */}
+            <input
+              type="hidden"
+              {...register('address', {
+                required: 'La dirección es requerida'
+              })}
+            />
+          </Box>
         </Grid>
 
         {/* Password Fields */}
